@@ -49,8 +49,9 @@ STATIC = {
         ("https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r01/access/csv/ibtracs.WP.list.v04r01.csv",
          "ibtracs.WP.list.v04r01.csv"),
     ],
+    # HydroSHEDS puts the Philippines in the Australasia ("au") region; the Asia ("as") file has no PHL reaches
     "hydrorivers": [
-        ("https://data.hydrosheds.org/file/HydroRIVERS/HydroRIVERS_v10_as_shp.zip", "HydroRIVERS_v10_as_shp.zip"),
+        ("https://data.hydrosheds.org/file/HydroRIVERS/HydroRIVERS_v10_au_shp.zip", "HydroRIVERS_v10_au_shp.zip"),
     ],
     "osm": [
         ("https://download.geofabrik.de/asia/philippines-latest.osm.pbf", "philippines-latest.osm.pbf"),
@@ -97,8 +98,10 @@ NOAH_DOCS = {"01ReadMe_Flood.pdf": "1Z6gT7FDUCMps-qHT5Jiy7nwCdaH0rhwR", "metadat
 CHIRPS_BBOX = dict(x0=116, x1=127, y0=4, y1=21.5)
 CHIRPS_YEARS = range(2016, 2021)
 
+PARTIAL = []  # single files that failed inside a source that otherwise finished
 
-def fetch(url, dest, retries=3):
+
+def fetch(url, dest, retries=3, binary=False):
     if dest.exists() and dest.stat().st_size > 0:
         print(f"  skip  {dest.relative_to(RAW)}")
         return dest
@@ -108,6 +111,8 @@ def fetch(url, dest, retries=3):
         try:
             with requests.get(url, headers=UA, stream=True, timeout=(30, 600)) as r:
                 r.raise_for_status()
+                if binary and "text/html" in r.headers.get("Content-Type", ""):
+                    raise RuntimeError("got an HTML page instead of the file (quota or permission page?)")
                 with open(tmp, "wb") as f:
                     for chunk in r.iter_content(1 << 20):
                         f.write(chunk)
@@ -126,14 +131,8 @@ def drive_listing(folder_id):
 
 
 def fetch_drive(file_id, dest):
-    import gdown
-    if dest.exists() and dest.stat().st_size > 0:
-        print(f"  skip  {dest.relative_to(RAW)}")
-        return dest
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    gdown.download(id=file_id, output=str(dest), quiet=True)
-    print(f"  ok    {dest.relative_to(RAW)}  {dest.stat().st_size / 1e6:.1f} MB")
-    return dest
+    # confirm=t skips the "virus scan warning" page Drive serves for files > 100 MB (gdown 6.x fails on it)
+    return fetch(f"https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t", dest, binary=True)
 
 
 def pull_static(source):
@@ -158,7 +157,11 @@ def pull_noah():
         files = drive_listing(folder)
         print(f"  NOAH {rp}: {len(files)} files")
         for fid, fname in files:
-            out.append((fetch_drive(fid, RAW / "noah" / rp / fname), f"gdrive:{fid}"))
+            try:  # one blocked file should not stop the other provinces
+                out.append((fetch_drive(fid, RAW / "noah" / rp / fname), f"gdrive:{fid}"))
+            except RuntimeError as e:
+                print(f"  FAILED {rp}/{fname}: {e}")
+                PARTIAL.append(f"noah/{rp}/{fname}")
     return out
 
 
@@ -217,6 +220,9 @@ def main(selected):
     print(f"\n{n} files recorded in {RAW / 'MANIFEST.csv'}")
     if failed:
         print("Failed sources:", ", ".join(failed))
+    if PARTIAL:
+        print(f"Failed files ({len(PARTIAL)}), re-run to retry:", ", ".join(PARTIAL))
+    if failed or PARTIAL:
         sys.exit(1)
 
 

@@ -9,7 +9,7 @@ where things stand and [AGENTS.md](AGENTS.md) for the rules on handling data and
 
 ## Quick start (Windows)
 
-You need Python 3.10+ on PATH and roughly 4 GB of free disk.
+You need Python 3.10+ on PATH and roughly 8 GB of free disk (the open data are ~7 GB, 4.7 GB of it UP NOAH).
 
 ```bat
 download_data.bat                     :: open datasets only
@@ -71,7 +71,7 @@ data/interim/, processed/   derived data (git-ignored, rebuilt by scripts)
 | `copernicus_ems` | EMSR312 (Ompong) flood delineation; EMSR478 (Rolly) damage grading | Flood cross-check | open |
 | `noah` | UP NOAH flood hazard, 5- and 25-year, per province | Static susceptibility | open (Google Drive) |
 | `gfd`, `sentinel1` | Global Flood Database events; Sentinel-1 scene inventory | Observed flood | GEE |
-| `hydrorivers` | HydroRIVERS v1.0 Asia | River routing | open |
+| `hydrorivers` | HydroRIVERS v1.0 Australasia (covers PHL) | River routing | open |
 | `osm` | OpenStreetMap Philippines (Geofabrik PBF) | Road network | open |
 | `roroph` | MARINA/PPA RoRo routes (roroph R package data) | Ferry edges | open |
 | `hotosm_health`, `noah_facilities` | OSM health facilities; UP NOAH critical facilities | Hospital nodes (NHFR fallback) | open |

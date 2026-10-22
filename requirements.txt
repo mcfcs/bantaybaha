@@ -5,6 +5,7 @@ pyogrio
 shapely
 rasterio
 xarray
+dask
 netcdf4
 h5netcdf
 rioxarray
@@ -12,7 +13,6 @@ matplotlib
 seaborn
 openpyxl
 requests
-gdown
 rdata
 earthengine-api
 ipykernel
