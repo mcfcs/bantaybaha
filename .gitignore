@@ -1,0 +1,17 @@
+# Raw and derived data are rebuilt by scripts/download_data.py
+data/raw/*
+data/interim/
+data/processed/
+!data/raw/MANIFEST.csv
+data/*.log
+
+# Python / Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+
+# Credentials
+.netrc
+*.json.key
+.env
