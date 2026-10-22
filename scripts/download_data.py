@@ -203,16 +203,18 @@ def write_manifest(rows):
 
 
 def main(selected):
-    rows, failed = [], []
+    n, failed = 0, []
     for source in selected or PULLERS:
         print(f"[{source}]")
         try:
-            rows += [(source, p, u) for p, u in PULLERS[source]()]
+            rows = [(source, p, u) for p, u in PULLERS[source]()]
         except Exception as e:  # noqa: BLE001 - keep going, report at the end
             print(f"  FAILED {source}: {e}")
             failed.append(source)
-    write_manifest(rows)
-    print(f"\n{len(rows)} files recorded in {RAW / 'MANIFEST.csv'}")
+            continue
+        write_manifest(rows)  # per source, so an interrupted run keeps what finished
+        n += len(rows)
+    print(f"\n{n} files recorded in {RAW / 'MANIFEST.csv'}")
     if failed:
         print("Failed sources:", ", ".join(failed))
         sys.exit(1)
