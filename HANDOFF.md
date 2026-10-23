@@ -222,9 +222,9 @@ Outputs: `data/processed/app/` (scenarios, eval_*, leadlag_*, validation, sensit
 
 1. Review the results with the team, then update the proposal's claims (sentinels, flood features, cut-off counts).
 2. ~~Push the Sentinel-1 tiles to the team bucket~~: done 2026-10-24 (251 tiles; `setup.bat` now pulls them).
-3. Raster access method: `access.friction_times` is written and the MAP friction raster is on disk, but `scenarios.py`
-   doesn't call it yet (it needs a flood mask on the friction grid); wire it in and report the network-vs-raster gap.
-4. Recalibrate R (isotonic, fitted on past rolling-origin forecasts only) and review the provisional `TIERS` and `SPEED`.
+3. ~~Raster access method~~: done 2026-10-24 (`access.FrictionGrid`, method range in every scenario).
+4. ~~Recalibrate R~~: done 2026-10-24 (isotonic, past forecasts only). Still to do: review the provisional `TIERS` and
+   `SPEED` with target users (calibrated R moves more provinces into "pre-position").
 5. Manual downloads (decided 2026-10-24: neither is required):
    - **PSGC 2Q 2026: skip.** It would only validate codes we already have: COD-AB pcodes are PSGC-based and the crosswalk
      resolves all 126 dengue units. No result changes with it.
@@ -236,8 +236,14 @@ Outputs: `data/processed/app/` (scenarios, eval_*, leadlag_*, validation, sensit
      (`access._nhfr`) looks for lat/lon and a facility-type column; real NHFR exports are untested, so check its warning.
    - If both are skipped, drop them from the "pending" lists in the report and deck so the results don't read as unfinished.
 6. ~~Merge `origin/main`~~: done 2026-10-24 (`download_gee.py` = main's `.part`/retry/manifest helpers + the `s1_flood` puller).
-7. Optional: Chronos-2 benchmark (`requirements-bench.txt`); TabPFN-TS and MPNN-LSTM are not built. SUS test with three
-   users on the dashboard.
+7. ~~Benchmarks~~: Chronos-2, TabPFN-TS, MPNN-LSTM and the median ensemble done 2026-10-24. Open: give the ensemble a
+   storm-conditioned path (or say clearly that scenarios use XGBoost).
+8. **SUS test with three target users** (DOH regional / LGU health / DRRM): the dashboard's *Usability test* tab holds the
+   15-minute task and the 10 SUS items; answers land in `data/processed/sus/sus_responses.csv`.
+9. **Demo video**: narrate over the dashboard following `docs/results/Bantay-Baha_Demo_Script.md` (a silent Playwright
+   walkthrough, `python tests\capture.py`, can be the screen track).
+10. **Before making the repo public** (the proposal promises a public GitHub repo; it is private now): member names are in
+    the git history (author email) and on the covers of the three PDFs in `docs/` (one filename has the team name).
 
 ## Findings so far (checked against the real files)
 
