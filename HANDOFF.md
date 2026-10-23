@@ -23,6 +23,7 @@ and pick the files up on the next `build.bat` with no code change. No fake or sy
 | TabPFN-TS benchmark, MPNN-LSTM ablation | **not built** |
 | Sentinel-1 flood masks (`download_gee.py s1_flood`) | **done** (2026-10-24, GEE project `csci-199-2-thesis`): 357 tiles, 251 written + in MANIFEST.csv (the rest open sea, no pass); **not yet pushed to the team bucket** (`sync_data.py push s1_flood` needs write access) |
 | PSGC + NHFR manual downloads | **not done, not required**: PSGC skipped (adds nothing); NHFR optional (see next steps); hospitals use the HOT OSM + NOAH fallback (2,199) |
+| Shared data bucket | `gs://bantay-baha-raw-hackathonproper` (GCP project `hackathonproper`, private, `asia-southeast1`); `setup.bat` / `scripts/sync_data.py pull`; team accounts have bucket read access |
 
 A full `build.bat` from scratch takes about 1 h on this machine (NOAH rasters 15 min one-off, lead-lag 10 min, forecast
 13 min, scenarios 15 min). netCDF4's DLL is blocked by Windows Application Control here, so CHIRPS is read with xarray's
@@ -154,8 +155,8 @@ Outputs: `data/processed/app/` (scenarios, eval_*, leadlag_*, validation, sensit
 ## Next steps
 
 1. Review the results with the team, then update the proposal's claims (sentinels, flood features, cut-off counts).
-2. Push the Sentinel-1 tiles to the team bucket (`python scripts/sync_data.py push s1_flood`; needs write access), so
-   teammates get them through `setup.bat`. Merging `origin/main` must keep the `s1_flood` puller (see 6).
+2. Push the Sentinel-1 tiles to the team bucket (`python scripts/sync_data.py push s1_flood`; needs bucket write access
+   plus *Service Usage Consumer* on `hackathonproper`), so teammates get them through `setup.bat`.
 3. Raster access method: `access.friction_times` is written and the MAP friction raster is on disk, but `scenarios.py`
    doesn't call it yet (it needs a flood mask on the friction grid); wire it in and report the network-vs-raster gap.
 4. Recalibrate R (isotonic, fitted on past rolling-origin forecasts only) and review the provisional `TIERS` and `SPEED`.
@@ -169,10 +170,7 @@ Outputs: `data/processed/app/` (scenarios, eval_*, leadlag_*, validation, sensit
      current fallback likely makes travel times optimistic (an infirmary counts as a hospital). The loader
      (`access._nhfr`) looks for lat/lon and a facility-type column; real NHFR exports are untested, so check its warning.
    - If both are skipped, drop them from the "pending" lists in the report and deck so the results don't read as unfinished.
-6. Merge `origin/main` (commit `2ae4063` "gcp init": `setup.bat`, `sync_data.py`, a reworked `download_gee.py`).
-   Local `main` is one commit behind; expect conflicts in HANDOFF, README, MANIFEST and `download_gee.py` (re-apply the
-   `s1_flood` puller in that style). `setup.bat` and `scripts/sync_data.py` in the working tree are identical to that
-   commit.
+6. ~~Merge `origin/main`~~: done 2026-10-24 (`download_gee.py` = main's `.part`/retry/manifest helpers + the `s1_flood` puller).
 7. Optional: Chronos-2 benchmark (`requirements-bench.txt`); TabPFN-TS and MPNN-LSTM are not built. SUS test with three
    users on the dashboard.
 
@@ -213,13 +211,21 @@ Outputs: `data/processed/app/` (scenarios, eval_*, leadlag_*, validation, sensit
 10. **NHFR blocks scripted access.** It needs a manual download, or use the fallbacks: HOT OSM health facilities and the UP NOAH
     critical-facilities layer (20,051 points, name + amenity only, no facility level).
 11. **IMERG V07 and the MAP friction surface 2019 are both in the GEE catalog**, so no NASA Earthdata account is needed.
-12. **The Global Flood Database ends in 2018**, so at most it covers Ompong.
+12. **The Global Flood Database covers none of the four backtest storms.** In the PHL bbox, its 44 PHL-tagged events run
+    2002-07-06 to 2017-06-14 (`gfd_events_phl.csv`, dates parsed from `system_index`; the `began`/`ended` properties come back
+    empty). The proposal's "covers Ompong at most" is too generous: it can't validate any backtest storm.
 13. **HydroRIVERS "Asia" has no Philippine rivers.** HydroSHEDS puts the Philippines in the Australasia (`au`) region:
     `HydroRIVERS_v10_au_shp.zip` gives 41,097 reaches touching PHL (4,065 outlets: many small island basins); the `as` file gives 0.
     The script and README now use `au`.
 14. **CHIRPS from the IRI Data Library has a `julian_day` time axis** (2457389.0 = 2016-01-01), which xarray doesn't decode;
     convert with `T - 2440587.5` days since 1970-01-01. Land cells only (sea is NaN). 2016–2020 complete, no missing days.
-15. **The development plan dates (13–24 Oct 2026) are mostly past.** As of 2026-10-22 the panel and model deadlines
+15. **MAP friction encodes sea as a constant, not nodata** (3.16 min/km motorised, 60 min/km walking, ~83% of bbox cells).
+    Mask it before any access computation. Land medians: 3.0 min/km motorised, 18.9 walking.
+16. **IMERG GeoTIFFs from GEE carry no band names**: band *i* is day *i* of the month in the file name. The daily bbox mean
+    correlates 0.79 with CHIRPS (IMERG includes sea).
+17. **Sentinel-1 is plentiful around all four storms**: 223/237/260/259 IW VV scenes in [-24, +14] days over the PHL bbox
+    (Ompong/Tisoy/Rolly/Ulysses; 83–100 after landfall each), so before/after pairs are available for every backtest.
+18. **The development plan dates (13–24 Oct 2026) are mostly past.** As of 2026-10-22 the panel and model deadlines
     (15 and 20 Oct) were missed; replan.
 
 ### Confirmed as stated in the proposal
@@ -236,6 +242,8 @@ EMSR478 = Goni/Rolly; IBTrACS has all four storms (MANGKHUT 2018, KAMMURI 2019, 
 - In Git Bash, `python -I` ignores the user site-packages, so always use the venv interpreter
   (`~/.venvs/bantay-baha/Scripts/python`).
 - pandas 3 / numpy 2 are installed (Python 3.13 venv on this machine); `.unique()` returns Arrow arrays and `np.int64(...)` reprs, so use `.tolist()` in prints.
+- `earthengine authenticate` (no gcloud needed) also gives the token `sync_data.py` uses for the bucket; it sits in
+  `%USERPROFILE%\.config\earthengine\`, outside the repo. EE `getDownloadURL` sometimes returns 503; `download_gee.py` retries.
 - psa.gov.ph and nhfr.doh.gov.ph return 403 to scripts. The CHIRPS IRI server drops long transfers; just re-run.
 - Copernicus EMS vector zips sit on a static S3 bucket. The script scrapes the activation page for the links.
 - A full forecast stage takes ~12 min (8 refits x PCMCI+ ~50 s + 10 quantile fits); the 23-quantile XGBoost is the
