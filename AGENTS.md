@@ -5,11 +5,18 @@ steps and the data findings. [README.md](README.md) has setup and the source lis
 
 ## Scope
 
-- **Current phase: data acquisition + EDA only.** Don't write model, forecasting, graph or dashboard code
-  unless the user explicitly asks for it. If a task seems to need it, say so and stop.
-- One EDA notebook: `notebooks/00_data_eda.ipynb`. Add a short section to it rather than creating new notebooks.
-  Each dataset section loads, shows shape and coverage, gives one plot at most, and records any proposal-relevant finding with `note(dataset, msg)`.
-- Keep EDA *super short*: coverage, gaps, units and join keys. Not modelling.
+- **Current phase: build (since 2026-10-23).** The full pipeline and dashboard exist: library code in `bantay/`,
+  one entry point `scripts/build.py` (stages `crosswalk panel leadlag forecast scenarios app`, or `build.bat`), and the
+  Streamlit app in `app/streamlit_app.py` (`run_app.bat`). Extend these; don't start parallel pipelines or notebooks.
+- **Missing data never blocks a build.** A stage that lacks an input calls `config.missing()` / `config.have()`, prints a
+  warning, records it in `data/processed/status.json`, and leaves its columns NaN or skips the output. Code for pending
+  sources (GEE: IMERG, MAP friction, Sentinel-1 flood; manual: PSGC, NHFR) must pick the files up on the next run with no
+  code change. **Never substitute fake, synthetic or imputed-as-real data** for a missing source.
+- The dashboard reads only pre-computed files in `data/processed/app/`; keep heavy work in the build.
+- Model choices that are provisional (action-tier thresholds, travel speeds, cut-off rule) are named constants with a
+  comment; change them there, and say so in `HANDOFF.md`.
+- The EDA notebook `notebooks/00_data_eda.ipynb` stays the one place for raw-data checks: short sections only
+  (coverage, gaps, units, join keys), findings recorded with `note(dataset, msg)`.
 
 ## Environment
 
@@ -22,7 +29,7 @@ steps and the data findings. [README.md](README.md) has setup and the source lis
 
 1. **`data/raw/` is read-only and append-only.** Never edit, rename, re-save or "clean" a raw file in place. Derived data
    go to `data/interim/` or `data/processed/`, produced by a script, never by hand.
-2. **Every raw file comes from `scripts/download_data.py` or `scripts/download_gee.py`.** To add a source, add it to
+2. **Every raw file comes from `scripts/download_data.py` or `scripts/download_gee.py`** (both write `MANIFEST.csv`). To add a source, add it to
    the script (static URL in `STATIC`, or a puller function), add a row to the README source table, then run it so it lands in
    `data/raw/MANIFEST.csv`. The only exceptions are the manual sources (`psgc`, `nhfr`), which are documented in the README.
 3. **Downloads must stay idempotent and resumable.** Skip existing files, write to `.part` and rename, and update the manifest per
@@ -58,6 +65,10 @@ steps and the data findings. [README.md](README.md) has setup and the source lis
 
 - Scripts in `scripts/`, plain Python, `pathlib`, with paths relative to the repo root (`Path(__file__).resolve().parents[1]`).
   Keep the existing style: module docstring with usage, small functions, no heavy frameworks.
+- Reusable logic lives in the `bantay/` package (one module per layer: `units`, `dengue`, `storms`, `rain`, `rivers`,
+  `flood`, `grids`, `panel`, `leadlag`, `forecast`, `access`, `scenarios`); paths and constants come from `bantay/config.py`.
+  Expensive intermediates are cached in `data/interim/` and rebuilt when their raw inputs are newer.
+- Heavy optional packages (torch, chronos-forecasting) go in `requirements-bench.txt`, not `requirements.txt`.
 - Notebooks find the root with `ROOT = Path.cwd().parent if Path.cwd().name == "notebooks" else Path.cwd()`.
 - Commit the EDA notebook *with* outputs (it is the deliverable), but keep it under ~5 MB by using decimated rasters and small figures.
 - Commit messages: imperative, one line, plus detail if needed.

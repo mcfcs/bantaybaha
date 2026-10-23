@@ -5,7 +5,7 @@ REM
 REM  Usage:
 REM    download_data.bat                      open sources only
 REM    download_data.bat my-gee-project-id    open sources + Earth Engine
-REM                                           (IMERG, MAP friction, GFD, Sentinel-1 inventory)
+REM                                           (IMERG, MAP friction, GFD, Sentinel-1 inventory + flood masks)
 REM
 REM  Needs Python 3.10+ on PATH. Safe to re-run: finished files are skipped.
 REM  The venv lives outside the repo (%USERPROFILE%\.venvs\bantay-baha)

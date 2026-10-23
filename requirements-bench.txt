@@ -1,0 +1,4 @@
+# Optional, heavy: only for scripts/benchmark_tsfm.py (Chronos-2 zero-shot benchmark). Installs torch (GBs).
+-r requirements.txt
+torch
+chronos-forecasting>=2.0

@@ -21,3 +21,11 @@ nbformat
 nbconvert
 nbclient
 tqdm
+xgboost
+networkx
+scipy
+scikit-learn
+scikit-image
+tigramite
+streamlit
+plotly
