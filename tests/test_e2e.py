@@ -8,6 +8,8 @@ import pandas as pd
 import pytest
 from playwright.sync_api import Page, expect
 
+from conftest import APP_DATA
+
 pytestmark = pytest.mark.e2e
 TABS = ["Action map", "Risk vs access", "Provinces", "Municipalities", "Outbreak graph", "Forecast skill",
         "Validation", "Data & caveats", "Usability test"]
@@ -55,7 +57,9 @@ def kpi(page: Page, label: str):
 
 
 def test_every_tab(app: Page, shots):
-    for i, name in enumerate(TABS):
+    names = app.get_by_role("tab").all_inner_texts()
+    assert [n for n in names if n != "Leptospirosis"] == TABS  # optional tabs appear only with their outputs
+    for i, name in enumerate(names):
         app.get_by_role("tab", name=name).click()
         idle(app)
         no_exception(app)
@@ -88,6 +92,16 @@ def test_storm_and_shift(app: Page, shots):
     expect(main_title(app)).to_have_text("Typhoon Tisoy")
     no_exception(app)
     app.screenshot(path=str(shots / "tisoy.png"))
+    # a catalogue storm (observed track only): type to search the long list
+    if (APP_DATA / "scenarios_catalog.parquet").exists():
+        app.get_by_test_id("stSidebar").get_by_role("combobox").first.click()
+        app.keyboard.type("Haikui", delay=50)
+        app.get_by_role("option", name="Haikui 2017").click()
+        wait_map(app)
+        expect(main_title(app)).to_have_text("Haikui 2017")
+        expect(app.get_by_test_id("stSidebar").get_by_role("slider")).to_have_count(0)
+        no_exception(app)
+        app.screenshot(path=str(shots / "catalogue_haikui.png"))
 
 
 def test_dark_mode(page: Page, server, shots):
