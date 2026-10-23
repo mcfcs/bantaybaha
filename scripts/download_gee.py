@@ -14,12 +14,15 @@ Pulls:
 import argparse
 import csv
 import io
+import time
 import zipfile
 from datetime import date
 from pathlib import Path
 
 import ee
 import requests
+
+from download_data import write_manifest  # same MANIFEST.csv as the open sources
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw"
@@ -34,23 +37,53 @@ TYPHOONS = {
 }
 
 
-def download_image(img, dest, scale, region):
+def done(dest):
     if dest.exists() and dest.stat().st_size > 0:
         print(f"  skip  {dest.relative_to(RAW)}")
-        return
+        return True
     dest.parent.mkdir(parents=True, exist_ok=True)
-    url = img.getDownloadURL({"region": region, "scale": scale, "format": "GEO_TIFF", "crs": "EPSG:4326"})
-    r = requests.get(url, timeout=600)
-    r.raise_for_status()
+    return False
+
+
+def save(dest, data):
+    tmp = dest.with_suffix(dest.suffix + ".part")  # write then rename, so an interrupted run leaves no half file
+    tmp.write_bytes(data)
+    tmp.replace(dest)
+
+
+def write_csv(dest, fieldnames, rows):
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
+    w.writeheader()
+    w.writerows(rows)
+    save(dest, buf.getvalue().encode("utf-8"))
+
+
+def download_image(img, dest, scale, region, retries=4):
+    if done(dest):
+        return dest
+    for attempt in range(1, retries + 1):
+        try:  # EE computes the image on request and sometimes answers 503/429; a fresh URL usually works
+            url = img.getDownloadURL({"region": region, "scale": scale, "format": "GEO_TIFF", "crs": "EPSG:4326"})
+            r = requests.get(url, timeout=600)
+            r.raise_for_status()
+            break
+        except Exception as e:  # noqa: BLE001 - retry any EE/network failure
+            if attempt == retries:
+                raise
+            print(f"  retry {attempt}/{retries} {dest.name}: {str(e)[:120]}")
+            time.sleep(20 * attempt)
     if r.content[:2] == b"PK":  # some band stacks come back zipped
         with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-            dest.write_bytes(z.read(z.namelist()[0]))
+            save(dest, z.read(z.namelist()[0]))
     else:
-        dest.write_bytes(r.content)
+        save(dest, r.content)
     print(f"  ok    {dest.relative_to(RAW)}  {dest.stat().st_size / 1e6:.1f} MB")
+    return dest
 
 
 def pull_imerg(region):
+    out = []
     col = ee.ImageCollection("NASA/GPM_L3/IMERG_V07").select("precipitation")  # half-hourly, mm/hr
     for y in range(2016, 2021):
         for m in range(1, 13):
@@ -64,30 +97,35 @@ def pull_imerg(region):
                 return col.filterDate(d0, d0.advance(1, "day")).mean().multiply(24).rename(d0.format("YYYYMMdd"))
 
             img = ee.ImageCollection(ee.List.sequence(0, days - 1).map(lambda i: daily(ee.Number(i)))).toBands()
-            download_image(img.toFloat(), RAW / "imerg" / f"imerg_v07_daily_mm_phl_{y}{m:02d}.tif", 11132, region)
+            out.append(download_image(img.toFloat(), RAW / "imerg" / f"imerg_v07_daily_mm_phl_{y}{m:02d}.tif", 11132, region))
+    return [(p, "ee:NASA/GPM_L3/IMERG_V07") for p in out]
 
 
 def pull_map_friction(region):
     base = "projects/malariaatlasproject/assets/accessibility/friction_surface/2019_v5_1"
+    out = []
     for name, asset in {"motorized": base, "walking": base + "_walking_only"}.items():
         img = ee.Image(asset).toFloat()
-        download_image(img, RAW / "map_friction" / f"friction_surface_2019_{name}_phl.tif", 927.67, region)
+        out.append((download_image(img, RAW / "map_friction" / f"friction_surface_2019_{name}_phl.tif", 927.67, region), f"ee:{asset}"))
+    return out
 
 
 def pull_gfd(region):
+    dest = RAW / "gfd" / "gfd_events_phl.csv"
+    if done(dest):
+        return [(dest, "ee:GLOBAL_FLOOD_DB/MODIS_EVENTS/V1")]
     col = ee.ImageCollection("GLOBAL_FLOOD_DB/MODIS_EVENTS/V1").filterBounds(region)
     props = ["id", "dfo_main_cause", "dfo_severity", "dfo_dead", "dfo_displaced", "began", "ended", "countries", "cc"]
     feats = col.map(lambda im: ee.Feature(None, im.toDictionary(props)).set("system_index", im.get("system:index"))).getInfo()["features"]
-    dest = RAW / "gfd" / "gfd_events_phl.csv"
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    with open(dest, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["system_index"] + props, extrasaction="ignore")
-        w.writeheader()
-        w.writerows(ft["properties"] for ft in feats)
+    write_csv(dest, ["system_index"] + props, [ft["properties"] for ft in feats])
     print(f"  ok    {dest.relative_to(RAW)}  {len(feats)} events")
+    return [(dest, "ee:GLOBAL_FLOOD_DB/MODIS_EVENTS/V1")]
 
 
 def pull_sentinel1(region):
+    dest = RAW / "sentinel1" / "s1_scene_inventory.csv"
+    if done(dest):
+        return [(dest, "ee:COPERNICUS/S1_GRD")]
     rows = []
     for storm, d in TYPHOONS.items():
         d0 = ee.Date(d)
@@ -101,12 +139,8 @@ def pull_sentinel1(region):
         for idx, t, o in zip(info, times, orbits):
             rows.append(dict(typhoon=storm, landfall=d, scene=idx, time_ms=t, orbit_pass=o))
         print(f"  {storm}: {len(info)} S1 IW VV scenes in [-24, +14] days")
-    dest = RAW / "sentinel1" / "s1_scene_inventory.csv"
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    with open(dest, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["typhoon", "landfall", "scene", "time_ms", "orbit_pass"])
-        w.writeheader()
-        w.writerows(rows)
+    write_csv(dest, ["typhoon", "landfall", "scene", "time_ms", "orbit_pass"], rows)
+    return [(dest, "ee:COPERNICUS/S1_GRD")]
 
 
 PULLERS = {"imerg": pull_imerg, "map_friction": pull_map_friction, "gfd": pull_gfd, "sentinel1": pull_sentinel1}
@@ -120,4 +154,4 @@ if __name__ == "__main__":
     region = ee.Geometry.Rectangle(BBOX)
     for s in a.sources:
         print(f"[{s}]")
-        PULLERS[s](region)
+        write_manifest([(s, p, u) for p, u in PULLERS[s](region)])  # per source, so an interrupted run keeps what finished

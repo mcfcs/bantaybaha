@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-10-22._ Update this file at the end of every work session.
+_Last updated: 2026-10-23._ Update this file at the end of every work session.
 
 ## Where we are
 
@@ -13,11 +13,12 @@ model or dashboard code** until the data findings below are reviewed by the team
 | Read the three docs in `docs/` | done |
 | Verify each data source in Appendix B, Table 1 (exists, reachable, covers what the proposal assumes) | done (findings below) |
 | Python env + Jupyter kernel `bantay-baha` | done (`%USERPROFILE%\.venvs\bantay-baha`) |
-| `scripts/download_data.py`, `scripts/download_gee.py`, `download_data.bat` | written; the open script has run in full, the GEE script has not |
+| `scripts/download_data.py`, `scripts/download_gee.py`, `download_data.bat` | written; both scripts have run in full |
 | Open-data download | **complete** (2026-10-22, fresh machine): 186 files, 6.95 GB in `data/raw/MANIFEST.csv` |
-| Earth Engine download | **not started**: needs a registered GEE project + `earthengine authenticate` (interactive) |
+| Earth Engine download | **complete** (2026-10-23) with GCP project `hackathonproper` |
+| Shared data bucket | `gs://bantay-baha-raw-hackathonproper` (private, `asia-southeast1`, public access blocked); `scripts/sync_data.py push/pull` |
 | PSGC + NHFR manual downloads | **not done** (both sites block scripts) |
-| `notebooks/00_data_eda.ipynb` | **executed** top to bottom on real data, no errors, saved with outputs (1 MB); GEE sections print `PENDING` |
+| `notebooks/00_data_eda.ipynb` | **executed** top to bottom on real data incl. GEE sources, no errors, no `PENDING`, saved with outputs (1 MB) |
 
 ### Download status
 
@@ -27,7 +28,8 @@ model or dashboard code** until the data findings below are reviewed by the team
 | hydrorivers | complete, **now the Australasia (`au`) file** (finding 13). The old `HydroRIVERS_v10_as_shp.zip` is still on disk and in the manifest; it is unused |
 | chirps | complete, 2016–2020 (1,827 days, none missing) |
 | noah | complete: 5yr 67 files, 25yr 72 files, 4.7 GB (plus readme, metadata and licence) |
-| imerg, map_friction, gfd, sentinel1 | waiting on GEE |
+| imerg | complete: 60 monthly GeoTIFFs, 2016-01-01 to 2020-12-31, 0.1° |
+| map_friction, gfd, sentinel1 | complete (2 rasters ~1 km; 62 GFD events; 979 Sentinel-1 scenes listed) |
 | psgc, nhfr | manual |
 
 Script changes this session: Google Drive files are now fetched directly from `drive.usercontent.google.com` with `confirm=t`
@@ -36,7 +38,10 @@ One failed NOAH file no longer aborts the source. `dask` was added (needed by `x
 
 ## Next steps
 
-1. GEE: register a project, then `earthengine authenticate` and `download_data.bat <project-id>`. Then re-run the notebook.
+1. Bucket read access (*Storage Object Viewer*, bucket-level) was granted on 2026-10-23 to the five team `@student.ateneo.edu`
+   accounts (Angeline Go, Hubert Olegario, Princess Giron, Gregorio Pascua, Beatrice de Castro). Each runs `earthengine authenticate`, then
+   `python scripts/sync_data.py pull`. Running Earth Engine or pushing to the bucket also needs project-level IAM
+   (*Service Usage Consumer*, *Earth Engine Resource Viewer*, write access on the bucket), granted in the Cloud console.
 2. Download PSGC 2Q 2026 and NHFR by hand into `data/raw/psgc/` and `data/raw/nhfr/`.
 3. Review the findings with the team (the notebook's last cell has them in one table), then update the proposal's
    Table 1 and the plan (see "Proposal corrections").
@@ -80,13 +85,21 @@ One failed NOAH file no longer aborts the source. `dask` was added (needed by `x
 10. **NHFR blocks scripted access.** It needs a manual download, or use the fallbacks: HOT OSM health facilities and the UP NOAH
     critical-facilities layer (20,051 points, name + amenity only, no facility level).
 11. **IMERG V07 and the MAP friction surface 2019 are both in the GEE catalog**, so no NASA Earthdata account is needed.
-12. **The Global Flood Database ends in 2018**, so at most it covers Ompong.
+12. **The Global Flood Database covers none of the four backtest storms.** In the PHL bbox, its 44 PHL-tagged events run
+    2002-07-06 to 2017-06-14 (`gfd_events_phl.csv`, dates parsed from `system_index`; the `began`/`ended` properties come back
+    empty). The proposal's "covers Ompong at most" is too generous: it can't validate any backtest storm.
 13. **HydroRIVERS "Asia" has no Philippine rivers.** HydroSHEDS puts the Philippines in the Australasia (`au`) region:
     `HydroRIVERS_v10_au_shp.zip` gives 41,097 reaches touching PHL (4,065 outlets: many small island basins); the `as` file gives 0.
     The script and README now use `au`.
 14. **CHIRPS from the IRI Data Library has a `julian_day` time axis** (2457389.0 = 2016-01-01), which xarray doesn't decode;
     convert with `T - 2440587.5` days since 1970-01-01. Land cells only (sea is NaN). 2016–2020 complete, no missing days.
-15. **The development plan dates (13–24 Oct 2026) are mostly past.** As of 2026-10-22 the panel and model deadlines
+15. **MAP friction encodes sea as a constant, not nodata** (3.16 min/km motorised, 60 min/km walking, ~83% of bbox cells).
+    Mask it before any access computation. Land medians: 3.0 min/km motorised, 18.9 walking.
+16. **IMERG GeoTIFFs from GEE carry no band names**: band *i* is day *i* of the month in the file name. The daily bbox mean
+    correlates 0.79 with CHIRPS (IMERG includes sea).
+17. **Sentinel-1 is plentiful around all four storms**: 223/237/260/259 IW VV scenes in [-24, +14] days over the PHL bbox
+    (Ompong/Tisoy/Rolly/Ulysses; 83–100 after landfall each), so before/after pairs are available for every backtest.
+18. **The development plan dates (13–24 Oct 2026) are mostly past.** As of 2026-10-22 the panel and model deadlines
     (15 and 20 Oct) were missed; replan.
 
 ### Confirmed as stated in the proposal
@@ -103,5 +116,7 @@ EMSR478 = Goni/Rolly; IBTrACS has all four storms (MANGKHUT 2018, KAMMURI 2019, 
 - In Git Bash, `python -I` ignores the user site-packages, so always use the venv interpreter
   (`~/.venvs/bantay-baha/Scripts/python`).
 - pandas 3 / numpy 2 are installed (Python 3.14 venv); `.unique()` returns Arrow arrays and `np.int64(...)` reprs, so use `.tolist()` in prints.
+- `earthengine authenticate` (no gcloud needed) also gives the token `sync_data.py` uses for the bucket; it sits in
+  `%USERPROFILE%\.config\earthengine\`, outside the repo. EE `getDownloadURL` sometimes returns 503; `download_gee.py` retries.
 - psa.gov.ph and nhfr.doh.gov.ph return 403 to scripts. The CHIRPS IRI server drops long transfers; just re-run.
 - Copernicus EMS vector zips sit on a static S3 bucket. The script scrapes the activation page for the links.

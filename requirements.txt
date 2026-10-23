@@ -15,6 +15,7 @@ openpyxl
 requests
 rdata
 earthengine-api
+google-cloud-storage
 ipykernel
 nbformat
 nbconvert

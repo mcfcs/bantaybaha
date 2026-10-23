@@ -9,6 +9,22 @@ where things stand and [AGENTS.md](AGENTS.md) for the rules on handling data and
 
 ## Quick start (Windows)
 
+**Fastest: pull the team's copy from Cloud Storage** (all of `data/raw`, ~7 GB, checked against `MANIFEST.csv`).
+You need access to the GCP project `hackathonproper` (ask the project owner to grant you *Storage Object Viewer* on the bucket; that is all a pull needs).
+
+```bat
+setup.bat                      :: venv + packages + kernel + Google sign-in (once) + pull all data
+setup.bat dengue_hdx cchain    :: same, but only the listed sources
+```
+
+Sign in with your `@student.ateneo.edu` account when the browser opens. Re-running is safe; finished steps are skipped.
+Then open `notebooks/00_data_eda.ipynb` with the **Python (bantay-baha)** kernel.
+
+The bucket is `gs://bantay-baha-raw-hackathonproper` (private, `asia-southeast1`). It mirrors what the download scripts produce;
+after adding or refreshing a source, run the download script and then `scripts\sync_data.py push`.
+
+**From the original sources** (slower; also what rebuilds the bucket):
+
 You need Python 3.10+ on PATH and roughly 8 GB of free disk (the open data are ~7 GB, 4.7 GB of it UP NOAH).
 
 ```bat
@@ -30,7 +46,7 @@ Then open `notebooks/00_data_eda.ipynb` with the **Python (bantay-baha)** kernel
 IMERG rainfall, the MAP friction surface, the Global Flood Database and the Sentinel-1 scene inventory come from Google Earth Engine.
 1. Register a non-commercial project at <https://code.earthengine.google.com/register> (*Unpaid usage → Academia & Research*).
 2. `%USERPROFILE%\.venvs\bantay-baha\Scripts\earthengine.exe authenticate`
-3. `download_data.bat <your-project-id>`
+3. `download_data.bat <your-project-id>` (the team project is `hackathonproper`)
 
 No NASA Earthdata account is needed; IMERG comes through Earth Engine.
 
@@ -49,6 +65,8 @@ These sites block scripted downloads, so save the files by hand:
 docs/                       concept proposal, team explainer, submitted proposal (PDF)
 scripts/download_data.py    open-source downloads (idempotent, writes MANIFEST.csv)
 scripts/download_gee.py     Earth Engine downloads (needs --project)
+setup.bat                   one-click team setup: venv, kernel, sign-in, pull data from the bucket
+scripts/sync_data.py        push/pull data/raw to/from the team's private Cloud Storage bucket
 download_data.bat           one-click setup + download for Windows
 notebooks/00_data_eda.ipynb one notebook: a short EDA of every dataset + proposal checks
 data/raw/                   downloaded data (git-ignored, read-only; only MANIFEST.csv is tracked)
