@@ -2,7 +2,7 @@
 
 Runs in the separate bench venv (torch + chronos-forecasting >= 2; see requirements-bench.txt for the exact setup):
     %USERPROFILE%\\.venvs\\bantay-bench\\Scripts\\python scripts/benchmark_tsfm.py [--device cuda] [--variant cov|nocov]
-    [--cross-learning] [--space log1p|incidence]
+    [--cross-learning] [--space incidence|log1p]
 
 For every evaluation origin t (2018-01-07 .. 2019-12-22) and unit, the context is the unit's weekly
 y = log1p(incidence per 100k) from 2016-01-10 up to and including t (missing weeks stay NaN, Chronos-2 masks them).
@@ -13,15 +13,16 @@ Chronos-2 supports past-only covariates natively (keys in `past_covariates` but 
 future rain is used. --variant nocov is the univariate ablation. No training and no fitted normalisation (Chronos-2
 scales each context itself), so the forecast at t sees weeks <= t only.
 
---space log1p (default, as specified) feeds y = log1p(incidence) to Chronos-2. --space incidence feeds incidence per 100k
-and maps the output quantiles to log1p (a monotone map, so quantiles carry over; negative values clipped to 0). Kept as
-a diagnostic: after a one-week reporting spike, the log1p context gives Chronos-2 upper tails of 15-24 in log space
-(10^6-10^10 per 100k), which dominate a mean WIS on counts; the incidence context does not.
+--space incidence (default) feeds incidence per 100k and maps the output quantiles to log1p (a monotone map, so quantiles
+carry over; negative values clipped to 0). --space log1p feeds y = log1p(incidence), as first specified, and is kept as
+the variant chronos2_log1p: after a one-week reporting spike that context gives Chronos-2 upper tails of 15-24 in log
+space (10^6-10^10 per 100k), and back-transformed they dominate a mean WIS on counts (relWIS vs naive ~112). The
+headline was switched to incidence after seeing that failure (Chronos-2 scales its context itself); both are reported.
 
 Chronos-2 outputs 21 quantile levels (0.01, 0.05, 0.10, ..., 0.95, 0.99); the 23 FluSight levels are taken directly
 where they coincide and 0.025 / 0.975 are linearly interpolated in level space between 0.01-0.05 / 0.95-0.99.
 
-Writes data/processed/app/bench_chronos2.parquet / .json (variant cov) or bench_chronos2_<variant>.parquet / .json
+Writes data/processed/app/bench_chronos2.parquet / .json (variant cov, incidence) or bench_chronos2_<suffixes>.parquet
 (see benchmark_common.py for the contract). Score with scripts/benchmark_score.py.
 """
 
@@ -76,8 +77,8 @@ def main(device, variant, cross_learning, batch_size, space):
     name = "chronos2" if variant == "cov" else f"chronos2_{variant}"
     if cross_learning:
         name += "_xl"
-    if space == "incidence":
-        name += "_inc"
+    if space == "log1p":
+        name += "_log1p"
     runtime = time.time() - t0
     res = B.write_bench(name, fc, dict(
         packages=B.versions("chronos-forecasting", "torch", "transformers", "numpy", "pandas"),
@@ -107,6 +108,6 @@ if __name__ == "__main__":
     ap.add_argument("--variant", default="cov", choices=["cov", "nocov"])
     ap.add_argument("--cross-learning", action="store_true", help="share information across the 85 units of an origin")
     ap.add_argument("--batch-size", type=int, default=256)
-    ap.add_argument("--space", default="log1p", choices=["log1p", "incidence"], help="series fed to Chronos-2")
+    ap.add_argument("--space", default="incidence", choices=["incidence", "log1p"], help="series fed to Chronos-2")
     a = ap.parse_args()
     main(a.device, a.variant, a.cross_learning, a.batch_size, a.space)

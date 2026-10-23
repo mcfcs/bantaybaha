@@ -54,6 +54,9 @@ R_CLIP = (0.005, 0.995)  # same clip as prob_exceed
 CUM4_FILE = "eval_cum4.parquet"  # rolling-origin cum4 forecasts, persisted by the forecast stage for the scenarios
 ENSEMBLE = "ens_median"
 BENCH_GLOB = "bench_*.parquet"
+# headline benchmarks (members of the median ensemble). Other bench_*.parquet files are variants (e.g. chronos2_log1p,
+# mpnn_lstm_border): scored by scripts/benchmark_score.py, ignored here so they cannot tilt the ensemble.
+BENCH_MODELS = ("chronos2", "tabpfn_ts", "mpnn_lstm")
 BAND = {"q05": 2, "q25": 6, "q50": IQ50, "q75": 16, "q95": 20}  # fan-chart levels (indices into Q)
 
 
@@ -496,6 +499,9 @@ def load_bench(q, bench_dir=None, log=print):
     mats, meta = {}, {}
     for p in sorted(bench_dir.glob(BENCH_GLOB)):
         name = p.stem[len("bench_"):]
+        if name not in BENCH_MODELS:
+            meta[name] = dict(file=p.name, ignored="variant: not in forecast.BENCH_MODELS")
+            continue
         info = dict(file=p.name)
         js = p.with_suffix(".json")
         if js.exists():
