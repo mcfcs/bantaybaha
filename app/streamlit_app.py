@@ -31,6 +31,7 @@ sys.path.insert(0, str(HERE))
 from bantay.config import APP_DATA, STORMS  # noqa: E402
 from bantay.scenarios import TIER_LABELS, TIERS, tier as tier_rule  # noqa: E402
 
+import lepto_tab  # noqa: E402
 import sus  # noqa: E402
 import ui  # noqa: E402
 from ui import HELP, TIER_SHORT  # noqa: E402
@@ -72,12 +73,19 @@ def load(folder, outputs_stamp):  # no leading underscore: Streamlit only hashes
         hosp="hospitals.parquet", evals="eval_summary.csv", valid="validation.csv", sens="sensitivity.csv",
         bench="benchmark_ncr.csv", rel="surge_reliability.csv", cal="surge_calibration.json",
         meta="leadlag_meta.json", geo="units_simplified.geojson",
-        # hooks for outputs other stages are adding; each renders only when present
-        access_methods="access_methods.csv", eval_models="eval_models.csv", s1_adm3="s1_adm3.parquet").items()}
+        # optional outputs; each section renders only when its file is present
+        access_methods="access_methods.csv", access_methods_cat="access_methods_catalog.csv",
+        eval_models="eval_models.csv", evalf_models="eval_forecasts_models.parquet", s1_adm3="s1_adm3.parquet",
+        catalog="scenarios_catalog.parquet", adm3_cat="scenarios_catalog_adm3.parquet",
+        tracks_cat="tracks_catalog.parquet", swaths_cat="swaths_catalog.parquet",
+        fstat_cat="ferries_status_catalog.parquet", catalog_storms="catalog_storms.csv",
+        lepto_weekly="lepto_weekly.parquet", bench_summary="bench_summary.csv").items()}
     d = {k: _read(p) for k, p in f.items()}
     d["status"] = json.loads(STATUS_FILE.read_text(encoding="utf-8")) if STATUS_FILE.exists() else {}
-    cats = [pd.read_parquet(p) for p in sorted(APP.glob("scenarios_catalog*.parquet"))]
-    d["catalog"] = pd.concat(cats, ignore_index=True) if cats else None
+    # catalogue storms share the frames of the backtest storms (storm = IBTrACS SID, observed track dlat = dlon = 0)
+    for main, extra in (("tracks", "tracks_cat"), ("swaths", "swaths_cat"), ("fstat", "fstat_cat"), ("adm3", "adm3_cat")):
+        if d[main] is not None and d[extra] is not None:
+            d[main] = pd.concat([d[main], d[extra]], ignore_index=True)
     d["lepto"] = {p.stem: pd.read_csv(p) for p in sorted(APP.glob("lepto_*.csv"))}
     return d
 
@@ -111,8 +119,13 @@ if D["catalog"] is not None:
         extra = D["catalog"][~D["catalog"].storm.isin(S.storm.unique())].assign(catalog=True)
         S = pd.concat([S, extra], ignore_index=True)
     else:
-        hook_notes.append(f"scenarios_catalog*.parquet is missing columns {sorted(need - set(D['catalog'].columns))}; "
+        hook_notes.append(f"scenarios_catalog.parquet is missing columns {sorted(need - set(D['catalog'].columns))}; "
                           "its storms are not listed.")
+CAT = {}  # catalogue storm -> name, season, closest approach
+if "name" in S:
+    for k_, r_ in S[S.catalog].groupby("storm").first().iterrows():
+        CAT[k_] = dict(name=str(r_.get("name", "")), season=r_.get("season"), when=r_.get("closest_time"),
+                       km=r_.get("closest_km"))
 
 names = {f["properties"]["unit_id"]: f["properties"]["unit_name"] for f in D["geo"]["features"]} if D["geo"] else {}
 PAL = ui.palette()
@@ -122,23 +135,29 @@ def storm_label(k):
     if k in STORMS:
         m = STORMS[k]
         return f"{m['local']} ({m['name'].title()}, {m['season']})"
-    row = S[S.storm == k].iloc[0]
-    season = row.get("season") if "season" in S.columns else None
-    label = str(k).replace("_", " ").title()
-    return label + (f" ({int(season)})" if season is not None and not ui.nan(season) else "")
+    m = CAT.get(k, {})
+    name, season = m.get("name") or "", m.get("season")
+    yr = f" {int(season)}" if season is not None and not ui.nan(season) else ""
+    if not name or name.upper() in ("UNNAMED", "NAN"):
+        return f"Unnamed{yr} ({k})"
+    return name.title() + yr
 
 
 # ================================================================ sidebar: the scenario
 main_storms = [k for k in STORMS if k in set(S.storm)]
-other_storms = sorted(set(S.storm) - set(main_storms))
+other_storms = sorted(set(S.storm) - set(main_storms),
+                      key=lambda k: (pd.Timestamp(CAT.get(k, {}).get("when") or "2100-01-01"), str(k)))
 with st.sidebar:
     st.markdown('<p class="bb-brand" translate="no">Bantay-Baha</p>', unsafe_allow_html=True)  # brand, not a second h1
     st.caption("Where will flood-linked dengue surge after a typhoon, and who loses the road or ferry to a hospital? "
                "Per province, for a historical or shifted track.")
     storm = st.selectbox("Typhoon", main_storms + other_storms, format_func=storm_label, key="storm",
-                         bind="query-params",
-                         help="The four backtest typhoons can be shifted. Other storms (if built) use the observed "
-                              "track and the NOAH flood proxy.")
+                         bind="query-params", placeholder="Type a storm name…",
+                         help="The four backtest typhoons come first; their track can be shifted. The rest are the "
+                              "other 2017-2020 storms whose gale swath reached land (catalogue, by date): observed "
+                              "track only, NOAH flood proxy. Type to search.")
+    if other_storms:
+        st.caption(f"{len(main_storms)} backtest typhoons, then {len(other_storms)} catalogue storms by date.")
     have = S[S.storm == storm]
     lat_opts = sorted(have.dlat.unique().tolist())
     lon_opts = sorted(have.dlon.unique().tolist())
@@ -196,11 +215,18 @@ def flag(v):
 # ================================================================ header + caveats
 def headline():
     m = STORMS.get(storm)
-    name = f"Typhoon {m['local']}" if m else f"Storm {storm_label(storm)}"
+    name = f"Typhoon {m['local']}" if m else storm_label(storm)
     track = (ui.shift_label(dlat, "lat") if dlat else "") + (" and " if dlat and dlon else "") + \
         (ui.shift_label(dlon, "lon") if dlon else "")
     st.title(name + (f", track moved {track}" if shifted else ""))
-    sub = f"{m['name'].title()}, {m['season']}. " if m else ""
+    c = CAT.get(storm, {})
+    when = c.get("when")
+    if m:
+        sub = f"{m['name'].title()}, {m['season']}. "
+    elif when is not None and not ui.nan(when):
+        sub = f"Catalogue storm (IBTrACS {storm}), closest to the Philippines on {ui.date(when)}. "
+    else:
+        sub = "Catalogue storm. "
     origin = f"Forecast made in the week ending {ui.date(meta.origin)}" if not ui.nan(meta.origin) else "Forecast"
     st.markdown(f'<p class="bb-lede">{sub}{"Shifted" if shifted else "Observed"} track. {origin}, '
                 "with data up to the landfall week.</p>", unsafe_allow_html=True)
@@ -214,7 +240,10 @@ def headline():
     if flag(meta.flag_2020):
         badges.append(":orange-badge[:material/warning: 2020: COVID-depressed reporting]")
     if s.catalog.any():
-        badges.append(":gray-badge[Catalog storm: observed track only]")
+        badges.append(":gray-badge[Catalogue storm: observed track only]")
+    if "R_calibrated" in s:
+        badges.append(":gray-badge[Surge risk: calibrated]" if s.R_calibrated.astype(bool).all()
+                      else ":orange-badge[Surge risk: not calibrated]")
     st.markdown(" ".join(badges))
 
 
@@ -243,13 +272,25 @@ def caveats():
         out.append(("info", "Hospitals: OpenStreetMap and UP NOAH facilities (fallback until the DOH registry is "
                             "loaded). Small clinics may count as hospitals, so travel times can look better than "
                             "they are."))
-    rel = D["rel"]
-    if "R_raw" in s and s.R_raw.notna().any():
+    rel, cal = D["rel"], (D["cal"] or {}).get("calibrated")
+    if "R_calibrated" in s and s.R_calibrated.astype(bool).all():
+        extra = (f" Over past forecasts this lowers the Brier score from {cal['all_rows']['brier_raw']:.3f} to "
+                 f"{cal['all_rows']['brier_cal']:.3f}." if cal and "all_rows" in cal else "")
+        out.append(("info", "Surge risk R is calibrated: an isotonic fit of what actually happened on the raw model "
+                            "output, using past forecasts only. The raw value is shown as R raw." + extra))
+    elif "R_calibrated" in s:
+        n_min = f" ({cal['min_rows']} needed)" if cal and "min_rows" in cal else ""
+        out.append(("warning", "Surge risk R is not calibrated for this storm: too few past outcomes before its "
+                               f"forecast week{n_min}. R is the raw model output, which ran low in past tests."))
+    elif "R_raw" in s and s.R_raw.notna().any():
         out.append(("info", "Surge risk R is recalibrated on past forecasts; the uncalibrated value is shown as R raw."))
     elif rel is not None and len(rel):
         gap = rel.observed - rel.mean_R
         out.append(("info", f"Surge risk R runs low: in past tests, forecasts of 0.1-0.7 came true up to "
                             f"{gap.max():.0%} more often than stated. Treat mid-range R as an underestimate."))
+    if "A_raster" in s and s.A_raster.notna().any():
+        out.append(("info", "Access is computed two ways: the road and ferry network (main) and a travel-time "
+                            "raster. Where they disagree, A, P and people cut off are shown as a range."))
     out.append(("info", "Action tiers use provisional thresholds, to be reviewed with health officers."))
     return out
 
@@ -282,6 +323,15 @@ k[3].metric("Ferries cancelled", "n/a" if ui.nan(fc) else int(fc), delta=f"of {n
             delta_color="off", delta_arrow="off", help="RoRo routes with a port or crossing inside the gale swath (2024-2026 routes as a proxy).", border=True)
 k[4].metric("Top priority", top.unit_name, delta=TIER_SHORT[int(top.tier)], delta_color="off", delta_arrow="off",
             help=f"Highest {'priority P' if RANK == 'P' else 'surge risk R'} for this scenario.", border=True)
+_bits = []
+if "pop_cut_raster" in s and s.pop_cut_raster.notna().any() and not ui.nan(cut):
+    _bits.append(f"People cut off: {ui.people(cut)} by the road network, {ui.people(s.pop_cut_raster.sum())} by the "
+                 "travel-time raster (the gap is method uncertainty)")
+if {"pop_cut_u5", "pop_cut_60"} <= set(s.columns) and s.pop_cut_u5.notna().any():
+    _bits.append(f"{ui.people(s.pop_cut_u5.sum())} of the road-network count are under 5 and "
+                 f"{ui.people(s.pop_cut_60.sum())} are aged 60+")
+if _bits:
+    st.caption("; ".join(_bits) + ".")
 
 
 # ================================================================ tabs
@@ -336,12 +386,16 @@ def map_figure(col):
                                 hoverinfo="skip", marker_line_color=PAL["unit_line"], marker_line_width=0.4,
                                 name="no data", showlegend=False))
     v = s[s[col].notna()]
-    cd = np.stack([v.R, v.A, v.P, v.pop_cut.fillna(0), v.tier.map(TIER_SHORT)], axis=1)
+    has_rng = {"A_lo", "A_hi"} <= set(v.columns)
+    a_rng = [f" (methods {ui.rng(lo, hi, '{:.1%}')})" if has_rng and not ui.nan(lo) and abs(hi - lo) > 5e-4 else ""
+             for lo, hi in zip(v.get("A_lo", v.A), v.get("A_hi", v.A))]
+    cd = np.stack([v.R, v.A, v.P, v.pop_cut.fillna(0), v.tier.map(TIER_SHORT), a_rng], axis=1)
     fig.add_trace(go.Choropleth(
         geojson=D["geo"], locations=v.unit_id, featureidkey="properties.unit_id", z=v[col], zmin=0, zmax=vmax,
         colorscale=[[i / (len(PAL["seq"]) - 1), c] for i, c in enumerate(PAL["seq"])],
         marker_line_color=PAL["unit_line"], marker_line_width=0.4, text=v.unit_name, customdata=cd,
         hovertemplate="<b>%{text}</b><br>Surge risk R %{customdata[0]:.2f}<br>Access loss A %{customdata[1]:.1%}"
+                      "%{customdata[5]}"
                       "<br>Priority P %{customdata[2]:.3f}<br>People cut off %{customdata[3]:,.0f}"
                       "<br>%{customdata[4]}<extra></extra>",
         colorbar=dict(title=dict(text=title, side="top"), tickformat=fmt, thickness=12, len=0.45, x=0.99, y=0.72,
@@ -369,7 +423,7 @@ def map_figure(col):
         t = tr[(tr.storm == storm) & (tr.dlat == dlat) & (tr.dlon == dlon)]
         if len(t):
             fig.add_trace(go.Scattergeo(
-                lon=t.LON, lat=t.LAT, mode="lines+markers", name="Typhoon track",
+                lon=t.LON, lat=t.LAT, mode="lines+markers", name="Typhoon track" if storm in STORMS else "Storm track",
                 line=dict(color=PAL["track"], width=2.5),
                 marker=dict(size=8, color=PAL["track"], line=dict(width=1.5, color=PAL["unit_line"])),
                 text=[f"{a:%d %b %H:%M} UTC, {w:.0f} kt" for a, w in zip(pd.to_datetime(t.time), t.wind_kt.fillna(0))],
@@ -435,7 +489,8 @@ def tab_quadrant():
                                  gridcolor="rgba(128,128,128,.15)", zeroline=False))
     st.plotly_chart(fig, width="stretch", config={"displaylogo": False}, key="quadrant")
     if has_err:
-        st.caption("Vertical whiskers: the range of access loss across the access-model settings.")
+        st.caption("Vertical whiskers: access loss by the road network and by the travel-time raster. The gap is "
+                   "method uncertainty, not a confidence interval.")
     if radar and amax < a_thr:
         st.caption(f"With radar-observed flood no province reaches {TIERS['deploy'][1]:.0%} access loss, so none is "
                    "in the deploy zone. Radar is a lower bound; try a shifted track for the hazard-map upper bound.")
@@ -463,6 +518,8 @@ def ranked():
     out["Cases next 4 wk"] = t.cases4_med.round(0)
     out["90% range"] = [ui.rng(lo, hi) for lo, hi in zip(t.cases4_lo90, t.cases4_hi90)]
     out["People cut off"] = t.pop_cut.round(0)
+    if "pop_cut_raster" in t:
+        out["Cut off, raster"] = t.pop_cut_raster.round(0)
     if "pop_cut_u5" in t:
         out["Under-5 cut off"] = t.pop_cut_u5.round(0)
     if "pop_cut_60" in t:
@@ -482,11 +539,13 @@ def tab_table():
                 "P": st.column_config.NumberColumn("Priority P", format="%.3f", help=HELP["P"]),
                 "R": st.column_config.ProgressColumn("Surge risk R", min_value=0, max_value=1, format="%.2f",
                                                      help=HELP["R"]),
-                "R raw": st.column_config.NumberColumn(format="%.2f", help="Surge risk before recalibration."),
-                "A range": st.column_config.TextColumn(help="Access loss across the access-model settings."),
-                "A raster %": st.column_config.NumberColumn("A, raster method", format="%.1f%%",
-                                                            help="Access loss from the friction-raster method."),
-                "P range": st.column_config.TextColumn(help="Priority across the access-model settings."),
+                "R raw": st.column_config.NumberColumn(format="%.2f", help="Surge risk before calibration."),
+                "A range": st.column_config.TextColumn("A, method range", help=HELP["methods"]),
+                "A raster %": st.column_config.NumberColumn("A, raster", format="%.1f%%",
+                                                            help="Access loss from the travel-time raster method."),
+                "P range": st.column_config.TextColumn("P, method range", help=HELP["methods"]),
+                "Cut off, raster": st.column_config.NumberColumn(format="localized",
+                                                                 help="People cut off by the travel-time raster method."),
                 "Under-5 cut off": st.column_config.NumberColumn(format="localized", help="Children under 5 cut off."),
                 "Aged 60+ cut off": st.column_config.NumberColumn(format="localized", help="People aged 60+ cut off."),
                 "Sentinel": st.column_config.TextColumn(help=HELP["sentinel"]),
@@ -512,10 +571,13 @@ def tab_muni():
         st.info("No municipal results for this province and track.")
         return
     s1, s1_cols = D["s1_adm3"], []
-    if s1 is not None and "adm3_pcode" in s1:
+    if s1 is not None and "adm3_pcode" in s1 and not shifted and storm in set(s1.get("storm", pd.Series(dtype=str))):
         keys = [c for c in ("adm3_pcode", "storm") if c in s1]
         s1_cols = [c for c in s1.columns if c not in m.columns and c not in ("unit_id", "dlat", "dlon")]
         m = m.merge(s1[keys + s1_cols].drop_duplicates(keys), on=keys, how="left")
+        for c in ("s1_flood_frac", "seen_frac"):
+            if c in m:
+                m[c] = 100 * m[c]
     m = m.sort_values("A", ascending=False)
     worst = m.sort_values("pop_cut", ascending=False).iloc[0]
     if worst.pop_cut > 0:
@@ -533,11 +595,26 @@ def tab_muni():
                           title=dict(text="People cut off, by municipality (share in brackets)", font=dict(size=14)),
                           xaxis=dict(visible=False), yaxis=dict(title=None))
         st.plotly_chart(fig, width="stretch", config={"displaylogo": False}, key="muni_bar")
-    cols = ["adm3_name", "pop", "pop_cut", "A", "base_hours", "pop_no_access_base"] + s1_cols
-    st.dataframe(m[cols].assign(A=100 * m.A).round({"pop": 0, "pop_cut": 0, "pop_no_access_base": 0}),
+    extra = [c for c in ("A_raster", "pop_cut_raster", "pop_cut_u5", "pop_cut_60") if c in m]
+    cols = ["adm3_name", "pop", "pop_cut", "A"] + extra + ["base_hours", "pop_no_access_base"] + s1_cols
+    m = m.assign(A=100 * m.A, **({"A_raster": 100 * m.A_raster} if "A_raster" in m else {}))
+    st.dataframe(m[cols].round({c: 0 for c in ("pop", "pop_cut", "pop_no_access_base", "pop_cut_raster", "pop_cut_u5",
+                                               "pop_cut_60", "s1_flood_pop") if c in cols}),
                  hide_index=True, width="stretch",
                  key="muni_table", column_config={
-                     "adm3_name": "Municipality / city",
+                     "adm3_name": st.column_config.TextColumn("Municipality / city", pinned=True),
+                     "A_raster": st.column_config.NumberColumn("Share cut off, raster", format="%.1f%%",
+                                                               help="Travel-time raster method."),
+                     "pop_cut_raster": st.column_config.NumberColumn("Cut off, raster", format="localized"),
+                     "pop_cut_u5": st.column_config.NumberColumn("Under 5 cut off", format="localized"),
+                     "pop_cut_60": st.column_config.NumberColumn("Aged 60+ cut off", format="localized"),
+                     "s1_flood_frac": st.column_config.NumberColumn("Radar flood share", format="%.1f%%",
+                                                                    help="Share of the area where Sentinel-1 saw new "
+                                                                         "water after landfall."),
+                     "s1_flood_pop": st.column_config.NumberColumn("People in radar flood", format="localized"),
+                     "seen_frac": st.column_config.NumberColumn("Radar coverage", format="%.0f%%",
+                                                                help="Share of the area the radar passes covered; low "
+                                                                     "coverage means flood may be missed."),
                      "pop": st.column_config.NumberColumn("Population", format="localized"),
                      "pop_cut": st.column_config.NumberColumn("People cut off", format="localized",
                                                               help=HELP["pop_cut"]),
@@ -548,7 +625,8 @@ def tab_muni():
                          "No road route even normally", format="localized",
                          help="People with no mapped road route to a hospital, even before the storm.")})
     if s1_cols:
-        st.caption("Sentinel-1 columns come from the per-municipality radar flood summary (s1_adm3).")
+        st.caption("Radar columns: what Sentinel-1 saw for this typhoon (observed track only). Low radar coverage "
+                   "means flood there may be missed.")
 
 
 def tab_graph():
@@ -593,8 +671,27 @@ def tab_graph():
                    "that away.")
 
 
-MODEL_NAMES = {"xgb": "Bantay-Baha (XGBoost)", "xgb_nograph": "Without outbreak graph",
-               "xgb_noenv": "Without rain, river and flood", "naive": "Seasonal naive (baseline)"}
+MODEL_NAMES = {"xgb": "Bantay-Baha (XGBoost)", "xgb_nograph": "XGBoost without outbreak graph",
+               "xgb_noenv": "XGBoost without rain, river and flood", "naive": "Seasonal naive (baseline)",
+               "chronos2": "Chronos-2", "tabpfn_ts": "TabPFN-TS", "mpnn_lstm": "MPNN-LSTM",
+               "ens_median": "Median ensemble"}
+MODEL_ORDER = ["xgb", "ens_median", "chronos2", "tabpfn_ts", "mpnn_lstm", "xgb_nograph", "xgb_noenv"]
+KIND_NAMES = {"model": "Main model", "ablation": "Ablation", "baseline": "Baseline", "benchmark": "Benchmark",
+              "ensemble": "Ensemble"}
+
+
+def median_wis(em_all):
+    """Median WIS per model from bench_summary.csv (all horizons); NaN where the build has none."""
+    bs = D["bench_summary"]
+    out = {}
+    if bs is not None and {"model", "horizon", "median WIS"} <= set(bs.columns):
+        b = bs[bs.horizon.astype(str) == "all"]
+        out.update(dict(zip(b.model, b["median WIS"])))
+        if len(b) and "median WIS xgb" in b:
+            out["xgb"] = b["median WIS xgb"].iloc[0]
+        if len(b) and "median WIS naive" in b:
+            out["naive"] = b["median WIS naive"].iloc[0]
+    return em_all.model.map(out)
 
 
 def tab_skill():
@@ -638,27 +735,95 @@ def tab_skill():
                          column_config={c: st.column_config.NumberColumn(format="%.3f")
                                         for c in full.select_dtypes("number").columns if c != "n"})
     em = D["eval_models"]
-    if em is not None and len(em):
+    if em is not None and len(em) and {"model", "horizon", "WIS"} <= set(em.columns):
         st.header("Model comparison")
-        st.caption("Every model scored on the same rolling-origin rows.")
-        st.dataframe(em, hide_index=True, width="stretch", key="eval_models")
+        hz = em.horizon.astype(str)
+        tab = (em[hz == "all"] if (hz == "all").any() else em).copy()
+        tab["median_WIS"] = median_wis(tab)
+        main = tab[tab.get("kind", pd.Series("", index=tab.index)) != "ablation"]
+        if len(main) > 2:
+            best = main.loc[main.WIS.idxmin()]
+            xg = main[main.model == "xgb"]
+            line = (f"Lowest mean WIS: **{MODEL_NAMES.get(best.model, best.model)}** (relative WIS vs naive "
+                    f"{best.relWIS_vs_naive:.3f}")
+            line += f", against {xg.relWIS_vs_naive.iloc[0]:.3f} for XGBoost)." if len(xg) and best.model != "xgb" else ")."
+            md = main.dropna(subset=["median_WIS"])
+            if len(md):
+                bm = md.loc[md.median_WIS.idxmin()]
+                miss = [MODEL_NAMES.get(m, m) for m in main.model[main.median_WIS.isna()]]
+                line += (f" Lowest median WIS: **{MODEL_NAMES.get(bm.model, bm.model)}** ({bm.median_WIS:.2f})"
+                         + (f"; no median score in the build for {', '.join(miss)}." if miss else "."))
+            st.markdown(line)
+        st.info("Storm scenarios use XGBoost: the benchmark models take no storm-track inputs, so they can't score a "
+                "shifted or hypothetical track.", icon=":material/info:")
+        tab = tab.assign(Model=tab.model.map(lambda m: MODEL_NAMES.get(m, m)),
+                         kind=tab.get("kind", pd.Series("", index=tab.index)).map(lambda k: KIND_NAMES.get(k, k)))
+        tab = tab.sort_values("WIS")
+        tab["median_WIS"] = tab.median_WIS.map(lambda x: "n/a" if ui.nan(x) else f"{x:.2f}")
+        for c in ("cov50", "cov90"):
+            if c in tab:
+                tab[c] = 100 * tab[c]
+        cols = [c for c in ("Model", "kind", "WIS", "median_WIS", "relWIS_vs_naive", "relWIS_vs_xgb", "cov90", "cov50",
+                            "MAE", "n") if c in tab]
+        st.caption("All horizons together; every model scored on the same rolling-origin rows. Mean WIS is pulled up "
+                   "by a few outbreak weeks; median WIS shows the typical week.")
+        st.dataframe(tab[cols], hide_index=True, width="stretch", key="eval_models", column_config={
+            "kind": "Type", "WIS": st.column_config.NumberColumn("Mean WIS", format="%.1f", help=HELP["wis"]),
+            "median_WIS": st.column_config.TextColumn("Median WIS", help="Median over forecasts: the typical week. "
+                                                                         "n/a: not in the build outputs."),
+            "relWIS_vs_naive": st.column_config.NumberColumn("Relative WIS vs naive", format="%.2f",
+                                                             help=HELP["relwis"]),
+            "relWIS_vs_xgb": st.column_config.NumberColumn("Relative WIS vs Bantay-Baha", format="%.3f",
+                                                           help="Below 1 beats the main model."),
+            "cov90": st.column_config.NumberColumn("90% coverage", format="%.0f%%", help=HELP["cov90"]),
+            "cov50": st.column_config.NumberColumn("50% coverage", format="%.0f%%"),
+            "MAE": st.column_config.NumberColumn("Mean abs. error", format="%.1f"),
+            "n": st.column_config.NumberColumn("Forecasts", format="localized")})
+        bs = D["bench_summary"]
+        if bs is not None and "model" in bs:
+            var = bs[(bs.horizon.astype(str) == "all") & ~bs.model.isin(em.model)]
+            if len(var):
+                with st.expander(f"Benchmark variants not used ({len(var)})"):
+                    vc = [c for c in ("model", "WIS", "relWIS vs naive", "median WIS",
+                                      "relWIS vs naive excl. worst origin", "worst origin") if c in var]
+                    st.caption("Other settings tried for the benchmarks; not in the model picker. A very large mean WIS "
+                               "means the variant collapsed on a few reporting spikes.")
+                    st.dataframe(var[vc], hide_index=True, width="stretch", key="bench_variants",
+                                 column_config={c: st.column_config.NumberColumn(format="%.3f")
+                                                for c in vc if c not in ("model", "worst origin")})
     c1, c2 = st.columns([2, 3], gap="large")
     with c1:
-        if D["cal"] and "xgb" in D["cal"]:
+        cal = (D["cal"] or {}).get("calibrated")
+        if cal and "all_rows" in cal:
+            a = cal["all_rows"]
+            st.markdown(f"**Calibrated surge risk R** (used on the map and in the tables) scores a Brier of "
+                        f"**{a['brier_cal']:.3f}**, against {a['brier_raw']:.3f} before calibration and "
+                        f"{a['brier_climatology']:.3f} for always forecasting the base rate ({a['base_rate']:.0%} of "
+                        "province-weeks surged). Lower is better.")
+        elif D["cal"] and "xgb" in D["cal"]:
             c = D["cal"]["xgb"]
             st.markdown(f"**Surge risk R** scores a Brier of **{c['brier']:.3f}**, against {c['brier_climatology']:.3f} "
                         f"for always forecasting the base rate ({c['base_rate']:.0%} of province-weeks surged). "
                         "Lower is better.")
         if D["rel"] is not None:
             rl = D["rel"]
-            fig = go.Figure([
-                go.Scatter(x=[0, 1], y=[0, 1], mode="lines", line=dict(color=PAL["rule"], dash="dot", width=1),
-                           name="Perfectly calibrated", hoverinfo="skip"),
-                go.Scatter(x=rl.mean_R, y=rl.observed, mode="lines+markers", name="Surge risk R",
-                           marker=dict(size=9, color=PAL["seq"][4], line=dict(width=1.5, color=PAL["unit_line"])),
-                           line=dict(color=PAL["seq"][4], width=2), customdata=rl.n,
-                           hovertemplate="Forecast R %{x:.2f}<br>Came true %{y:.0%}<br>n = %{customdata:,}"
-                                         "<extra></extra>")])
+            calibrated = {"mean_R_cal", "observed_cal"} <= set(rl.columns)
+            traces = [go.Scatter(x=[0, 1], y=[0, 1], mode="lines", line=dict(color=PAL["rule"], dash="dot", width=1),
+                                 name="Perfectly calibrated", hoverinfo="skip")]
+            if calibrated:
+                traces.append(go.Scatter(x=rl.mean_R, y=rl.observed, mode="lines+markers", name="Raw R (before calibration)",
+                                         marker=dict(size=7, color=PAL["muted"]), line=dict(color=PAL["muted"], width=1.5,
+                                                                                            dash="dot"),
+                                         customdata=rl.n, hovertemplate="Raw R %{x:.2f}<br>Came true %{y:.0%}<br>"
+                                                                        "n = %{customdata:,}<extra></extra>"))
+            x, y, n = (rl.mean_R_cal, rl.observed_cal, rl.n_cal) if calibrated else (rl.mean_R, rl.observed, rl.n)
+            traces.append(go.Scatter(x=x, y=y, mode="lines+markers",
+                                     name="Calibrated R (used on the map)" if calibrated else "Surge risk R",
+                                     marker=dict(size=9, color=PAL["seq"][4], line=dict(width=1.5, color=PAL["unit_line"])),
+                                     line=dict(color=PAL["seq"][4], width=2), customdata=n,
+                                     hovertemplate="Forecast R %{x:.2f}<br>Came true %{y:.0%}<br>n = %{customdata:,}"
+                                                   "<extra></extra>"))
+            fig = go.Figure(traces)
             fig.update_layout(title=dict(text="Does R mean what it says?", font=dict(size=14)), height=340,
                               margin=dict(l=10, r=10, t=40, b=10), plot_bgcolor="rgba(0,0,0,0)",
                               legend=dict(orientation="h", y=-0.25),
@@ -666,12 +831,23 @@ def tab_skill():
                               yaxis=dict(title="Share that surged", range=[0, 1], tickformat=".0%",
                                          gridcolor="rgba(128,128,128,.15)"))
             st.plotly_chart(fig, width="stretch", config={"displaylogo": False}, key="reliability")
-            st.caption("Above the dotted line = surges happened more often than R said (R is under-confident).")
+            if calibrated:
+                first = f" Forecasts before {ui.date(cal['first_calibrated_origin'])} stay raw (too few past outcomes)." \
+                    if cal and cal.get("first_calibrated_origin") else ""
+                st.caption("Calibrated R sits close to the dotted line; raw R lay above it (surges came true more often "
+                           "than it said). The calibration is fitted only on forecasts whose outcome was already known."
+                           + first)
+            else:
+                st.caption("Above the dotted line = surges happened more often than R said (R is under-confident).")
     with c2:
-        f = D["evalf"]
+        f, fb = D["evalf"], D["evalf_models"]
         if f is not None:
-            models = [m for m in dict.fromkeys(re.sub(r"_q50$", "", c) for c in f.columns if c.endswith("_q50"))
-                      if m != "naive"]
+            q50 = lambda fr: [m for m in dict.fromkeys(re.sub(r"_q50$", "", c) for c in fr.columns  # noqa: E731
+                                                       if c.endswith("_q50")) if m != "naive"]
+            models = q50(f)
+            bench = [m for m in q50(fb) if m not in models] if fb is not None else []
+            models += bench
+            models = sorted(models, key=lambda m: (MODEL_ORDER.index(m) if m in MODEL_ORDER else 99, m))
             units = sorted(f.unit_id.unique().tolist(), key=lambda x: names.get(x, x))
             if st.session_state.get("evalunit") not in units:
                 st.session_state["evalunit"] = top.unit_id if top.unit_id in units else units[0]
@@ -679,7 +855,8 @@ def tab_skill():
             u = a.selectbox("Province", units, format_func=lambda x: names.get(x, x), key="evalunit")
             mdl = b_.selectbox("Model", models, format_func=lambda m: MODEL_NAMES.get(m, m), key="evalmodel")
             h = st.radio("Weeks ahead", [1, 2, 3, 4], horizontal=True, key="evalh")
-            d = f[(f.unit_id == u) & (f.horizon == h)].sort_values("target_week")
+            src = fb if mdl in bench else f
+            d = src[(src.unit_id == u) & (src.horizon == h)].sort_values("target_week")
             fig = go.Figure()
             if f"{mdl}_q95" in d and f"{mdl}_q05" in d:
                 fig.add_trace(go.Scatter(x=d.target_week, y=d[f"{mdl}_q95"], line=dict(width=0), showlegend=False,
@@ -694,7 +871,7 @@ def tab_skill():
                                          hovertemplate="%{y:,.0f}"))
             fig.add_trace(go.Scatter(x=d.target_week, y=d.cases, mode="markers", name="Reported cases",
                                      marker=dict(size=6, color=PAL["ink"]), hovertemplate="%{y:,.0f}"))
-            fig.update_layout(title=dict(text=f"{names.get(u, u)}: forecasts {h} week{'s' if h > 1 else ''} ahead",
+            fig.update_layout(title=dict(text=f"{names.get(u, u)}: {MODEL_NAMES.get(mdl, mdl)}, {h} week{'s' if h > 1 else ''} ahead",
                                          font=dict(size=14)),
                               height=400, margin=dict(l=10, r=10, t=40, b=10), plot_bgcolor="rgba(0,0,0,0)",
                               hovermode="x unified", legend=dict(orientation="h", y=-0.15),
@@ -704,11 +881,81 @@ def tab_skill():
 
 
 def tab_lepto():
-    st.info("Leptospirosis counts come from Project CCHAIN (PIDSR) and cover only its 12 cities. They are not "
-            "extrapolated to provinces.", icon=":material/info:")
-    for name, df in D["lepto"].items():
-        st.header(name.replace("lepto_", "").replace("_", " ").capitalize())
-        st.dataframe(df, hide_index=True, width="stretch", key=f"lepto_{name}")
+    lepto_tab.render(D["lepto"], D["lepto_weekly"], PAL)
+
+
+def access_methods():
+    """Road network vs travel-time raster: the disagreement is reported as uncertainty (proposal)."""
+    am, amc = D["access_methods"], D["access_methods_cat"]
+    if am is None or not len(am):
+        return
+    st.header("Two access methods: road network and travel-time raster")
+    st.caption("The road and ferry network is the main method; the travel-time raster (friction surface) is the check. "
+               "Their gap is shown as a range on every access number.")
+    base = am[am.get("kind", pd.Series(dtype=str)) == "baseline"] if "kind" in am else am.iloc[:0]
+    if len(base):
+        b = base.iloc[0]
+        rows = [("People who can reach a hospital", b.get("pop_reach_network"), b.get("pop_reach_raster"), "%"),
+                ("Mean trip to hospital, population-weighted (h)", b.get("popw_mean_hours_network"),
+                 b.get("popw_mean_hours_raster"), "h")]
+        fmt = lambda x, u: "n/a" if ui.nan(x) else (f"{100 * x:.1f}%" if u == "%" else f"{x:.2f} h")  # noqa: E731
+        tb = pd.DataFrame([(lbl, fmt(n, u), fmt(r, u)) for lbl, n, r, u in rows],
+                          columns=["Normal day", "Road network", "Travel-time raster"])
+        c1, c2 = st.columns([3, 2], gap="large")
+        c1.dataframe(tb, hide_index=True, width="stretch", key="access_baseline")
+        txt = []
+        if not ui.nan(b.get("spearman_hours_cells")):
+            txt.append(f"Rank agreement of trip times across 1-km cells: **{b.spearman_hours_cells:.2f}**")
+        if not ui.nan(b.get("spearman_unit_base_hours")):
+            txt.append(f"across provinces: **{b.spearman_unit_base_hours:.2f}**")
+        if not ui.nan(b.get("popw_median_ratio_raster_network")):
+            txt.append(f"the raster's trips are typically {b.popw_median_ratio_raster_network:.2f} times the "
+                       "network's (population-weighted median)")
+        c2.markdown("; ".join(txt) + "." if txt else "")
+    sc = [x for x in (am[am.kind == "scenario"] if "kind" in am else am, amc) if x is not None and len(x)]
+    sc = pd.concat(sc, ignore_index=True) if sc else None
+    if sc is None or not {"pop_cut_network", "pop_cut_raster"} <= set(sc.columns):
+        return
+    sc = sc.assign(label=sc.storm.map(lambda k: storm_label(k) if k in STORMS or k in CAT else k),
+                   group=np.where(sc.storm.isin(list(STORMS)), "Backtest typhoons (all tracks)", "Catalogue storms"))
+    fig = go.Figure()
+    mx = float(np.nanmax([sc.pop_cut_network.max(), sc.pop_cut_raster.max(), 1]))
+    fig.add_trace(go.Scatter(x=[0, mx], y=[0, mx], mode="lines", line=dict(color=PAL["rule"], dash="dot", width=1),
+                             name="Methods agree", hoverinfo="skip"))
+    for i, (g, d) in enumerate(sc.groupby("group", sort=True)):
+        fig.add_trace(go.Scatter(
+            x=d.pop_cut_network, y=d.pop_cut_raster, mode="markers", name=g,
+            marker=dict(size=8, color=PAL["cat"][i], line=dict(width=1, color=PAL["unit_line"])),
+            text=[f"{lbl}" + (f", {ui.shift_label(a, 'lat')}/{ui.shift_label(o, 'lon')}" if (a or o) and not ui.nan(a)
+                              else "") for lbl, a, o in zip(d.label, d.dlat.fillna(0), d.dlon.fillna(0))],
+            hovertemplate="%{text}<br>network %{x:,.0f}<br>raster %{y:,.0f}<extra></extra>"))
+    cur = sc[(sc.storm == storm) & (sc.dlat.fillna(0) == dlat) & (sc.dlon.fillna(0) == dlon)]
+    if len(cur):
+        fig.add_trace(go.Scatter(x=cur.pop_cut_network, y=cur.pop_cut_raster, mode="markers", name="This scenario",
+                                 marker=dict(size=16, color="rgba(0,0,0,0)", line=dict(width=2.5, color=PAL["ink"])),
+                                 hoverinfo="skip"))
+    fig.update_layout(height=420, margin=dict(l=10, r=10, t=10, b=10), plot_bgcolor="rgba(0,0,0,0)",
+                      legend=dict(orientation="h", y=1.1, x=0),
+                      xaxis=dict(title="People cut off, road network", gridcolor="rgba(128,128,128,.15)", rangemode="tozero"),
+                      yaxis=dict(title="People cut off, travel-time raster", gridcolor="rgba(128,128,128,.15)",
+                                 rangemode="tozero"))
+    st.plotly_chart(fig, width="stretch", config={"displaylogo": False}, key="access_methods_chart")
+    if len(cur):
+        r = cur.iloc[0]
+        rho = f"; rank agreement of A across provinces {r.spearman_A_units:.2f}" if not ui.nan(r.get("spearman_A_units")) else ""
+        st.caption(f"This scenario: {ui.people(r.pop_cut_network)} people cut off by the network, "
+                   f"{ui.people(r.pop_cut_raster)} by the raster{rho}. Points below the dotted line: the raster cuts "
+                   "off fewer people.")
+    with st.expander("All method comparisons"):
+        cols = [c for c in ("label", "dlat", "dlon", "flood_source", "mean_A_network", "mean_A_raster",
+                            "pop_cut_network", "pop_cut_raster", "spearman_A_units") if c in sc]
+        st.dataframe(sc[cols], hide_index=True, width="stretch", key="access_methods", column_config={
+            "label": "Storm", "dlat": "Shift N", "dlon": "Shift E", "flood_source": "Flood source",
+            "mean_A_network": st.column_config.NumberColumn("Mean A, network", format="%.3f"),
+            "mean_A_raster": st.column_config.NumberColumn("Mean A, raster", format="%.3f"),
+            "pop_cut_network": st.column_config.NumberColumn("Cut off, network", format="localized"),
+            "pop_cut_raster": st.column_config.NumberColumn("Cut off, raster", format="localized"),
+            "spearman_A_units": st.column_config.NumberColumn("Rank agreement of A", format="%.2f")})
 
 
 def tab_validation():
@@ -716,6 +963,8 @@ def tab_validation():
     v = D["valid"]
     if v is not None:
         v = v.assign(**{c: 100 * v[c] for c in ("surge_rate", "top10_surge_rate") if c in v})
+        if "note" in v:
+            v["note"] = v.note.fillna("")
         st.dataframe(v, hide_index=True, width="stretch", key="valid", column_config={
             "storm": "Typhoon", "origin": "Forecast week", "units": "Provinces",
             "surge_rate": st.column_config.NumberColumn("Provinces that surged", format="%.0f%%",
@@ -732,20 +981,26 @@ def tab_validation():
             "note": "Note"})
     st.header("Does the ranking change if the access settings change?")
     if D["sens"] is not None:
-        piv = D["sens"].pivot_table(index="variant", columns="storm", values="kendall_tau")
+        sv = D["sens"]
+        vals = [c for c in ("kendall_tau", "kendall_tau_raster") if c in sv]
+        piv = sv.pivot_table(index="variant", columns="storm", values=vals)
+        if len(vals) > 1:
+            piv.columns = [f"{st_}, {'raster' if v.endswith('raster') else 'network'}" for v, st_ in piv.columns]
+            piv = piv[sorted(piv.columns)]
+        else:
+            piv.columns = [c[-1] if isinstance(c, tuple) else c for c in piv.columns]
+        piv.index.name = "Setting changed"
         st.caption("Kendall’s tau between the priority ranking under each setting and the base ranking "
-                   "(1 = identical order).")
+                   "(1 = identical order), for each access method.")
         st.dataframe(piv, width="stretch", key="sens",
                      column_config={c: st.column_config.NumberColumn(format="%.2f") for c in piv.columns})
     else:
         st.info("Not available until the access model is built.")
-    am = D["access_methods"]
-    if am is not None and len(am):
-        st.header("Access: road-network versus friction-raster method")
-        st.dataframe(am, hide_index=True, width="stretch", key="access_methods")
+    access_methods()
     st.header("Metro Manila benchmark")
     if D["bench"] is not None:
         bn = D["bench"].assign(**({"share_cut": 100 * D["bench"].share_cut} if "share_cut" in D["bench"] else {}))
+        bn = bn.round({"ncr_pop": 0, "pop_cut": 0})
         st.dataframe(bn, hide_index=True, width="stretch", key="bench", column_config={
             "scenario": "Scenario", "ncr_pop": st.column_config.NumberColumn("NCR population", format="localized"),
             "pop_cut": st.column_config.NumberColumn("People cut off", format="localized"),
@@ -770,6 +1025,24 @@ def tab_data():
                                     "detail": "Detail", "checked": "Last checked"})
     st.caption("Missing inputs are skipped and their outputs left empty; re-running `build.bat` after the files "
                "arrive picks them up. Refresh this page after a rebuild.")
+    cs = D["catalog_storms"]
+    if cs is not None and len(cs) and "status" in cs:
+        st.header("Storm catalogue")
+        bt = cs.reason.astype(str).str.startswith("backtest") if "reason" in cs else pd.Series(False, index=cs.index)
+        skip = cs[(cs.status == "skipped") & ~bt]
+        reasons = skip.reason.value_counts() if "reason" in skip else pd.Series(dtype=int)
+        st.markdown(f"{len(cs)} 2016-2020 storms came near the Philippines: **{int(bt.sum())}** are the backtest "
+                    f"typhoons, **{int((cs.status == 'included').sum())}** are in the catalogue, and "
+                    f"**{len(skip)}** were skipped ("
+                    + "; ".join(f"{n}: {r.replace('PHL', 'Philippine')}" for r, n in reasons.items()) + ").")
+        with st.expander(f"Skipped storms ({len(skip)})"):
+            show = skip.assign(name=skip.name.str.title()).sort_values("closest_time")
+            st.dataframe(show[[c for c in ("name", "season", "sid", "closest_time", "closest_km", "max_wind_kt", "reason")
+                               if c in show]], hide_index=True, width="stretch", key="skipped_storms", column_config={
+                "name": "Storm", "season": st.column_config.NumberColumn("Season", format="%d"), "sid": "IBTrACS ID",
+                "closest_time": "Closest approach", "closest_km": st.column_config.NumberColumn("Distance (km)",
+                                                                                                format="%.0f"),
+                "max_wind_kt": st.column_config.NumberColumn("Max wind (kt)", format="%.0f"), "reason": "Why skipped"})
 
 
 def answer_key():

@@ -15,12 +15,14 @@ LIGHT = dict(
     tier={1: "#86b6ef", 2: "#2a78d6", 3: "#0d366b"},
     track="#eb6834", ferry="#1baf7a", ink="#1d2433", muted="#6b7280", rule="#c3c2b7",
     band="rgba(42,120,214,.16)", unit_line="#ffffff", land="#eef0f2",
+    cat=["#2a78d6", "#eb6834", "#1baf7a"],  # first 3 categorical slots: pass all-pairs CVD checks
 )
 DARK = dict(
     seq=["#1b3354", "#1c4778", "#1f5ca3", "#3987e5", "#6da7ec", "#9ec5f4", "#cde2fb"],  # low end recedes
     tier={1: "#184f95", 2: "#3987e5", 3: "#b7d3f6"},
     track="#d95926", ferry="#199e70", ink="#e6e9ee", muted="#9aa3af", rule="#4b5563",
     band="rgba(57,135,229,.24)", unit_line="#13171d", land="#1d232c",
+    cat=["#3987e5", "#d95926", "#199e70"],
 )
 
 TIER_SHORT = {3: "Deploy mobile clinics", 2: "Pre-position supplies", 1: "Monitor"}
@@ -55,6 +57,8 @@ HELP = dict(
     wis="Weighted Interval Score: forecast error that also rewards honest ranges. Lower is better.",
     relwis="Relative WIS: the model’s WIS divided by a seasonal-naive forecast’s. Below 1 beats the baseline.",
     cov90="Share of real outcomes that fell inside the 90% range. Target 80-95%.",
+    methods="Lowest to highest across the two access methods: the road and ferry network (main) and the travel-time "
+            "raster. A wide range means the methods disagree, so treat the number as uncertain.",
 )
 
 
