@@ -2,10 +2,11 @@
 
 | File | What |
 |---|---|
-| `Bantay-Baha_Evaluation_Report.pdf` | Full evaluation results (A4): data, methods, forecast skill, ablations, calibration, lead-lag graph, access loss, scenarios, backtest, sensitivity, benchmark, scorecard against the proposal, limitations, references (APA 7) |
+| `Bantay-Baha_Evaluation_Report.pdf` | Full evaluation results (A4, 20 pages): data, methods, forecast skill and ablations, model comparison (XGBoost vs Chronos-2, TabPFN-TS, MPNN-LSTM and their median ensemble), recalibrated surge probability R, lead-lag graph, Sentinel-1 flood (per unit and per municipality), access loss with both methods (road + ferry network vs MAP friction raster) and vulnerable groups, Ompong priority, the storm catalogue (every scored storm 2017-2020), backtest, sensitivity, Metro Manila benchmark, leptospirosis, scorecard against the proposal, limitations, references (APA 7) |
 | `Bantay-Baha_Slides.pdf` | 20-slide deck (16:9) for the PJDSC 2026 panel presentation; each slide is tagged with the judging criterion it answers |
-| `figures/` | The figures, drawn from the pipeline outputs. `dashboard.png` is a headless-Chrome screenshot of the running app (`run_app.bat`, Ompong, observed track) |
-| `src/` | The generated HTML both PDFs are printed from, and the fonts (Big Shoulders Display, Barlow, Space Mono; SIL Open Font License, licences included) |
+| `Bantay-Baha_Demo_Script.md` / `.pdf` | Demonstration-video script (2:50), with the on-screen numbers checked against the build; the markdown is the source, the PDF is generated from it |
+| `figures/` | The figures, drawn from the pipeline outputs. `dashboard.png` is a screenshot of the running app (`run_app.bat`, Ompong, observed track), maintained with the dashboard |
+| `src/` | The generated HTML the PDFs are printed from, and the fonts (Big Shoulders Display, Barlow, Space Mono; SIL Open Font License, licences included) |
 
 Regenerate after a new build:
 
@@ -14,4 +15,11 @@ build.bat
 python scripts\make_results.py
 ```
 
-Every number in both documents is computed from `data/processed/` and `data/raw/MANIFEST.csv` at generation time. To refresh `dashboard.png`, start the app and run Chrome headless with `--screenshot` against `http://localhost:8501`.
+Every number in the report, the deck and their figures is computed from `data/processed/` (and, for a few data findings,
+read-only from `data/raw/`: the MANIFEST, the DOH dengue CSV, the census age table and IBTrACS) at generation time; the
+only typed numbers are cited literature figures on the problem slides. The model comparison renders whatever models are
+in `data/processed/app/eval_models.csv` and names any expected benchmark that is missing. The demo script's numbers are
+typed into the markdown: re-check them on screen after a rebuild. An automatic overflow check (headless Chrome) runs on
+both documents and must print `ok`.
+
+The revised concept proposal is in `docs/proposal/` (`python scripts/make_proposal.py`).
