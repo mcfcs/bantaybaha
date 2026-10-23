@@ -112,7 +112,7 @@ These sites block scripted downloads, so save the files by hand:
 ## Repository layout
 
 ```
-docs/                       concept proposal, team explainer, submitted proposal (PDF)
+docs/                       concept proposal, team explainer, submitted proposal (PDF); docs/proposal/ revised v3; docs/results/ report + deck
 scripts/download_data.py    open-source downloads (idempotent, writes MANIFEST.csv)
 scripts/download_gee.py     Earth Engine downloads (needs --project)
 setup.bat                   one-click team setup: venv, kernel, sign-in, pull data from the bucket
@@ -121,7 +121,7 @@ download_data.bat           one-click setup + download for Windows
 scripts/build.py            one-command rebuild of everything the dashboard reads (build.bat)
 scripts/make_results.py     regenerates docs/results/ (evaluation report + 20-slide deck, PDF)
 scripts/benchmark_*.py      optional benchmarks: Chronos-2, TabPFN-TS, MPNN-LSTM + scorer (requirements-bench.txt)
-scripts/make_proposal.py    revised proposal (docs/proposal/), if present
+scripts/make_proposal.py    revised anonymous proposal v3 (docs/proposal/, PDF via headless Chrome)
 bantay/                     library: units, dengue, storms, rain, rivers, flood, grids, panel, leadlag, forecast, access,
                             scenarios, lepto
 app/                        the dashboard (streamlit_app.py + ui, sus, lepto_tab; run_app.bat)
