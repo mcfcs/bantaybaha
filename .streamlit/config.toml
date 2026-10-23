@@ -1,0 +1,49 @@
+# Bantay-Baha dashboard theme. Light and dark follow the viewer's system setting (Settings menu to switch).
+# Colours: one flood-blue accent; data colours live in app/ui.py (validated with the dataviz palette checker).
+
+[client]
+toolbarMode = "viewer"          # hide developer/deploy controls from health officers
+showErrorDetails = "type"       # no tracebacks on screen
+
+[browser]
+gatherUsageStats = false
+
+[server]
+runOnSave = false
+
+[theme]
+font = "Public Sans:https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap, sans-serif"
+headingFont = "Public Sans:https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap, sans-serif"
+headingFontWeights = [700, 650, 600, 600, 600, 600]
+headingFontSizes = ["2.1rem", "1.2rem", "1.05rem", "1rem", "0.95rem", "0.9rem"]  # h1 title, h2 sections
+baseRadius = "6px"
+buttonRadius = "6px"
+showWidgetBorder = true
+
+[theme.light]
+primaryColor = "#1c5cab"
+backgroundColor = "#fbfbfa"
+secondaryBackgroundColor = "#eff1f3"
+textColor = "#1d2433"
+borderColor = "#d9dde3"
+linkColor = "#1c5cab"
+blueColor = "#1c5cab"
+dataframeHeaderBackgroundColor = "#eff1f3"
+
+[theme.light.sidebar]
+backgroundColor = "#eef1f4"
+secondaryBackgroundColor = "#ffffff"
+
+[theme.dark]
+primaryColor = "#5598e7"
+backgroundColor = "#13171d"
+secondaryBackgroundColor = "#1d232c"
+textColor = "#e6e9ee"
+borderColor = "#323a46"
+linkColor = "#86b6ef"
+blueColor = "#5598e7"
+dataframeHeaderBackgroundColor = "#1d232c"
+
+[theme.dark.sidebar]
+backgroundColor = "#181d24"
+secondaryBackgroundColor = "#232a34"
