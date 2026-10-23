@@ -9,7 +9,9 @@ Stages (in order):
   crosswalk  harmonised 2016-2020 units: data/crosswalks/*.csv, data/processed/units.gpkg
   panel      unit x week panel + data card: data/processed/panel.parquet, panel_card.md
   leadlag    final lead-lag graph (PCMCI+, bootstrap) and the cross-correlation baseline
-  forecast   rolling-origin evaluation 2018-2019: WIS, coverage, relative WIS, ablation, surge calibration
+  forecast   rolling-origin evaluation 2018-2019: WIS, coverage, relative WIS, ablation, surge calibration (raw and
+             isotonic-recalibrated R); persists the full quantiles and cum4 forecasts, then runs `ensemble`
+  ensemble   re-score without refitting: xgb / naive + any bench_<model>.parquet + their median ensemble
   scenarios  access loss + priority for the 4 typhoons x shifted tracks, validation, sensitivity, benchmark
   app        small files for the map (simplified units)
 
@@ -36,7 +38,7 @@ from bantay import units as U, panel as PN, leadlag as LL, forecast as F, scenar
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.filterwarnings("ignore", message="In analysis mode")  # tigramite shape notice (T < N is expected)
-STAGES = ["crosswalk", "panel", "leadlag", "forecast", "scenarios", "app"]
+STAGES = ["crosswalk", "panel", "leadlag", "forecast", "ensemble", "scenarios", "app"]
 
 
 def stage_crosswalk(a):
@@ -70,10 +72,16 @@ def stage_forecast(a):
     fc, graphs = F.rolling_origin(p, refit_weeks=a.refit_weeks)
     sc = F.score(fc)
     summ = F.summarise(sc)
-    cal, rel = F.surge_calibration(fc)
+    cal, rel, cum4 = F.surge_calibration(fc)
     print(f"  rolling origin done in {time.time() - t:.0f}s, {len(sc):,} scored forecasts")
     print(summ[["n", "WIS xgb", "WIS naive", "relWIS xgb/naive", "relWIS xgb/nograph", "relWIS xgb/noenv", "cov50 xgb", "cov90 xgb", "cov90 conformal"]].round(3).to_string())
-    print("  surge R calibration:", json.dumps(cal))
+    print("  surge R calibration:", json.dumps({k: cal[k] for k in ("xgb", "xgb_nograph")}))
+    cb = cal["calibrated"]
+    print(f"  recalibrated R (isotonic, past forecasts only): {cb['n_uncalibrated']} of {cb['n_scored']} scored rows left raw "
+          f"(< {cb['min_rows']} past outcomes); Brier {cb['all_rows']['brier_raw']:.4f} -> {cb['all_rows']['brier_cal']:.4f}")
+    print(rel.round(3).to_string(index=False))
+    cum4.to_parquet(C.APP_DATA / F.CUM4_FILE)  # read by scenarios (forecast.surge_calibrator)
+    F.eval_quantiles(fc).to_parquet(C.APP_DATA / "eval_quantiles.parquet")  # read by the ensemble stage
     summ.to_csv(C.APP_DATA / "eval_summary.csv")
     rel.to_csv(C.APP_DATA / "surge_reliability.csv", index=False)
     (C.APP_DATA / "surge_calibration.json").write_text(json.dumps(cal, indent=1))
@@ -91,6 +99,29 @@ def stage_forecast(a):
     pd.DataFrame([g[2] for g in graphs]).to_csv(C.APP_DATA / "eval_graphs.csv", index=False)
     C.record("forecast_eval", True, f"relWIS xgb/naive = {summ.loc['all', 'relWIS xgb/naive']:.3f}, "
                                     f"cov90 = {summ.loc['all', 'cov90 xgb']:.3f}")
+    if "ensemble" not in a.stages:
+        stage_ensemble(a)
+
+
+def stage_ensemble(a):
+    qf = C.APP_DATA / "eval_quantiles.parquet"
+    if not qf.exists():
+        return C.missing("forecast_eval", f"{qf.relative_to(ROOT)} not found: run `build.py forecast` first")
+    tab, bands, meta = F.evaluate_models(pd.read_parquet(qf))
+    tab.to_csv(C.APP_DATA / "eval_models.csv", index=False)
+    (C.APP_DATA / "eval_models.json").write_text(json.dumps(meta, indent=1, default=str))
+    out = C.APP_DATA / "eval_forecasts_models.parquet"
+    if bands is not None:
+        bands.to_parquet(out)
+    elif out.exists():
+        out.unlink()  # no benchmark files any more: drop stale bands
+    print(tab[tab.horizon == "all"].round(3).to_string(index=False))
+    nb = len(meta["benchmarks"])
+    ok = [m for m, v in meta["benchmarks"].items() if "error" not in v]
+    if ok:
+        C.record("bench_models", True, f"{', '.join(ok)}; ensemble {F.ENSEMBLE} = median of {meta['ensemble']['members']}")
+    else:
+        C.missing("bench_models", f"no usable {F.BENCH_GLOB} in data/processed/app ({nb} found): no benchmark or ensemble yet")
 
 
 def stage_scenarios(a):

@@ -9,13 +9,22 @@ Rolling origin (never a random split): the model, the lead-lag graph and the sur
 `refit_weeks` on data up to the refit date only, and forecast every origin until the next refit. Training targets never
 go past the refit date, and 2020 is never a target (COVID reporting collapse). Compared against a seasonal-naive
 baseline (same week last year, empirical quantiles of its training errors) and an ablation without graph features.
+
+R is recalibrated with isotonic regression fitted on past rolling-origin surge forecasts only (`cum4_eval` for
+the evaluation, `surge_calibrator` for the scenarios). Benchmark models (Chronos-2, TabPFN-TS, MPNN-LSTM, ...) drop
+`bench_<model>.parquet` files with rolling-origin quantiles into data/processed/app/; `evaluate_models` scores them on
+the same rows as xgb / naive and builds the median ensemble, with no XGBoost refit.
 """
+
+import json
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+from sklearn.isotonic import IsotonicRegression
 
-from .config import QUANTILES, MODEL_END
+from .config import QUANTILES, MODEL_END, APP_DATA, missing, record
 from . import leadlag
 
 Q = np.array(QUANTILES)
@@ -37,6 +46,15 @@ GROUPS = {  # feature -> driver group shown in the dashboard
 GRAPH_FEATURES = GROUPS["outbreak graph"]
 ENV_FEATURES = GROUPS["rain"] + GROUPS["river"] + GROUPS["storm / flood"]  # dropped in the "xgb_noenv" ablation
 MODELS = ("xgb", "xgb_nograph", "xgb_noenv", "naive")
+
+# R recalibration: an isotonic map is fitted only once this many past surge outcomes (rolling-origin cum4 forecasts whose
+# 4-week target window has ended) exist: 10 weeks x 85 units. Before that, R is left as the raw model probability.
+CAL_MIN_ROWS = 850
+R_CLIP = (0.005, 0.995)  # same clip as prob_exceed
+CUM4_FILE = "eval_cum4.parquet"  # rolling-origin cum4 forecasts, persisted by the forecast stage for the scenarios
+ENSEMBLE = "ens_median"
+BENCH_GLOB = "bench_*.parquet"
+BAND = {"q05": 2, "q25": 6, "q50": IQ50, "q75": 16, "q95": 20}  # fan-chart levels (indices into Q)
 
 
 # ---------------------------------------------------------------- features
@@ -261,19 +279,27 @@ def rolling_origin(panel, start="2018-01-07", end=MODEL_END, refit_weeks=13, gra
     return pd.concat(out, ignore_index=True), graphs
 
 
+def score_rows(mats, target, pop):
+    """Per-row WIS / absolute error / 50% and 90% coverage on case counts. `mats`: {model: (n, 23) log1p-incidence
+    quantiles}; a row with any NaN quantile scores NaN (coverage too), so models can be compared on the same rows."""
+    y = np.expm1(target) * pop / 1e5
+    rows = {}
+    for name, qlog in mats.items():
+        qs = to_cases(qlog, pop)
+        bad = np.isnan(qs).any(axis=1)
+        rows[f"wis_{name}"] = wis(qs, y)
+        rows[f"ae_{name}"] = np.abs(qs[:, IQ50] - y)
+        rows[f"cov50_{name}"] = np.where(bad, np.nan, coverage(qs, y, 0.5))
+        rows[f"cov90_{name}"] = np.where(bad, np.nan, coverage(qs, y, 0.9))
+    return y, rows
+
+
 def score(fc):
     """Per-row WIS / coverage on case counts for each model; plus an online conformal 90% check on xgb."""
     fc = fc[fc.horizon != "cum4"].copy()
     fc = fc[fc.target.notna()]
     pop = fc["pop"].to_numpy()
-    y = np.expm1(fc.target.to_numpy()) * pop / 1e5
-    rows = {}
-    for name in MODELS:
-        qs = to_cases(np.vstack(fc[name]), pop)
-        rows[f"wis_{name}"] = wis(qs, y)
-        rows[f"ae_{name}"] = np.abs(qs[:, IQ50] - y)
-        rows[f"cov50_{name}"] = coverage(qs, y, 0.5)
-        rows[f"cov90_{name}"] = coverage(qs, y, 0.9)
+    y, rows = score_rows({name: np.vstack(fc[name]) for name in MODELS}, fc.target.to_numpy(), pop)
     s = fc[["unit_id", "week", "target_week", "horizon", "refit"]].assign(cases=y, **rows)
     # online conformal (EnbPI-style check): 90% band = median +- the 90th pct of past |log errors| at this horizon,
     # using only forecasts whose target week is before the current origin
@@ -316,19 +342,239 @@ def summarise(s):
     return by_h
 
 
-def surge_calibration(fc):
-    """Brier score and reliability of R on the evaluation weeks (observed surge = cum4 incidence > threshold)."""
-    c = fc[(fc.horizon == "cum4") & fc.target.notna()].copy()
-    c["surge"] = (np.expm1(c.target) > c.surge_thr).astype(float)
+class SurgeCalibrator:
+    """Isotonic map from raw R to the observed surge frequency, fitted on past forecasts only. `fit_end` is the last
+    target week (end of the 4-week window) among the fitted rows; `n` the number of past outcomes used."""
+
+    def __init__(self, r, y, fit_end):
+        self.iso = IsotonicRegression(y_min=0.0, y_max=1.0, increasing=True, out_of_bounds="clip").fit(r, y)
+        self.n, self.fit_end, self.base_rate = len(r), pd.Timestamp(fit_end), float(np.mean(y))
+
+    def __call__(self, r):
+        r = np.asarray(r, float)
+        out = np.full(len(r), np.nan)
+        ok = np.isfinite(r)
+        out[ok] = np.clip(self.iso.predict(r[ok]), *R_CLIP)
+        return out
+
+
+def fit_calibrator(r, y, target_week, end):
+    """Calibrator fitted on rows whose outcome is known at `end` (target_week <= end, the same rule as model training:
+    a week's cases are known at the end of that week). None if fewer than CAL_MIN_ROWS outcomes or a single class."""
+    r, y, tw = np.asarray(r, float), np.asarray(y, float), pd.to_datetime(pd.Series(target_week)).to_numpy()
+    past = (tw <= np.datetime64(pd.Timestamp(end))) & np.isfinite(r) & np.isfinite(y)
+    if past.sum() < CAL_MIN_ROWS or np.unique(y[past]).size < 2:
+        return None
+    assert tw[past].max() <= np.datetime64(pd.Timestamp(end)), "calibration would use an outcome after its origin"
+    return SurgeCalibrator(r[past], y[past], tw[past].max())
+
+
+def cum4_eval(fc):
+    """Rolling-origin surge forecasts (one row per unit x origin) with the observed surge and an expanding-window
+    recalibrated R: each origin t is calibrated with a model fitted on forecasts whose target window ended by t
+    (target_week <= t), so R_xgb_cal never uses an outcome later than its origin. Rows before CAL_MIN_ROWS past outcomes
+    keep the raw R (cal_n = number of past outcomes available, R_cal_applied flags the calibrated rows)."""
+    c = fc[fc.horizon == "cum4"][["unit_id", "week", "target_week", "refit", "target", "pop", "surge_thr", "R_xgb", "R_xgb_nograph"]].copy()
+    c = c.reset_index(drop=True)
+    known = c.target.notna() & c.surge_thr.notna()
+    c["surge"] = (np.expm1(c.target) > c.surge_thr).astype(float).where(known)
+    c["R_xgb_cal"] = c.R_xgb.to_numpy()
+    c["R_cal_applied"] = False
+    c["cal_n"] = 0
+    c["cal_fit_end"] = pd.NaT
+    for t in sorted(c.week.unique()):
+        idx = c.index[c.week == t]
+        n_past = int(((c.target_week <= t) & c.surge.notna() & c.R_xgb.notna()).sum())
+        c.loc[idx, "cal_n"] = n_past
+        cal = fit_calibrator(c.R_xgb, c.surge, c.target_week, t)
+        if cal is None:
+            continue
+        c.loc[idx, "R_xgb_cal"] = cal(c.loc[idx, "R_xgb"])
+        c.loc[idx, "R_cal_applied"] = True
+        c.loc[idx, "cal_fit_end"] = cal.fit_end
+    done = c.R_cal_applied
+    assert (c.cal_fit_end[done] <= c.week[done]).all(), "leakage: a calibration was fitted on an outcome after its origin"
+    return c
+
+
+RELIABILITY_BINS = [0, .1, .2, .3, .5, .7, 1.0]
+
+
+def _reliability(c, col):
+    b = pd.cut(c[col], RELIABILITY_BINS, include_lowest=True)
+    return c.groupby(b, observed=True).agg(n=("surge", "size"), mean_R=(col, "mean"), observed=("surge", "mean"))
+
+
+def _brier(c, col):
+    return float(((c[col] - c.surge) ** 2).mean())
+
+
+def surge_calibration(fc, c=None):
+    """Brier score and reliability of R on the evaluation weeks (observed surge = cum4 incidence > threshold), raw and
+    recalibrated. Returns (summary dict, reliability table, cum4 frame). The keys `xgb` / `xgb_nograph` and the columns
+    bin, n, mean_R, observed describe the raw R as before; `calibrated` and the *_cal columns are the recalibrated R."""
+    c = cum4_eval(fc) if c is None else c
+    s = c[c.surge.notna()].copy()
     out = {}
     for m in ("xgb", "xgb_nograph"):
-        r = c[f"R_{m}"]
-        out[m] = dict(brier=float(((r - c.surge) ** 2).mean()), base_rate=float(c.surge.mean()),
-                      brier_climatology=float(((c.surge.mean() - c.surge) ** 2).mean()))
-    c["bin"] = pd.cut(c.R_xgb, [0, .1, .2, .3, .5, .7, 1.0], include_lowest=True)
-    rel = c.groupby("bin", observed=True).agg(n=("surge", "size"), mean_R=("R_xgb", "mean"), observed=("surge", "mean")).reset_index()
+        out[m] = dict(brier=_brier(s, f"R_{m}"), base_rate=float(s.surge.mean()),
+                      brier_climatology=float(((s.surge.mean() - s.surge) ** 2).mean()))
+    on = s[s.R_cal_applied]
+
+    def block(d):
+        return dict(n=int(len(d)), base_rate=float(d.surge.mean()), mean_R_raw=float(d.R_xgb.mean()),
+                    mean_R_cal=float(d.R_xgb_cal.mean()), brier_raw=_brier(d, "R_xgb"), brier_cal=_brier(d, "R_xgb_cal"),
+                    brier_climatology=float(((d.surge.mean() - d.surge) ** 2).mean()))
+
+    out["calibrated"] = dict(
+        model="xgb", method="isotonic regression of the observed surge on raw R, expanding window over past rolling-origin "
+                            "forecasts with target_week <= origin; raw R kept until CAL_MIN_ROWS past outcomes",
+        min_rows=CAL_MIN_ROWS, n_scored=int(len(s)), n_uncalibrated=int((~s.R_cal_applied).sum()),
+        uncalibrated_origins=[str(pd.Timestamp(w).date()) for w in sorted(s.week[~s.R_cal_applied].unique())],
+        first_calibrated_origin=str(pd.Timestamp(on.week.min()).date()) if len(on) else None,
+        all_rows=block(s), calibrated_rows=block(on) if len(on) else None)
+    rel = _reliability(s, "R_xgb")
+    cal = _reliability(s, "R_xgb_cal").rename(columns=lambda k: f"{k}_cal")
+    rel = rel.join(cal, how="left").reset_index().rename(columns={"R_xgb": "bin"})
     rel["bin"] = rel["bin"].astype(str)
-    return out, rel
+    return out, rel, c
+
+
+def surge_calibrator(train_end, path=None, log=print):
+    """Calibrator for a production fit trained to `train_end`: isotonic on every persisted rolling-origin cum4 forecast
+    (xgb) with target_week <= train_end. None (R stays raw) if the file is missing or too few outcomes; recorded."""
+    path = Path(path) if path is not None else APP_DATA / CUM4_FILE
+    end = pd.Timestamp(train_end)
+    if not path.exists():
+        return missing("surge_calibration", f"{path.name} not found (run build.py forecast): scenario R left uncalibrated")
+    c = pd.read_parquet(path)
+    cal = fit_calibrator(c.R_xgb, c.surge, c.target_week, end)
+    if cal is None:
+        n = int(((c.target_week <= end) & c.surge.notna()).sum())
+        log(f"  surge calibration for train end {end.date()}: only {n} past outcomes (< {CAL_MIN_ROWS}): R left raw")
+        return None
+    assert cal.fit_end <= end
+    record("surge_calibration", True, f"isotonic on {cal.n} past rolling-origin forecasts (target week <= {end.date()})")
+    return cal
+
+
+def calibrate_R(fc, cal):
+    """Scenario hook: keep the model probability as R_raw and set R to the calibrated value (raw if cal is None)."""
+    fc = fc.copy()
+    fc["R_raw"] = fc.R.to_numpy()
+    if cal is not None:
+        fc["R"] = cal(fc.R_raw)
+    fc["R_calibrated"] = cal is not None
+    fc["R_cal_n"] = cal.n if cal is not None else 0
+    return fc
+
+
+# ---------------------------------------------------------------- benchmark models and the median ensemble
+
+def eval_quantiles(fc):
+    """The rolling-origin horizon 1-4 rows with every model's 23 quantiles (log1p incidence per 100k), so benchmark
+    files can be scored and ensembled later without refitting XGBoost."""
+    q = fc[fc.horizon != "cum4"][["unit_id", "week", "target_week", "horizon", "refit", "target", "pop"] + list(MODELS)].copy()
+    q["horizon"] = q.horizon.astype(int)
+    for m in MODELS:
+        q[m] = [np.asarray(v) for v in q[m]]  # native dtype (xgb float32), so re-scoring reproduces score() exactly
+    return q.reset_index(drop=True)
+
+
+def _key(df):
+    return pd.DataFrame({"unit_id": df.unit_id.astype(str).to_numpy(),
+                         "week": pd.to_datetime(df.week).astype("datetime64[ns]").to_numpy(),
+                         "horizon": df.horizon.astype(int).to_numpy()})
+
+
+def load_bench(q, bench_dir=None, log=print):
+    """Benchmark files bench_<model>.parquet (unit_id, week = origin Sunday, horizon 1-4, q = 23 sorted quantiles of
+    log1p incidence per 100k) aligned to the rows of `q`. Returns ({model: (n, 23) array, NaN where absent}, meta).
+    A file with the wrong schema is skipped with a warning, never fatal."""
+    bench_dir = Path(bench_dir) if bench_dir is not None else APP_DATA
+    keys = _key(q)
+    mats, meta = {}, {}
+    for p in sorted(bench_dir.glob(BENCH_GLOB)):
+        name = p.stem[len("bench_"):]
+        info = dict(file=p.name)
+        js = p.with_suffix(".json")
+        if js.exists():
+            try:
+                info["meta"] = json.loads(js.read_text(encoding="utf-8"))
+            except ValueError as e:
+                info["meta_error"] = str(e)
+        try:
+            b = pd.read_parquet(p)
+            if not {"unit_id", "week", "horizon", "q"} <= set(b.columns):
+                raise ValueError(f"columns {sorted(b.columns)}; need unit_id, week, horizon, q")
+            if name in MODELS or name == ENSEMBLE or not name:
+                raise ValueError(f"model name '{name}' clashes with a built-in model")
+            arr = [np.asarray(v, float) if v is not None else np.full(len(Q), np.nan) for v in b.q]
+            good = np.array([a.shape == (len(Q),) and np.isfinite(a).all() for a in arr])
+            b = _key(b).assign(q=[np.sort(a) if g else None for a, g in zip(arr, good)])
+            good &= b.horizon.isin(HORIZONS).to_numpy()
+            dup = b[good].duplicated(["unit_id", "week", "horizon"]).sum()
+            b = b[good].drop_duplicates(["unit_id", "week", "horizon"], keep="first")
+            m = keys.merge(b, on=["unit_id", "week", "horizon"], how="left", validate="one_to_one")
+            M = np.full((len(q), len(Q)), np.nan)
+            hit = m.q.notna().to_numpy()
+            if hit.any():
+                M[hit] = np.vstack(m.q[hit].to_numpy())
+            info.update(rows_in_file=int(len(arr)), rows_invalid=int((~good).sum()), rows_duplicate=int(dup),
+                        rows_matched=int(hit.sum()), rows_eval=int(len(q)))
+            if not hit.any():
+                raise ValueError("no row matches a rolling-origin (unit_id, week, horizon)")
+            mats[name] = M
+            log(f"  bench {name}: {hit.sum():,} of {len(q):,} rolling-origin rows ({info['rows_invalid']} invalid rows dropped)")
+        except Exception as e:  # a bad benchmark file must not block the build
+            info["error"] = str(e)
+            print(f"  WARNING bench file {p.name} skipped: {e}")
+        meta[name] = info
+    return mats, meta
+
+
+def evaluate_models(q, bench_dir=None, log=print):
+    """Score xgb, its ablations, the seasonal-naive baseline, every benchmark file and the median ensemble (element-wise
+    median of the 23 quantiles over xgb + all benchmarks, re-sorted, only on rows where all of them exist) on the same
+    rows: those where every model has a score. Returns (model x horizon table, fan-chart bands for the benchmarks and the
+    ensemble (None without benchmarks), meta). With no benchmark file the table holds the built-in models only, on the
+    rows of eval_summary.csv, and there is no ensemble (a median of xgb alone is xgb)."""
+    bench, meta = load_bench(q, bench_dir, log)
+    mats = {m: np.vstack(q[m].to_numpy()) for m in MODELS}
+    mats.update(bench)
+    members = ["xgb"] + list(bench)
+    if bench:
+        mats[ENSEMBLE] = np.sort(np.median(np.stack([mats[m] for m in members]), axis=0), axis=1)  # NaN unless all present
+    kind = {m: "ablation" if m.startswith("xgb_") else "baseline" if m == "naive" else "model" for m in MODELS}
+    kind.update({m: "benchmark" for m in bench}, **({ENSEMBLE: "ensemble"} if bench else {}))
+    sc = q[q.target.notna()].reset_index(drop=True)
+    keep = q.target.notna().to_numpy()
+    y, rows = score_rows({m: v[keep] for m, v in mats.items()}, sc.target.to_numpy(), sc["pop"].to_numpy())
+    s = pd.DataFrame(rows).assign(horizon=sc.horizon.to_numpy())
+    base_ok = s[[f"wis_{m}" for m in MODELS]].notna().all(axis=1)
+    same = s[[f"wis_{m}" for m in mats]].notna().all(axis=1)
+    out = []
+    for h, d in [(h, s[same & (s.horizon == h)]) for h in HORIZONS] + [("all", s[same])]:
+        for m in mats:
+            n_model = int(s.loc[base_ok & ((s.horizon == h) if h != "all" else True), f"wis_{m}"].notna().sum())
+            out.append(dict(model=m, kind=kind[m], horizon=str(h), n=len(d), WIS=d[f"wis_{m}"].mean(), MAE=d[f"ae_{m}"].mean(),
+                            cov50=d[f"cov50_{m}"].mean(), cov90=d[f"cov90_{m}"].mean(),
+                            relWIS_vs_naive=d[f"wis_{m}"].mean() / d.wis_naive.mean(),
+                            relWIS_vs_xgb=d[f"wis_{m}"].mean() / d.wis_xgb.mean(), n_model_rows=n_model))
+    tab = pd.DataFrame(out)
+    meta = dict(models=list(mats), benchmarks=meta, ensemble=dict(name=ENSEMBLE, members=members) if bench else None,
+                n_base_rows=int(base_ok.sum()), n_common_rows=int(same.sum()),
+                note="every model scored on the same rows (all models have a score); WIS on case counts")
+    bands = None
+    if bench:
+        bands = q[["unit_id", "week", "target_week", "horizon"]].copy()
+        bands["cases"] = np.expm1(q.target.to_numpy()) * q["pop"].to_numpy() / 1e5
+        pop = q["pop"].to_numpy()
+        for m in list(bench) + [ENSEMBLE]:
+            cases = to_cases(mats[m], pop)
+            for k, i in BAND.items():
+                bands[f"{m}_{k}"] = cases[:, i]
+    return tab, bands, meta
 
 
 # ---------------------------------------------------------------- production fit (for scenarios and the dashboard)
