@@ -6,7 +6,7 @@ steps and the data findings. [README.md](README.md) has setup and the source lis
 ## Scope
 
 - **Current phase: build (since 2026-10-23).** The full pipeline and dashboard exist: library code in `bantay/`,
-  one entry point `scripts/build.py` (stages `crosswalk panel leadlag forecast scenarios app`, or `build.bat`), and the
+  one entry point `scripts/build.py` (stages `crosswalk panel leadlag forecast ensemble scenarios catalog app lepto`, or `build.bat`), and the
   Streamlit app in `app/streamlit_app.py` (`run_app.bat`). Extend these; don't start parallel pipelines or notebooks.
 - **Missing data never blocks a build.** A stage that lacks an input calls `config.missing()` / `config.have()`, prints a
   warning, records it in `data/processed/status.json`, and leaves its columns NaN or skips the output. Code for pending
@@ -66,9 +66,14 @@ steps and the data findings. [README.md](README.md) has setup and the source lis
 - Scripts in `scripts/`, plain Python, `pathlib`, with paths relative to the repo root (`Path(__file__).resolve().parents[1]`).
   Keep the existing style: module docstring with usage, small functions, no heavy frameworks.
 - Reusable logic lives in the `bantay/` package (one module per layer: `units`, `dengue`, `storms`, `rain`, `rivers`,
-  `flood`, `grids`, `panel`, `leadlag`, `forecast`, `access`, `scenarios`); paths and constants come from `bantay/config.py`.
+  `flood`, `grids`, `panel`, `leadlag`, `forecast`, `access`, `scenarios`, `lepto`); paths and constants come from `bantay/config.py`.
   Expensive intermediates are cached in `data/interim/` and rebuilt when their raw inputs are newer.
-- Heavy optional packages (torch, chronos-forecasting) go in `requirements-bench.txt`, not `requirements.txt`.
+- Heavy optional packages (torch, chronos-forecasting, tabpfn) go in `requirements-bench.txt` and its own venv
+  (`%USERPROFILE%\.venvs\bantay-bench`), not `requirements.txt`. Benchmarks write `bench_<model>.parquet`; only
+  `forecast.BENCH_MODELS` join the ensemble.
+- Dashboard changes: run `python -m pytest tests` (AppTest + Playwright) before committing; keep new sections guarded so
+  the app renders when an output is missing.
+- Git worktrees that link `data/raw/<source>` as junctions: remove the junctions (`rmdir`) before `git worktree remove`.
 - Notebooks find the root with `ROOT = Path.cwd().parent if Path.cwd().name == "notebooks" else Path.cwd()`.
 - Commit the EDA notebook *with* outputs (it is the deliverable), but keep it under ~5 MB by using decimated rasters and small figures.
 - Commit messages: imperative, one line, plus detail if needed.
