@@ -38,8 +38,8 @@ One failed NOAH file no longer aborts the source. `dask` was added (needed by `x
 
 ## Next steps
 
-1. Bucket read access (*Storage Object Viewer*, bucket-level) was granted on 2026-10-23 to the five team `@student.ateneo.edu`
-   accounts (Angeline Go, Hubert Olegario, Princess Giron, Gregorio Pascua, Beatrice de Castro). Each runs `earthengine authenticate`, then
+1. Bucket read access (*Storage Object Viewer*, bucket-level) was granted on 2026-10-23 to the five team members'
+   Google accounts (listed in the bucket's IAM permissions). Each runs `earthengine authenticate`, then
    `python scripts/sync_data.py pull`. Running Earth Engine or pushing to the bucket also needs project-level IAM
    (*Service Usage Consumer*, *Earth Engine Resource Viewer*, write access on the bucket), granted in the Cloud console.
 2. Download PSGC 2Q 2026 and NHFR by hand into `data/raw/psgc/` and `data/raw/nhfr/`.

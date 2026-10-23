@@ -1,6 +1,6 @@
 # Rules for agents (and humans) working in this repo
 
-Bantay-Baha, PJDSC 2026, team G is Cash. Read [HANDOFF.md](HANDOFF.md) first: it holds the current state, the next
+Bantay-Baha, PJDSC 2026. Read [HANDOFF.md](HANDOFF.md) first: it holds the current state, the next
 steps and the data findings. [README.md](README.md) has setup and the source list. The concept is in `docs/`.
 
 ## Scope

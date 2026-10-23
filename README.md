@@ -1,7 +1,7 @@
 # Bantay-Baha
 
 A graph-based early warning and response system for flood-linked disease outbreaks in the Philippines.
-Team **G is Cash**, PJDSC 2026. The concept and plan are in [docs/](docs/); start with
+PJDSC 2026. The concept and plan are in [docs/](docs/); start with
 `docs/Bantay-Baha_Team_Explainer.pdf`.
 
 **Current phase: data acquisition and a quick EDA.** No model or dashboard code yet. See [HANDOFF.md](HANDOFF.md) for
@@ -17,7 +17,7 @@ setup.bat                      :: venv + packages + kernel + Google sign-in (onc
 setup.bat dengue_hdx cchain    :: same, but only the listed sources
 ```
 
-Sign in with your `@student.ateneo.edu` account when the browser opens. Re-running is safe; finished steps are skipped.
+Sign in with the Google account that was given bucket access when the browser opens. Re-running is safe; finished steps are skipped.
 Then open `notebooks/00_data_eda.ipynb` with the **Python (bantay-baha)** kernel.
 
 The bucket is `gs://bantay-baha-raw-hackathonproper` (private, `asia-southeast1`). It mirrors what the download scripts produce;

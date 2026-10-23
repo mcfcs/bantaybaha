@@ -11,7 +11,7 @@ REM  2. installs requirements.txt and the Jupyter kernel "Python (bantay-baha)"
 REM  3. signs you in to Google once (browser), if not signed in yet
 REM  4. pulls data\raw from gs://bantay-baha-raw-hackathonproper, checked against MANIFEST.csv
 REM
-REM  Sign in with the account that was given bucket access (your @student.ateneo.edu).
+REM  Sign in with the Google account that was given bucket access.
 REM  Safe to re-run: finished steps and files are skipped.
 REM  To rebuild from the original sources instead, use download_data.bat.
 REM ============================================================
@@ -39,7 +39,7 @@ echo [2/4] Installing Python packages ...
 if exist "%EE_CRED%" (
     echo [3/4] Already signed in to Google ^(%EE_CRED%^)
 ) else (
-    echo [3/4] Signing in to Google: a browser window will open. Use your @student.ateneo.edu account.
+    echo [3/4] Signing in to Google: a browser window will open. Use the account that was given bucket access.
     "%VENV%\Scripts\earthengine.exe" authenticate --auth_mode=localhost || (echo [ERROR] Sign-in failed. Re-run setup.bat. & exit /b 1)
 )
 
