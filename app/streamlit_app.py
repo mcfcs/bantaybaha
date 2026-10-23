@@ -17,7 +17,7 @@ from shapely import wkt
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from bantay.config import APP_DATA, PROCESSED, STORMS  # noqa: E402
-from bantay.scenarios import TIER_LABELS  # noqa: E402
+from bantay.scenarios import TIER_LABELS, TIERS  # noqa: E402
 
 st.set_page_config(page_title="Bantay-Baha", layout="wide")
 
@@ -43,8 +43,13 @@ def read(name, kind="parquet"):
     return json.loads(p.read_text(encoding="utf-8"))
 
 
+def stamp():
+    """Name and mtime of every build output: a rebuild changes it, so the cached data below is reloaded."""
+    return tuple(sorted((p.name, p.stat().st_mtime) for p in [*APP_DATA.glob("*"), PROCESSED / "status.json"] if p.exists()))
+
+
 @st.cache_data
-def load():
+def load(outputs_stamp):  # no leading underscore: Streamlit only hashes named args without one
     d = {k: read(f) for k, f in [("scen", "scenarios.parquet"), ("adm3", "scenarios_adm3.parquet"), ("tracks", "tracks.parquet"),
                                  ("swaths", "swaths.parquet"), ("ferries", "ferries.parquet"), ("fstat", "ferries_status.parquet"),
                                  ("edges", "leadlag_edges_pcmciplus.parquet"), ("nodes", "leadlag_nodes_pcmciplus.parquet"),
@@ -62,7 +67,7 @@ def load():
     return d
 
 
-D = load()
+D = load(stamp())
 if D["scen"] is None:
     st.error("No scenarios yet. Build them with `python scripts/build.py` (see README).")
     st.stop()
@@ -176,8 +181,8 @@ with tabs[1]:
                          hover_name="unit_name", hover_data={"R": ":.2f", "A": ":.1%", "pop": ":,.0f", "tier_label": False},
                          labels={"R": "Surge risk R = P(next 4 weeks > unit's 90th pct)", "A": "Access loss A (share cut off)",
                                  "tier_label": "Action tier"}, height=560)
-        fig.add_vline(x=0.3, line=dict(color="#c3c2b7", width=1, dash="dot"))
-        fig.add_hline(y=0.10, line=dict(color="#c3c2b7", width=1, dash="dot"))
+        fig.add_vline(x=TIERS["preposition_R"], line=dict(color="#c3c2b7", width=1, dash="dot"))
+        fig.add_hline(y=TIERS["deploy"][1], line=dict(color="#c3c2b7", width=1, dash="dot"))
         for _, r in d.nlargest(6, "P").iterrows():
             fig.add_annotation(x=r.R, y=r.A, text=r.unit_name, showarrow=False, yshift=14, font=dict(size=11))
         fig.update_layout(yaxis_tickformat=".0%", xaxis_range=[0, 1], plot_bgcolor="rgba(0,0,0,0)")

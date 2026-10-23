@@ -12,11 +12,19 @@ from rasterio import features
 from rasterio.windows import Window
 
 from .config import RAW, INTERIM, have
+from .units import UNITS_GPKG
 
 WORLDPOP = RAW / "worldpop" / "phl_ppp_2020_UNadj.tif"
 UNIT_RASTER = INTERIM / "units_100m.tif"
 POP_CELLS = INTERIM / "pop_cells_1km.parquet"
 BLOCK = 2048
+
+
+def fresh(path, *inputs):
+    """True if `path` exists and is newer than every existing input (e.g. the unit geometry it was built from)."""
+    if not path.exists():
+        return False
+    return all(path.stat().st_mtime >= p.stat().st_mtime for p in map(type(path), inputs) if p.exists())
 
 
 def unit_index(units):
@@ -26,7 +34,7 @@ def unit_index(units):
 
 
 def build_unit_raster(units, force=False):
-    if UNIT_RASTER.exists() and not force:
+    if fresh(UNIT_RASTER, UNITS_GPKG) and not force:
         return UNIT_RASTER
     if not have("worldpop", WORLDPOP):
         return None
@@ -81,7 +89,7 @@ def unit_population_worldpop(units):
 
 def build_pop_cells(units, adm3=None, factor=10, force=False):
     """WorldPop summed to ~1 km (factor x factor cells) -> points with pop, unit_id and (optionally) adm3_pcode."""
-    if POP_CELLS.exists() and not force:
+    if fresh(POP_CELLS, UNITS_GPKG, UNIT_RASTER) and not force:
         return gpd.read_parquet(POP_CELLS)
     if build_unit_raster(units) is None:
         return None

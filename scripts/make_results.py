@@ -32,6 +32,7 @@ from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
 from shapely import wkt  # noqa: E402
 
 from bantay.config import APP_DATA, PROCESSED, RAW, STORMS  # noqa: E402
+from bantay.scenarios import TIERS  # noqa: E402
 
 OUT = ROOT / "docs" / "results"
 FIG = OUT / "figures"
@@ -90,6 +91,7 @@ def stats(d):
     k["ev"] = e
     k["relwis"], k["cov90"], k["cov50"] = e.loc["all", "relWIS xgb/naive"], e.loc["all", "cov90 xgb"], e.loc["all", "cov50 xgb"]
     k["relwis_graph"] = e.loc["all", "relWIS xgb/nograph"]
+    k["relwis_noenv"], k["relwis_env"] = e.loc["all", "relWIS noenv/naive"], e.loc["all", "relWIS xgb/noenv"]
     k["n_scored"] = int(e.loc["all", "n"])
     c = d["cal"]["xgb"]
     k["brier"], k["brier_clim"], k["base_rate"] = c["brier"], c["brier_climatology"], c["base_rate"]
@@ -386,8 +388,8 @@ def fig_scatter(d, storm="ompong"):
     for t, (m, c, lab) in mk.items():
         g = s[s.tier == t]
         ax.scatter(g.R, g.A, s=np.sqrt(g["pop"]) / 18, marker=m, color=c, edgecolor="#FFFFFF", lw=0.6, label=f"{lab} ({len(g)})", zorder=3)
-    ax.axvline(0.3, color=GREY, lw=0.8, ls=(0, (2, 2)))
-    ax.axhline(0.10, color=GREY, lw=0.8, ls=(0, (2, 2)))
+    ax.axvline(TIERS["preposition_R"], color=GREY, lw=0.8, ls=(0, (2, 2)))
+    ax.axhline(TIERS["deploy"][1], color=GREY, lw=0.8, ls=(0, (2, 2)))
     for _, r in s.nlargest(5, "P").iterrows():
         ax.annotate(r["name"], (r.R, r.A), textcoords="offset points", xytext=(5, 4), fontsize=7.2)
     ax.set_xlim(0, 1)

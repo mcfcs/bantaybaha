@@ -21,8 +21,8 @@ from rasterio.windows import from_bounds, Window
 from rasterio.warp import reproject, Resampling
 
 from .config import RAW, INTERIM, STORMS, have, missing, record
-from .grids import WORLDPOP, UNIT_RASTER, unit_index, iter_blocks, worldpop_clean
-from .units import read_adm, read_crosswalk, ADM2_XW
+from .grids import WORLDPOP, UNIT_RASTER, unit_index, iter_blocks, worldpop_clean, fresh
+from .units import read_adm, read_crosswalk, ADM2_XW, UNITS_GPKG
 
 NOAH = RAW / "noah"
 EMS = RAW / "copernicus_ems"
@@ -77,7 +77,8 @@ def build_hazard_raster(units, rp, force=False):
     zips = sorted((NOAH / rp).glob("*.zip"))
     if not zips:
         return missing(f"noah_{rp}", f"no NOAH {rp} zips in {NOAH / rp}")
-    if out.exists() and not force and out.stat().st_mtime > max(z.stat().st_mtime for z in zips):
+    record(f"noah_{rp}", True, f"{len(zips)} zips")
+    if not force and fresh(out, *zips, UNITS_GPKG):  # coverage is rasterised from the unit polygons too
         return out
     if not have("worldpop", WORLDPOP):
         return None

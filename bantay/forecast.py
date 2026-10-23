@@ -35,6 +35,8 @@ GROUPS = {  # feature -> driver group shown in the dashboard
     "unit": ["unit", "log_pop"],
 }
 GRAPH_FEATURES = GROUPS["outbreak graph"]
+ENV_FEATURES = GROUPS["rain"] + GROUPS["river"] + GROUPS["storm / flood"]  # dropped in the "xgb_noenv" ablation
+MODELS = ("xgb", "xgb_nograph", "xgb_noenv", "naive")
 
 
 # ---------------------------------------------------------------- features
@@ -127,10 +129,12 @@ def graph_features(f, edges):
     return out
 
 
-def feature_columns(df, use_graph=True):
+def feature_columns(df, use_graph=True, use_env=True):
     cols = [c for g, cs in GROUPS.items() for c in cs if c in df.columns]
     if not use_graph:
         cols = [c for c in cols if c not in GRAPH_FEATURES]
+    if not use_env:
+        cols = [c for c in cols if c not in ENV_FEATURES]
     return cols
 
 
@@ -237,11 +241,14 @@ def rolling_origin(panel, start="2018-01-07", end=MODEL_END, refit_weeks=13, gra
                 continue
             res = test[["unit_id", "week", "target_week", "target", "pop"]].copy()
             res["horizon"], res["refit"] = h if h == "cum4" else int(h), R
-            for name, use_graph in (("xgb_nograph", False), ("xgb", True)):
-                if use_graph and edges.empty:  # no lead-lag links in this window: the graph model is the ablation
+            # ablations: no graph features; no rain / river / storm / flood features (graph kept)
+            for name, use_graph, use_env in (("xgb_nograph", False, True), ("xgb", True, True), ("xgb_noenv", True, False)):
+                if h == "cum4" and name == "xgb_noenv":
+                    continue  # the surge model is not ablated
+                if name == "xgb" and edges.empty:  # no lead-lag links in this window: the graph model is the ablation
                     res[name] = res["xgb_nograph"]
                     continue
-                cols = usable(train, feature_columns(train, use_graph))
+                cols = usable(train, feature_columns(train, use_graph, use_env))
                 m = fit_quantile_model(train[cols], train.target)
                 res[name] = list(predict_quantiles(m, test[cols]))
             if h != "cum4":
@@ -261,7 +268,7 @@ def score(fc):
     pop = fc["pop"].to_numpy()
     y = np.expm1(fc.target.to_numpy()) * pop / 1e5
     rows = {}
-    for name in ("xgb", "xgb_nograph", "naive"):
+    for name in MODELS:
         qs = to_cases(np.vstack(fc[name]), pop)
         rows[f"wis_{name}"] = wis(qs, y)
         rows[f"ae_{name}"] = np.abs(qs[:, IQ50] - y)
@@ -287,8 +294,11 @@ def score(fc):
 
 def summarise(s):
     def agg(d):
+        # every model on the same rows: the naive baseline is NaN where y(t+h-52) is missing, and averaging each model
+        # over its own non-NaN rows would make relWIS compare different samples
+        d = d.dropna(subset=[f"wis_{m}" for m in MODELS])
         r = {"n": len(d)}
-        for m in ("xgb", "xgb_nograph", "naive"):
+        for m in MODELS:
             r[f"WIS {m}"] = d[f"wis_{m}"].mean()
             r[f"MAE {m}"] = d[f"ae_{m}"].mean()
             r[f"cov50 {m}"] = d[f"cov50_{m}"].mean()
@@ -296,6 +306,8 @@ def summarise(s):
         r["relWIS xgb/naive"] = r["WIS xgb"] / r["WIS naive"]
         r["relWIS nograph/naive"] = r["WIS xgb_nograph"] / r["WIS naive"]
         r["relWIS xgb/nograph"] = r["WIS xgb"] / r["WIS xgb_nograph"]
+        r["relWIS noenv/naive"] = r["WIS xgb_noenv"] / r["WIS naive"]
+        r["relWIS xgb/noenv"] = r["WIS xgb"] / r["WIS xgb_noenv"]
         r["cov90 conformal"] = d.cov90_conformal.mean()
         return pd.Series(r)
 
@@ -329,23 +341,22 @@ def fit_at(panel, origin, graph_method="pcmciplus", boot=0):
     edges, nodes, meta = leadlag.learn(panel, end, method=graph_method, boot=boot)
     gf = graph_features(f, edges)
     thr = surge_thresholds(f, end)
-    models = {}
+    models, frames = {}, {}
     for h in list(HORIZONS) + ["cum4"]:
         df = pd.concat([cum4_frame(f) if h == "cum4" else target_frame(f, h), gf], axis=1)
+        frames[h] = df  # kept for predict_at: it only needs the origin rows, for any number of scenarios
         train = df[(df.target_week <= end) & df.target.notna()]
         cols = usable(train, feature_columns(train, True))
         models[h] = (fit_quantile_model(train[cols], train.target), cols)
-    return dict(origin=origin, train_end=end, edges=edges, nodes=nodes, meta=meta, thr=thr, models=models, features=f)
+    return dict(origin=origin, train_end=end, edges=edges, nodes=nodes, meta=meta, thr=thr, models=models, frames=frames)
 
 
 def predict_at(fitted, overrides=None):
     """Forecast every unit from the fitted origin. `overrides`: DataFrame unit_id + feature columns replacing the
     origin-week values (used for shifted storm tracks). Returns one row per unit with quantiles, R and SHAP drivers."""
-    f = fitted["features"]
-    gf = graph_features(f, fitted["edges"])
     rows = None
     for h, (m, cols) in fitted["models"].items():
-        df = pd.concat([cum4_frame(f) if h == "cum4" else target_frame(f, h), gf], axis=1)
+        df = fitted["frames"][h]
         X = df[df.week == fitted["origin"]].copy()
         if overrides is not None:
             o = overrides.set_index("unit_id")

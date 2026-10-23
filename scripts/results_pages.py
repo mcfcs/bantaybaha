@@ -1,6 +1,7 @@
 """HTML for the evaluation report (A4). Used by scripts/make_results.py; the deck is in scripts/results_slides.py."""
 
 from bantay.config import STORMS
+from bantay.scenarios import TIERS
 
 from make_results import (FONT_CSS, REFERENCES, fmt_m, storm_rows, eval_rows, edge_rows, sens_rows, valid_rows,
                           source_rows)
@@ -101,8 +102,8 @@ nothing is synthetic.</p>
 <li><b>The forecast beats the bar.</b> Pooled multi-quantile XGBoost reaches relative WIS {e.iloc[0]['relWIS xgb/naive']:.2f} at one week and
 {e.iloc[3]['relWIS xgb/naive']:.2f} at four weeks over {k['n_scored']:,} rolling-origin forecasts in 2018-2019; 90% intervals cover {k['cov90']:.0%}.</li>
 <li><b>Two honest null results.</b> Lead-lag graph features do not improve the forecast (relative WIS graph / no-graph = {k['relwis_graph']:.3f}),
-and adding rain, river and flood-hazard features moved relative WIS only from 0.547 to {k['relwis']:.3f}. At 1-4 weeks, recent cases and the
-season carry the skill.</li>
+and adding rain, river, storm and flood features moves relative WIS from {k['relwis_noenv']:.3f} to {k['relwis']:.3f}
+(ratio {k['relwis_env']:.3f}). At 1-4 weeks, recent cases and the season carry the skill.</li>
 <li><b>Surge probability is informative but under-confident.</b> Brier {k['brier']:.3f} vs {k['brier_clim']:.3f} for the base rate; forecasts of
 0.1-0.7 come true 10-20 points more often. It needs recalibration before the tier thresholds are trusted.</li>
 <li><b>The ranking points at the right places.</b> Spearman(R, observed next-4-week incidence) = {v.spearman_R_obs.iloc[0]:.2f} for Ompong and
@@ -184,7 +185,7 @@ ahead.</figcaption></figure>"""))
 <table><tr><th>comparison</th><th class='n'>relative WIS</th><th>reading</th></tr>
 <tr><td>XGBoost vs seasonal-naive</td><td class='n'>{k['relwis']:.3f}</td><td>{1 - k['relwis']:.0%} lower WIS than "same week last year"</td></tr>
 <tr><td>with vs without graph leader features</td><td class='n'>{k['relwis_graph']:.3f}</td><td>no gain: the graph has 0 links in every 2018 window and 2-6 in 2019</td></tr>
-<tr><td>with vs without rain / river / hazard (two builds)</td><td class='n'>0.545 vs 0.547</td><td>no meaningful gain at 1-4 weeks</td></tr></table>
+<tr><td>with vs without rain / river / storm / flood features</td><td class='n'>{k['relwis_env']:.3f}</td><td>{k['relwis']:.3f} vs {k['relwis_noenv']:.3f} against seasonal-naive, same rows</td></tr></table>
 <p>The graph ablation follows from the graph itself: with so few significant links, leader signals are empty for most provinces. The rain
 result has two likely reasons, not yet tested: rain moves with the season in a four-year panel, so the season features already carry it, and
 any effect of rain at lags longer than four weeks is outside this forecast horizon. Both are reported as findings rather than tuned away.</p>
@@ -193,7 +194,7 @@ R is under-confident.</figcaption></figure>
 <div><h2>Surge probability R</h2><p>Brier score {k['brier']:.3f} against {k['brier_clim']:.3f} for always predicting the base rate. The base rate is
 {k['base_rate']:.0%}, not 10%, because 2019 was an epidemic year and the thresholds come from earlier, quieter years.</p>
 <p>R is under-confident in the middle range: forecasts of 0.1-0.7 come true 10-20 points more often. Isotonic recalibration fitted on past
-rolling-origin forecasts only is the next step, before the tier thresholds (R &ge; 0.3, R &ge; 0.5) are relied on.</p></div></div>"""))
+rolling-origin forecasts only is the next step, before the tier thresholds (R &ge; {TIERS['preposition_R']:g}, R &ge; {TIERS['deploy'][0]:g}) are relied on.</p></div></div>"""))
 
     pages.append(("Graph", f"""<h1>The lead-lag graph</h1>
 <div class='two'><figure><img src='{F['leadlag']}'><figcaption>Figure 6. The {k['ll_edges']} PCMCI+ links learned on 2016-2019 (teal = leader).</figcaption></figure>
@@ -241,11 +242,11 @@ Ferry routes are 2024-2026 operations used as a proxy for 2018-2020. Shifted tra
 
     pages.append(("Priority", f"""<h1>Priority: Ompong 2018</h1>
 <div class='two'><figure><img src='{F['priority']}'><figcaption>Figure 8. P = R x A for Ompong with its track and gale swath; top 5 labelled.</figcaption></figure>
-<figure><img src='{F['scatter']}'><figcaption>Figure 9. Risk vs access. Dotted lines are the provisional tier thresholds (R = 0.3, A = 10%); marker
+<figure><img src='{F['scatter']}'><figcaption>Figure 9. Risk vs access. Dotted lines are the provisional tier thresholds (R = {TIERS['preposition_R']:g}, A = {TIERS['deploy'][1]:.0%}); marker
 shape encodes the action tier.</figcaption></figure></div>
 <p>Ompong made landfall in Cagayan on 15 September 2018. The model, trained on data to the landfall week only, puts <b>{k['top']['ompong']}</b>
 first, with {st.loc['ompong', 't3']} provinces in the "deploy mobile clinics" tier and {st.loc['ompong', 't2']} in "pre-position supplies".
-Provinces with high R but little observed loss of access fall to "pre-position"; "deploy" needs at least 10% of people cut off, which
+Provinces with high R but little observed loss of access fall to "pre-position"; "deploy" needs at least {TIERS['deploy'][1]:.0%} of people cut off, which
 observed flood alone did not produce for this storm (the hazard-map upper bound did, for 7 provinces).</p>
 <p>The dashboard repeats this for every storm and 14 shifted variants of each track (&plusmn;0.5&deg; and &plusmn;1&deg; north, &plusmn;1&deg; east), so a
 health officer can ask "what if it comes in further south?" and get an answer in seconds.</p>"""))

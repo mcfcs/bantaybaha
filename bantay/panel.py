@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .config import PROCESSED, INTERIM, STORMS, week_ending, record, status
+from .config import PROCESSED, INTERIM, STORMS, S1_AFTER_DAYS, week_ending, record, status
 from . import dengue, units as U, storms, rain, rivers, flood, grids
 
 PANEL = PROCESSED / "panel.parquet"
@@ -38,7 +38,7 @@ COLUMNS = {  # column -> (source, meaning)
     "hazard_any_25yr": ("noah", "share of population in any 25-yr flood hazard class (NaN = no NOAH map)"),
     "hazard_high_25yr": ("noah", "share of population in the high 25-yr class"),
     "storm_hazard_exposure": ("ibtracs x noah", "storm_gale_hit x hazard_any_25yr"),
-    "s1_flood_frac": ("sentinel-1 (GEE)", "observed new-flood share of land, landfall week and 3 weeks after; NaN otherwise"),
+    "s1_flood_frac": ("sentinel-1 (GEE)", "observed new-flood share of land, on the 4 weeks from the one containing landfall + S1_AFTER_DAYS (when the map is known); NaN otherwise"),
     "s1_flood_pop": ("sentinel-1 (GEE)", "people in observed new flood (WorldPop), same weeks"),
 }
 
@@ -77,14 +77,14 @@ def rain_layers(u):
         riv = rivers.unit_week_river(reach, reach_daily, wk)
         return wk.merge(riv, on=["week", "unit_id"], how="left")
 
-    ch = cached(INTERIM / "rain_chirps_unit_week.parquet", chirps_files + [rivers.HR_ZIP], build_chirps)
+    ch = cached(INTERIM / "rain_chirps_unit_week.parquet", chirps_files + [rivers.HR_ZIP, U.UNITS_GPKG], build_chirps)
     imerg_files = sorted(rain.IMERG_DIR.glob("*.tif"))
 
     def build_imerg():
         d = rain.imerg_daily_units(u)
         return None if d is None else rain.weekly(d, "imerg")
 
-    im = cached(INTERIM / "rain_imerg_unit_week.parquet", imerg_files, build_imerg) if imerg_files else rain.imerg_daily_units(u)
+    im = cached(INTERIM / "rain_imerg_unit_week.parquet", imerg_files + [U.UNITS_GPKG], build_imerg) if imerg_files else rain.imerg_daily_units(u)
     return ch, im
 
 
@@ -98,12 +98,14 @@ def static_layers(u):
 
 
 def s1_layers(u, wk):
+    """Observed flood per unit on the 4 weeks from when the map is known: the week containing landfall + S1_AFTER_DAYS
+    (its last after-image), not the landfall week, so no feature at an origin uses radar taken after it."""
     rows = []
     for key, s in STORMS.items():
         f = flood.s1_unit_flood(u, key)
         if f is None:
             continue
-        w0 = week_ending(s["landfall"])
+        w0 = week_ending(pd.Timestamp(s["landfall"]) + pd.Timedelta(days=S1_AFTER_DAYS))
         for k in range(4):
             rows.append(f.assign(week=w0 + pd.Timedelta(weeks=k)))
     if not rows:
@@ -116,7 +118,11 @@ def build_panel():
     u = U.load_units()
     wk = dengue.weeks()
     grid = pd.MultiIndex.from_product([sorted(u.unit_id), wk], names=["unit_id", "week"]).to_frame(index=False)
-    p = grid.merge(dengue.unit_week_cases(), on=["unit_id", "week"], how="left")
+    cases = dengue.unit_week_cases()
+    if cases is not None:
+        p = grid.merge(cases, on=["unit_id", "week"], how="left")
+    else:  # recorded as missing; the panel still builds so the other layers can be checked
+        p = grid.assign(cases=np.nan, n_reporting=np.nan, n_members=np.nan)
 
     pop = dengue.unit_population()
     if pop is not None:

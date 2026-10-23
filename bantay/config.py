@@ -32,6 +32,10 @@ STORMS = {
     "ulysses": dict(local="Ulysses", name="VAMCO", season=2020, landfall="2020-11-11", gee="Ulysses_Vamco_2020"),
 }
 
+# Sentinel-1 flood maps use images up to this many days after landfall (scripts/download_gee.py S1_AFTER), so a map is
+# known only from the DOH week containing landfall + S1_AFTER_DAYS. Features must not use it before that week.
+S1_AFTER_DAYS = 10
+
 # CDC FluSight 23 quantile levels
 QUANTILES = [0.01, 0.025] + [round(0.05 * i, 2) for i in range(1, 20)] + [0.975, 0.99]
 

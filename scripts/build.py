@@ -42,7 +42,7 @@ STAGES = ["crosswalk", "panel", "leadlag", "forecast", "scenarios", "app"]
 def stage_crosswalk(a):
     xw2, _ = U.build_crosswalks(force=a.force)
     if xw2 is None:
-        raise SystemExit("COD-AB is required for every later stage")
+        raise SystemExit("COD-AB and the dengue file are needed to write the crosswalks, which every later stage reads (see warnings above)")
     U.check_psgc(xw2)
     U.build_units_geometry(force=a.force)
 
@@ -72,7 +72,7 @@ def stage_forecast(a):
     summ = F.summarise(sc)
     cal, rel = F.surge_calibration(fc)
     print(f"  rolling origin done in {time.time() - t:.0f}s, {len(sc):,} scored forecasts")
-    print(summ[["n", "WIS xgb", "WIS naive", "relWIS xgb/naive", "relWIS xgb/nograph", "cov50 xgb", "cov90 xgb", "cov90 conformal"]].round(3).to_string())
+    print(summ[["n", "WIS xgb", "WIS naive", "relWIS xgb/naive", "relWIS xgb/nograph", "relWIS xgb/noenv", "cov50 xgb", "cov90 xgb", "cov90 conformal"]].round(3).to_string())
     print("  surge R calibration:", json.dumps(cal))
     summ.to_csv(C.APP_DATA / "eval_summary.csv")
     rel.to_csv(C.APP_DATA / "surge_reliability.csv", index=False)
@@ -82,12 +82,12 @@ def stage_forecast(a):
     keep = {"q05": 2, "q25": 6, "q50": F.IQ50, "q75": 16, "q95": 20}
     fcp = fc[fc.horizon != "cum4"].copy()
     pop = fcp["pop"].to_numpy()
-    for m in ("xgb", "xgb_nograph", "naive"):
+    for m in F.MODELS:
         cases = F.to_cases(pd.DataFrame(fcp[m].tolist()).to_numpy(), pop)
         for k, i in keep.items():
             fcp[f"{m}_{k}"] = cases[:, i]
     fcp["cases"] = np.expm1(fcp.target) * pop / 1e5
-    fcp.drop(columns=["xgb", "xgb_nograph", "naive"]).assign(horizon=lambda d: d.horizon.astype(int)).to_parquet(C.APP_DATA / "eval_forecasts.parquet")
+    fcp.drop(columns=list(F.MODELS)).assign(horizon=lambda d: d.horizon.astype(int)).to_parquet(C.APP_DATA / "eval_forecasts.parquet")
     pd.DataFrame([g[2] for g in graphs]).to_csv(C.APP_DATA / "eval_graphs.csv", index=False)
     C.record("forecast_eval", True, f"relWIS xgb/naive = {summ.loc['all', 'relWIS xgb/naive']:.3f}, "
                                     f"cov90 = {summ.loc['all', 'cov90 xgb']:.3f}")
