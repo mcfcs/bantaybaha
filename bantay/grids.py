@@ -11,7 +11,7 @@ import rasterio
 from rasterio import features
 from rasterio.windows import Window
 
-from .config import RAW, INTERIM, have
+from .config import RAW, INTERIM, have, record
 from .units import UNITS_GPKG
 
 WORLDPOP = RAW / "worldpop" / "phl_ppp_2020_UNadj.tif"
@@ -134,3 +134,123 @@ def build_pop_cells(units, adm3=None, factor=10, force=False):
     g = g.reset_index(drop=True)
     g.to_parquet(POP_CELLS)
     return g
+
+
+# ---------------------------------------------------------------- vulnerable populations (Meta HRSL)
+
+HRSL = {"pop_u5": RAW / "meta_hrsl" / "phl_children_under_five_2020_geotiff.zip",
+        "pop_60": RAW / "meta_hrsl" / "phl_elderly_60_plus_2020_geotiff.zip"}
+HRSL_CELLS = INTERIM / "pop_cells_hrsl.parquet"
+HRSL_ROWS = 1024  # rows per read of the ~30 m HRSL rasters (39,600 columns of float64)
+
+
+def _hrsl_block_sums(zpath, factor=10):
+    """Sum one HRSL raster (~30 m, inside its zip) onto the WorldPop 1 km blocks that build_pop_cells uses: each 30 m
+    pixel goes to the block holding its centre. Rows are read top to bottom (the zip member is deflated: sequential
+    reads avoid re-inflating). Returns (block sums as a flat array, n block columns, total, total outside WorldPop)."""
+    import zipfile
+
+    name = next(n for n in zipfile.ZipFile(zpath).namelist() if n.endswith(".tif"))
+    with rasterio.open(WORLDPOP) as sp:
+        wt, wh, ww = sp.transform, sp.height, sp.width
+    nbr, nbc = -(-wh // factor), -(-ww // factor)
+    sums = np.zeros(nbr * nbc)
+    total = outside = 0.0
+    with rasterio.open(f"zip://{zpath.as_posix()}!{name}") as src:
+        t = src.transform
+        lon = t.c + t.a * (np.arange(src.width) + 0.5)
+        wcol = np.floor((lon - wt.c) / wt.a).astype(np.int64)
+        for r0 in range(0, src.height, HRSL_ROWS):
+            h = min(HRSL_ROWS, src.height - r0)
+            a = src.read(1, window=Window(0, r0, src.width, h))
+            rr, cc = np.nonzero(np.isfinite(a) & (a > 0))
+            if not len(rr):
+                continue
+            v = a[rr, cc]
+            lat = t.f + t.e * (r0 + rr + 0.5)
+            wrow = np.floor((lat - wt.f) / wt.e).astype(np.int64)
+            wc = wcol[cc]
+            ok = (wrow >= 0) & (wrow < wh) & (wc >= 0) & (wc < ww)
+            total += v.sum()
+            outside += v[~ok].sum()
+            sums += np.bincount((wrow[ok] // factor) * nbc + wc[ok] // factor, weights=v[ok], minlength=len(sums))
+    return sums, nbc, total, outside
+
+
+def build_vulnerable_cells(cells, factor=10, force=False):
+    """Meta HRSL 2020 under-5 and 60+ people per 1 km population cell (same rows as `cells`), cached in
+    data/interim/pop_cells_hrsl.parquet. People in blocks without a WorldPop cell (no WorldPop population, or outside
+    every unit) are dropped and their share recorded. Columns are NaN for a layer whose zip is missing."""
+    if cells is None:
+        return None
+    zips = [z for z in HRSL.values() if z.exists()]
+    if HRSL_CELLS.exists() and not force and fresh(HRSL_CELLS, POP_CELLS, *zips):
+        v = pd.read_parquet(HRSL_CELLS)
+        if len(v) == len(cells) and np.allclose(v.x, cells.x) and np.allclose(v.y, cells.y):
+            return v
+    from concurrent.futures import ThreadPoolExecutor
+
+    with rasterio.open(WORLDPOP) as sp:
+        wt = sp.transform
+    br = np.floor((cells.y.to_numpy() - wt.f) / wt.e).astype(np.int64) // factor
+    bc = np.floor((cells.x.to_numpy() - wt.c) / wt.a).astype(np.int64) // factor
+    out = pd.DataFrame({"x": cells.x.to_numpy(), "y": cells.y.to_numpy()})
+    todo = {k: z for k, z in HRSL.items() if have(f"meta_hrsl_{k}", z)}
+    with ThreadPoolExecutor(max(1, len(todo))) as ex:  # GDAL reads release the GIL: both layers at once
+        res = dict(zip(todo, ex.map(_hrsl_block_sums, todo.values())))
+    for k in HRSL:
+        if k not in res:
+            out[k] = np.nan
+            continue
+        sums, nbc, total, outside = res[k]
+        out[k] = sums[br * nbc + bc]
+        kept = out[k].sum()
+        record(f"meta_hrsl_{k}", True, f"{total:,.0f} people in the raster, {kept:,.0f} on population cells "
+                                       f"({kept / total:.1%}); {outside:,.0f} outside the WorldPop grid")
+    HRSL_CELLS.parent.mkdir(parents=True, exist_ok=True)
+    out.to_parquet(HRSL_CELLS)
+    return out
+
+
+# ---------------------------------------------------------------- municipality (ADM3) raster
+
+ADM3_RASTER = INTERIM / "adm3_100m.tif"
+
+
+def adm3_index(adm3):
+    """Stable adm3_pcode <-> raster code (1..n; 0 = outside every municipality)."""
+    return {p: i + 1 for i, p in enumerate(sorted(adm3.adm3_pcode))}
+
+
+def build_adm3_raster(adm3, force=False):
+    """COD-AB ADM3 polygons on the WorldPop 100 m grid (uint16 codes from adm3_index), cached in data/interim/."""
+    if fresh(ADM3_RASTER, UNITS_GPKG) and not force:
+        return ADM3_RASTER
+    if adm3 is None or not have("worldpop", WORLDPOP):
+        return None
+    code = adm3_index(adm3)
+    with rasterio.open(WORLDPOP) as src:
+        prof = src.profile | dict(dtype="uint16", nodata=0, count=1, compress="lzw", tiled=True, blockxsize=512, blockysize=512)
+        a = adm3.to_crs(src.crs).reset_index(drop=True)
+        codes = a.adm3_pcode.map(code).to_numpy()
+        tmp = ADM3_RASTER.with_suffix(".part.tif")
+        INTERIM.mkdir(parents=True, exist_ok=True)
+        with rasterio.open(tmp, "w", **prof) as dst:
+            for r0 in range(0, src.height, BLOCK):
+                for c0 in range(0, src.width, BLOCK):
+                    w = Window(c0, r0, min(BLOCK, src.width - c0), min(BLOCK, src.height - r0))
+                    wt = src.window_transform(w)
+                    hit = a.sindex.query(_box(rasterio.windows.bounds(w, src.transform)))
+                    arr = np.zeros((int(w.height), int(w.width)), "uint16")
+                    if len(hit):
+                        arr = features.rasterize(((a.geometry.iloc[i], int(codes[i])) for i in hit),
+                                                 out_shape=arr.shape, transform=wt, fill=0, dtype="uint16")
+                    dst.write(arr, 1, window=w)
+    tmp.replace(ADM3_RASTER)
+    return ADM3_RASTER
+
+
+def _box(bounds):
+    from shapely.geometry import box
+
+    return box(*bounds)

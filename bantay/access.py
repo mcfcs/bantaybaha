@@ -14,8 +14,12 @@ Network method
   A cell is cut off if it had a route at baseline and in the storm has none, or its trip at least doubles and grows by
   more than 1 h. Access loss A = cut-off population / population.
 
-Raster method (MAP friction surface 2019, GEE): cost-distance from hospitals on the friction grid, flooded cells
-impassable. Run when the friction GeoTIFF is on disk; its disagreement with the network method is reported.
+Raster method (MAP motorised friction surface 2019, GEE; `FrictionGrid`): cost-distance from the same hospitals over
+the ~1 km friction grid, run in parallel with the network for every scenario when the GeoTIFF is on disk. Sea is
+impassable except along the RoRo route lines (same crossing + half-headway hours, same cancellations); the storm rules
+are the network's, applied at cell centres (observed flood or NOAH high hazard in the swath = impassable, medium =
+slowed); the same cut-off rule. The network stays the primary method; the gap between the two is reported as
+uncertainty (A_lo / A_hi).
 """
 
 import numpy as np
@@ -288,34 +292,118 @@ def road_multiplier(roads, in_swath, haz=None, observed=None, slow=0.5):
 # ---------------------------------------------------------------- raster method (MAP friction)
 
 FRICTION = RAW / "map_friction" / "friction_surface_2019_motorized_phl.tif"
+# MAP encodes open sea as this constant, not nodata (finding 15): 3.16 min/km motorised. Sea cells (this value and
+# outside every unit polygon, all_touched) are impassable except along the RoRo routes; cells inside a unit polygon keep
+# MAP's value whatever it is (coastal mixed cells, lakes).
+SEA_MIN_PER_M = 0.00316
+RASTER_SNAP_KM = 3.0  # a population cell whose centre falls on an impassable (sea) cell uses the nearest land cell
 
 
-def friction_times(hospitals, cells, flooded_mask_fn=None):
-    """Hours to the nearest hospital on the MAP motorised friction surface (minutes / metre) for each population
-    cell; `flooded_mask_fn(shape, transform)` -> bool grid of impassable cells. None if the raster is missing."""
+class FrictionGrid:
+    """Raster access method: cost-distance from hospitals over the MAP motorised friction surface 2019 (~1 km).
+
+    Cost per cell = friction (min/m) x cell size (geometric mean of the cell's E-W and N-S metres at its latitude), in
+    hours; skimage's MCP_Geometric walks 8-connected (diagonals x sqrt 2). Ferries: each RoRo route is drawn as a
+    straight line of grid cells between its ports; its sea cells get cost = (crossing + half headway hours, as in the
+    network) / the line's 8-connected length, so a full crossing costs about the same as in the network. A storm
+    cancels the same routes as the network (`ferry_keep`), which closes their sea cells again. Flooded land cells are
+    impassable and slowed cells cost 1/slow times more (`mult`, as `road_multiplier` for road edges), so the raster gets
+    the same storm rules as the roads, evaluated at cell centres. Population cells map to the friction cell under their
+    centre (the nearest land cell within RASTER_SNAP_KM if that one is sea); there is no walking leg, and people whose
+    own cell is flooded are cut off.
+    """
+
+    def __init__(self, units, hospitals, cells, ferries=None, ferry_ok=None):
+        import rasterio
+        from rasterio import features
+        from skimage.draw import line
+
+        with rasterio.open(FRICTION) as r:
+            fr = r.read(1).astype("float64")
+            self.T, nd = r.transform, r.nodata
+        H, W = fr.shape
+        self.shape = (H, W)
+        land = features.rasterize(((g, 1) for g in units.to_crs(4326).geometry), out_shape=fr.shape, transform=self.T,
+                                  fill=0, all_touched=True, dtype="uint8").astype(bool)
+        bad = (fr == nd) | ~np.isfinite(fr) | (fr <= 0)
+        sea = (np.isclose(fr, SEA_MIN_PER_M, rtol=0, atol=1e-7) & ~land) | bad
+        lat = self.T.f + self.T.e * (np.arange(H) + 0.5)
+        cell_m = abs(self.T.a) * 111320.0 * np.sqrt(np.cos(np.radians(lat)))
+        cost = fr * cell_m[:, None] / 60.0  # hours to cross one cell
+        cost[sea] = -1.0  # MCP: negative = impassable
+        self.cost0 = cost.ravel()
+        self.land_idx = np.flatnonzero(~sea.ravel())  # passable land cells: storm rules are evaluated at their centres
+        rr, cc = np.divmod(self.land_idx, W)
+        self.lon, self.lat = (np.asarray(v) for v in rasterio.transform.xy(self.T, rr, cc))
+        # ferries: sea cells of each route line, and their per-cell cost
+        self.f_cells, self.f_cost = [], []
+        if ferries is not None:
+            ok = np.ones(len(ferries), bool) if ferry_ok is None else np.asarray(ferry_ok)
+            r0, c0 = rasterio.transform.rowcol(self.T, ferries.from_lon, ferries.from_lat)
+            r1, c1 = rasterio.transform.rowcol(self.T, ferries.to_lon, ferries.to_lat)
+            for i, (a, b, c, d, h) in enumerate(zip(r0, c0, r1, c1, ferries.hours)):
+                lr, lc = line(int(a), int(b), int(c), int(d))
+                m = (lr >= 0) & (lr < H) & (lc >= 0) & (lc < W)
+                idx = lr[m] * W + lc[m]
+                idx = idx[sea.ravel()[idx]]
+                dr, dc = abs(int(c) - int(a)), abs(int(d) - int(b))
+                L = max(dr, dc) + (np.sqrt(2) - 1) * min(dr, dc)
+                self.f_cells.append(idx if ok[i] else idx[:0])
+                self.f_cost.append(float(h) / max(L, 1.0))
+        # hospitals and population cells
+        hr, hc = (np.asarray(v) for v in rasterio.transform.rowcol(self.T, hospitals.geometry.x, hospitals.geometry.y))
+        inside = (hr >= 0) & (hr < H) & (hc >= 0) & (hc < W)
+        self.h_idx = np.unique(hr[inside] * W + hc[inside])
+        cr, cc = rasterio.transform.rowcol(self.T, cells.geometry.x, cells.geometry.y)
+        c_idx = np.clip(np.asarray(cr), 0, H - 1) * W + np.clip(np.asarray(cc), 0, W - 1)
+        on_sea = sea.ravel()[c_idx]
+        self.c_ok = np.ones(len(c_idx), bool)
+        if on_sea.any():
+            tree = cKDTree(_xy(self.lon, self.lat))
+            d, j = tree.query(_xy(cells.geometry.x.to_numpy()[on_sea], cells.geometry.y.to_numpy()[on_sea]))
+            c_idx[on_sea] = self.land_idx[j]
+            self.c_ok[np.flatnonzero(on_sea)[d > RASTER_SNAP_KM]] = False
+        self.c_idx = c_idx
+        self.haz = None
+        self.n_snapped = int(on_sea.sum())
+        record("map_friction", True, f"{FRICTION.name}: {len(self.land_idx):,} passable land cells, {len(self.h_idx)} "
+                                     f"hospital cells, {self.n_snapped} population cells snapped off sea, "
+                                     f"{sum(len(c) > 0 for c in self.f_cells)} ferry lines")
+
+    def hazard(self, rp="25yr"):
+        """NOAH hazard class at the centre of every passable land cell (255 = no map; None without the raster)."""
+        if self.haz is None:
+            self.haz = hazard_at({"mid_lon": self.lon, "mid_lat": self.lat}, rp)
+        return self.haz
+
+    def in_swath(self, swath_m):
+        return edges_in(swath_m, {"u": self.lon, "mid_lon": self.lon, "mid_lat": self.lat})
+
+    def solve(self, mult=None, ferry_keep=None, speed_factor=1.0):
+        """Hours to the nearest hospital per population cell (inf = no route). mult: speed multiplier per passable land
+        cell (0 = impassable), as `road_multiplier` gives for road edges; ferry_keep: True = route still sails."""
+        from skimage.graph import MCP_Geometric
+
+        cost = self.cost0.copy()
+        land = cost[self.land_idx]
+        if mult is not None:
+            land = np.where(mult > 0, land / np.where(mult > 0, mult, 1.0), -1.0)
+        cost[self.land_idx] = np.where(land > 0, land / speed_factor, -1.0)
+        for i, (idx, c) in enumerate(zip(self.f_cells, self.f_cost)):
+            if len(idx) and (ferry_keep is None or ferry_keep[i]):
+                cur = cost[idx]
+                cost[idx] = np.where(cur > 0, np.minimum(cur, c / speed_factor), c / speed_factor)
+        starts = self.h_idx[cost[self.h_idx] > 0]  # a hospital in a flooded cell is not a start
+        acc, _ = MCP_Geometric(cost.reshape(self.shape)).find_costs(np.c_[np.divmod(starts, self.shape[1])])
+        t = acc.ravel()[self.c_idx]
+        return np.where(self.c_ok & np.isfinite(t), t, np.inf)
+
+
+def friction_grid(units, hospitals, cells, ferries=None, ferry_ok=None):
+    """FrictionGrid, or None (recorded as missing) if the MAP friction GeoTIFF is not on disk."""
     if not FRICTION.exists():
-        return missing("map_friction", f"{FRICTION.name} not found (needs scripts/download_gee.py)")
-    import rasterio
-    from skimage.graph import MCP_Geometric
-
-    with rasterio.open(FRICTION) as r:
-        fr = r.read(1).astype("float64")
-        T = r.transform
-        nd = r.nodata
-    fr[(fr == nd) | ~np.isfinite(fr) | (fr <= 0)] = np.inf  # sea / no data
-    cell_m = abs(T.a) * 111320 * np.cos(np.radians(LAT0))
-    cost = fr * cell_m / 60.0  # hours to cross a cell
-    if flooded_mask_fn is not None:
-        cost = np.where(flooded_mask_fn(cost.shape, T), np.inf, cost)
-    hr, hc = rasterio.transform.rowcol(T, hospitals.geometry.x, hospitals.geometry.y)
-    starts = [(a, b) for a, b in zip(hr, hc) if 0 <= a < cost.shape[0] and 0 <= b < cost.shape[1] and np.isfinite(cost[a, b])]
-    mcp = MCP_Geometric(np.where(np.isfinite(cost), cost, -1))  # negative = impassable
-    acc, _ = mcp.find_costs(starts)
-    cr, cc = rasterio.transform.rowcol(T, cells.geometry.x, cells.geometry.y)
-    cr, cc = np.clip(cr, 0, cost.shape[0] - 1), np.clip(cc, 0, cost.shape[1] - 1)
-    t = acc[cr, cc]
-    record("map_friction", True, FRICTION.name)
-    return np.where(np.isfinite(t), t, np.inf)
+        return missing("map_friction", f"{FRICTION.name} not found (needs scripts/download_gee.py map_friction)")
+    return FrictionGrid(units, hospitals, cells, ferries, ferry_ok)
 
 
 # ---------------------------------------------------------------- summaries
