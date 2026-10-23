@@ -112,7 +112,8 @@ def video(url):
         glide(pg, unit_path(pg, "Pampanga"), pause=3500)
         # 1:15 shift the track south, then north, then back
         slider = pg.get_by_test_id("stSidebar").get_by_role("slider").first
-        glide(pg, centre(pg, "[data-testid=stSidebar] [role=slider]"), pause=600)
+        bb = slider.bounding_box()
+        glide(pg, (bb["x"] + bb["width"] / 2, bb["y"] + bb["height"] / 2), pause=600)
         slider.focus()
         for key, n in (("ArrowLeft", 2), ("ArrowRight", 4)):
             for _ in range(n):
@@ -140,6 +141,7 @@ def video(url):
         pg.wait_for_timeout(2000)
         box = pg.locator("[data-testid=stSelectbox] >> visible=true").filter(has_text="Province").first
         box.get_by_role("combobox").click()
+        pg.keyboard.type("Cagayan", delay=90)  # the option list is virtualised: filter, then pick
         pg.get_by_role("option", name="Cagayan", exact=True).click()
         ready(pg, map_=False)
         pg.get_by_test_id("stRadio").filter(has_text="Weeks ahead").get_by_text("4", exact=True).click()
