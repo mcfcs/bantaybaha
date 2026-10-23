@@ -12,6 +12,7 @@ Stages (in order):
   forecast   rolling-origin evaluation 2018-2019: WIS, coverage, relative WIS, ablation, surge calibration
   scenarios  access loss + priority for the 4 typhoons x shifted tracks, validation, sensitivity, benchmark
   app        small files for the map (simplified units)
+  lepto      leptospirosis lag analysis: national (Mendeley) + 12 CCHAIN cities, typhoon event study (stretch goal)
 
 Inputs that are not on disk (GEE sources, PSGC, NHFR, or anything still downloading) are skipped with a warning and
 their outputs are NaN / marked missing in data/processed/status.json. Re-run after they arrive; no code changes needed.
@@ -36,7 +37,7 @@ from bantay import units as U, panel as PN, leadlag as LL, forecast as F, scenar
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.filterwarnings("ignore", message="In analysis mode")  # tigramite shape notice (T < N is expected)
-STAGES = ["crosswalk", "panel", "leadlag", "forecast", "scenarios", "app"]
+STAGES = ["crosswalk", "panel", "leadlag", "forecast", "scenarios", "app", "lepto"]
 
 
 def stage_crosswalk(a):
@@ -121,6 +122,18 @@ def stage_app(a):
     s = u.copy()
     s["geometry"] = s.geometry.simplify(0.01)
     s.to_file(C.APP_DATA / "units_simplified.geojson", driver="GeoJSON")
+
+
+def stage_lepto(a):
+    from bantay import lepto
+
+    nat, city, ev = lepto.run()
+    for name, t in (("national", nat), ("city", city)):
+        if t is not None:
+            r = t[(t.exposure == "rain_7d") & (t.model == "joint") & (t.variant == t.variant.iloc[0])]
+            print(f"  {name} rain lag profile (joint, IRR per {lepto.RAIN_PER:g} mm/week): "
+                  + ", ".join(f"{'sum' if np.isnan(x.lag) else int(x.lag)}: {x.irr:.2f}" for x in r.itertuples()))
+    print(f"  summary: {lepto.SUMMARY.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
