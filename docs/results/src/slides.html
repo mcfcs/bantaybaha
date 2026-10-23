@@ -1,0 +1,242 @@
+<!doctype html><html><head><meta charset='utf-8'><title>Bantay-Baha slides</title><style>
+@font-face { font-family: "Big Shoulders Display"; src: url("fonts/BigShouldersDisplay-VF.ttf"); font-weight: 100 900; }
+@font-face { font-family: "Barlow"; src: url("fonts/Barlow-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Barlow"; src: url("fonts/Barlow-SemiBold.ttf"); font-weight: 600 700; }
+@font-face { font-family: "Barlow"; src: url("fonts/Barlow-Italic.ttf"); font-style: italic; }
+@font-face { font-family: "Space Mono"; src: url("fonts/SpaceMono-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Space Mono"; src: url("fonts/SpaceMono-Bold.ttf"); font-weight: 600 700; }
+:root { --ink: #0F1E28; --deep: #0B1720; --teal: #0A86B5; --teal-lt: #5FC3E4; --amber: #C77700; --signal: #F2A93B;
+        --red: #C8323F; --grey: #6B7A88; --rule: #DDE3E8; --paper: #FFFFFF; --mist: #F2F5F7; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Barlow", sans-serif; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.mono { font-family: "Space Mono", monospace; }
+table { border-collapse: collapse; width: 100%; }
+th { font-family: "Space Mono", monospace; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; text-align: left; }
+td, th { padding: 4px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+td.n, th.n { text-align: right; font-family: "Space Mono", monospace; }
+
+@page { size: 13.333in 7.5in; margin: 0; }
+.s { width: 13.333in; height: 7.5in; position: relative; overflow: hidden; page-break-after: always; background: var(--deep); color: #E6EEF2;
+     padding: .62in .7in .55in .7in; }
+.s:last-child { page-break-after: auto; }
+.s::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(105deg, rgba(95,195,228,.05) 0 2px, transparent 2px 16px); }
+.s > * { position: relative; }
+.top { display: flex; justify-content: space-between; align-items: center; margin-bottom: .18in; }
+.sig { font-family: "Space Mono"; font-size: 10pt; letter-spacing: .18em; color: var(--deep); background: var(--signal); padding: 3px 9px;
+       font-weight: 600; text-transform: uppercase; }
+.crit { font-family: "Space Mono"; font-size: 8.5pt; letter-spacing: .12em; color: #8FA6B4; text-transform: uppercase; border: 1px solid #2C4352;
+        padding: 3px 8px; }
+h1 { font-family: "Big Shoulders Display"; font-weight: 800; text-transform: uppercase; font-size: 46pt; line-height: .92; margin: 0 0 .16in;
+     color: #FFFFFF; letter-spacing: .005em; }
+h1 em { font-style: normal; color: var(--signal); }
+h3 { font-family: "Big Shoulders Display"; font-weight: 700; text-transform: uppercase; font-size: 18pt; color: var(--teal-lt); margin: 0 0 .06in;
+     letter-spacing: .03em; }
+p, li { font-size: 16pt; line-height: 1.36; margin: 0 0 .09in; color: #DCE8EE; }
+li { margin-bottom: .07in; }
+ul { padding-left: .22in; margin: 0; }
+b { color: #FFFFFF; }
+.dim { color: #8FA6B4; }
+.num { font-family: "Big Shoulders Display"; font-weight: 800; color: var(--signal); line-height: .9; }
+.card { background: #FFFFFF; padding: .12in; border-top: 4px solid var(--signal); }
+.card img { display: block; margin: auto; max-width: 100%; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .35in; align-items: start; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .25in; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: .22in; }
+.g64 { display: grid; grid-template-columns: 1.55fr 1fr; gap: .35in; align-items: start; }
+.g46 { display: grid; grid-template-columns: 1fr 1.45fr; gap: .35in; align-items: start; }
+.stat { border-left: 3px solid var(--signal); padding-left: .14in; }
+.stat .num { font-size: 50pt; }
+.stat p { font-size: 13pt; color: #AFC3CE; }
+.box { border: 1px solid #2C4352; padding: .16in .2in; background: rgba(15,30,40,.6); }
+.box h3 { margin-bottom: .08in; }
+.box p, .box li { font-size: 14pt; }
+table { font-size: 12.5pt; color: #DCE8EE; }
+th { color: #8FA6B4; font-size: 8.5pt; border-bottom: 1.5px solid #5B7385; }
+td { border-bottom: 1px solid #22394A; padding: 4px 8px; }
+td.n { color: #FFFFFF; }
+.pn { position: absolute; right: .7in; bottom: .28in; font-family: "Space Mono"; font-size: 9pt; color: #5B7385; }
+.brand { position: absolute; left: .7in; bottom: .28in; font-family: "Space Mono"; font-size: 9pt; color: #5B7385; letter-spacing: .12em; }
+.flow { display: grid; grid-template-columns: 1fr .5in 1fr .5in 1fr; grid-template-rows: auto auto auto; row-gap: .2in; }
+.flow .node { align-self: stretch; }
+.arr { position: relative; align-self: center; height: 3px; background: var(--signal); }
+.arr::after { content: ""; position: absolute; right: -1px; top: -6px; border-left: 11px solid var(--signal); border-top: 7.5px solid transparent;
+              border-bottom: 7.5px solid transparent; }
+.down { position: relative; justify-self: center; width: 3px; background: var(--signal); margin: -.2in 0; }
+.down::after { content: ""; position: absolute; bottom: -1px; left: -6px; border-top: 11px solid var(--signal); border-left: 7.5px solid transparent;
+               border-right: 7.5px solid transparent; }
+.flow .node { border: 1.5px solid var(--teal-lt); padding: .12in .16in; min-height: 1.12in; }
+.flow .node h3 { font-size: 15pt; }
+.flow .node p { font-size: 12.5pt; margin: 0; color: #AFC3CE; }
+.flow .node.hot { border-color: var(--signal); background: rgba(242,169,59,.08); }
+.time { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; margin-top: .2in; }
+.time div { border-top: 4px solid var(--teal-lt); padding: .12in .14in 0 0; }
+.time div.hot { border-top-color: var(--signal); }
+.time .when { font-family: "Space Mono"; font-size: 10pt; color: var(--signal); letter-spacing: .08em; }
+.time h3 { font-size: 16pt; margin: .04in 0; }
+.time p { font-size: 12.5pt; color: #AFC3CE; margin: 0; }
+.loop { display: grid; grid-template-columns: repeat(4, 1fr); gap: .18in; }
+.loop .step { border: 1.5px solid #2C4352; padding: .16in; position: relative; min-height: 2.45in; }
+.loop .step .k { font-family: "Big Shoulders Display"; font-weight: 800; font-size: 34pt; color: var(--signal); line-height: 1; }
+.loop .step h3 { font-size: 16pt; }
+.loop .step p { font-size: 13.5pt; color: #AFC3CE; }
+.refs p { font-size: 6.9pt; line-height: 1.24; margin: 0 0 .045in; padding-left: .18in; text-indent: -.18in; color: #C9D8E0; overflow-wrap: anywhere; }
+.refs { column-count: 2; column-gap: .35in; }
+.title h1 { font-size: 118pt; margin-top: .7in; }
+.title .sub { font-size: 21pt; color: #CFE3EC; max-width: 9in; line-height: 1.25; }
+.title .who { position: absolute; left: .7in; bottom: .7in; font-family: "Space Mono"; font-size: 11pt; color: #8FA6B4; line-height: 1.7; }
+.title .bar { width: 1.6in; height: .12in; background: var(--signal); margin-top: .35in; }
+.shot { border: 1px solid #2C4352; width: 100%; display: block; }
+</style></head><body><section class='s title'><div class='top'><span class='sig'>Signal 01</span><span class='crit'>PJDSC 2026</span></div>
+<div class='bar'></div><h1>Bantay-<em>Baha</em></h1>
+<div class='sub'>Early warning for flood-linked disease: which provinces will see a surge after a typhoon, and which of them will be cut off
+from a hospital.</div>
+<div class='grid3' style='margin-top:.55in;max-width:10.5in'>
+<div class='stat'><div class='num' style='font-size:44pt'>45%</div><p>lower forecast error than the seasonal baseline</p></div>
+<div class='stat'><div class='num' style='font-size:44pt'>7 / 10</div><p>top-ranked provinces surged after Typhoon Ompong</p></div>
+<div class='stat'><div class='num' style='font-size:44pt'>100</div><p>ferry routes a single typhoon can close, out of 108</p></div></div>
+<div class='who'>PJDSC 2026</div>
+<div class='pn'>01 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 02 / Problem</span><span class='crit'>Rationale: problem statement</span></div><h1>Typhoons bring floods.<br>Floods bring <em>disease</em>.</h1>
+<div class='grid3' style='margin-top:.1in'>
+<div class='stat'><div class='num'>8-9</div><p>tropical cyclones cross the Philippines every year, mostly from July to October (PAGASA)</p></div>
+<div class='stat'><div class='num'>2,089</div><p>leptospirosis cases and 162 deaths after Typhoon Ondoy in 2009, five times the national lepto deaths of 2008
+(Balbuena et al., 2010)</p></div>
+<div class='stat'><div class='num'>146k</div><p>dengue cases from January to July 2019, when DOH declared a national epidemic</p></div></div>
+<div class='g64' style='margin-top:.18in'><div class='card'><img src='../figures/f01_timeline.png' style='height:2.3in;width:auto'></div>
+<div class='box'><h3>Who is hit hardest</h3><p>Floodwater spreads leptospirosis within days; standing water breeds the mosquitoes behind dengue for weeks after.
+The same storm closes roads and grounds ferries, so the most exposed communities are often the ones that <b>cannot reach a hospital</b>.</p></div></div><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>02 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 03 / The cascade</span><span class='crit'>Rationale: problem and motivation</span></div><h1>The response arrives <em>after</em> the surge</h1>
+<p>A typhoon sets off a sequence. Each step is predictable from data that already exist, yet today's response starts only at the last one.</p>
+<div class='time'>
+<div><span class='when'>DAY 0</span><h3>Landfall</h3><p>Gale-force winds; ferries suspended; roads blocked by landslides and debris</p></div>
+<div><span class='when'>DAYS 1-7</span><h3>Flooding</h3><p>Rivers carry upstream rain to the lowlands; towns at river mouths flood after the rain stops</p></div>
+<div><span class='when'>WEEKS 1-2</span><h3>Leptospirosis</h3><p>Risk from rainfall peaks about two weeks later and runs through flooding (Matsushita et al., 2018)</p></div>
+<div><span class='when'>WEEKS 2-8</span><h3>Dengue</h3><p>Breeding sites multiply; cases rise province by province</p></div>
+<div class='hot'><span class='when'>TODAY</span><h3>Response</h3><p>Prophylaxis, vector control and medical teams go out after cases rise; isolated places are reached last</p></div></div>
+<p style='margin-top:.16in;font-size:17pt'>What is missing is a tool that looks at <b>this</b> storm and says, before the roads close, <b>where</b> disease
+will rise and <b>who</b> will be cut off.</p>
+<div class='grid3' style='margin-top:.1in'>
+<div class='box'><h3>Dengue forecasts exist</h3><p>Climate-driven, province-level (Buczak et al., 2014), but not for a specific storm and without honest ranges</p></div>
+<div class='box'><h3>Access studies exist</h3><p>Flood access loss for one city, Metro Manila (Tariverdi et al., 2023), with no health forecast and no ferries</p></div>
+<div class='box'><h3>Outbreak waves are known</h3><p>Dengue travels between regions (van Panhuis et al., 2015), but this is unused for storm response</p></div></div><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>03 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 04 / Access</span><span class='crit'>Rationale: problem and motivation</span></div><h1>An archipelago makes <em>access</em> the problem</h1>
+<div class='g64'><div><ul>
+<li><b>An island nation.</b> Many provinces reach the nearest hospital only by RoRo ferry; a gale warning cancels the crossing</li>
+<li><b>Roads in floodplains.</b> The road to the provincial hospital often runs exactly where the river overflows</li>
+<li><b>Measured once, for one city.</b> A 15 cm flood leaves about 22% of Metro Manila without access to higher-level care (Tariverdi et al., 2023);
+nothing comparable exists nationwide, or with ferries</li></ul>
+<div class='box' style='margin-top:.2in'><h3>Guiding question</h3><p>Can flood exposure, a graph of outbreak spread and a storm-disrupted transport network, combined
+with calibrated forecasts, rank the provinces that need help first, early enough to act?</p></div></div>
+<div class='card'><img src='../figures/f13_network.png' style='height:4.55in;width:auto'></div></div><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>04 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 05 / Design</span><span class='crit'>Methodology and approach</span></div><h1>Three graphs, <em>one ranking</em></h1>
+<div class='flow'>
+<div class='node' style='grid-area:1/1'><h3>1 / Flood exposure</h3><p>Sentinel-1 observed flood, CHIRPS + IMERG rain, rain routed down rivers, UP NOAH hazard, typhoon gale swaths</p></div>
+<div class='arr' style='grid-area:1/2'></div>
+<div class='node' style='grid-area:2/1'><h3>2 / Lead-lag graph</h3><p>PCMCI+ finds which provinces rise first; their recent rise feeds every follower's forecast</p></div>
+<div class='arr' style='grid-area:2/2'></div>
+<div class='node' style='grid-area:1/3/3/4;display:flex;flex-direction:column;justify-content:center'><h3>Quantile forecast</h3>
+<p>pooled XGBoost, 23 quantiles, 1-4 weeks ahead, tested by rolling origin and scored by WIS</p></div>
+<div class='arr' style='grid-area:1/4'></div>
+<div class='node hot' style='grid-area:1/5'><h3>R / surge risk</h3><p>chance the next 4 weeks beat the province's usual bad month</p></div>
+<div class='down' style='grid-area:2/5'></div>
+<div class='node' style='grid-area:3/1'><h3>3 / Access graph</h3><p>OSM roads + 108 RoRo ferry routes + hospitals; a storm cancels ferries and cuts flooded roads</p></div>
+<div class='arr' style='grid-area:3/2'></div>
+<div class='node' style='grid-area:3/3'><h3>A / access loss</h3><p>share of people who lose their route to a hospital</p></div>
+<div class='arr' style='grid-area:3/4'></div>
+<div class='node hot' style='grid-area:3/5'><h3>P = R &times; A</h3><p>ranked provinces, drivers and an action tier for a real or shifted track</p></div></div>
+<p class='dim' style='margin-top:.14in;font-size:13pt'>Each half is validated on its own: forecast vs a seasonal baseline; access vs Metro Manila and Copernicus.</p><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>05 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 06 / Data</span><span class='crit'>Data sources and acquisition</span></div><h1>501 open files, <em>22 sources</em></h1>
+<div class='g64'><div><table><tr><th>layer</th><th>sources</th></tr>
+<tr><td>Disease</td><td>DOH-Epi dengue, province/city x week, 2016-2021 (HDX); Project CCHAIN; OpenDengue</td></tr>
+<tr><td>People and places</td><td>2020 census; COD-AB boundaries; WorldPop 2020 100 m; Meta HRSL under-5 / 60+</td></tr>
+<tr><td>Rain and rivers</td><td>CHIRPS v2.0; GPM IMERG V07; HydroRIVERS</td></tr>
+<tr><td>Storms and flood</td><td>IBTrACS; Sentinel-1 radar (Google Earth Engine); UP NOAH hazard maps; Copernicus EMS</td></tr>
+<tr><td>Getting to care</td><td>OpenStreetMap roads; MARINA RoRo routes (roroph); OSM and NOAH health facilities; MAP friction surface</td></tr></table>
+<div class='grid3' style='margin-top:.22in'>
+<div class='stat'><div class='num' style='font-size:34pt'>22,270</div><p>province-weeks (85 x 262)</p></div>
+<div class='stat'><div class='num' style='font-size:34pt'>2.1 M</div><p>road segments, 383,000 km</p></div>
+<div class='stat'><div class='num' style='font-size:34pt'>369k</div><p>1 km population cells, 109 M people</p></div></div></div>
+<div><div class='card'><img src='../figures/f02_coverage.png' style='height:3.3in;width:auto'></div><p class='dim' style='margin-top:.12in;font-size:13pt'>Only aggregated, non-identifiable health data.</p></div></div><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>06 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 07 / Challenges</span><span class='crit'>Execution: challenges and mitigation</span></div><h1>The data fought back. <em>How we handled it</em></h1>
+<table><tr><th>what we found</th><th>what we did</th></tr>
+<tr><td>126 dengue reporting units, not 81 provinces: cities mixed in, misspellings, boundaries changed since 2020</td><td>A reviewed crosswalk to 85 harmonised 2016-2020 provinces; a week counts only if every member reported</td></tr>
+<tr><td>2020 reporting collapsed under COVID-19 (91k vs 442k cases)</td><td>2020 is never a forecast target; it is used for access scenarios only</td></tr>
+<tr><td>Flood-hazard maps missing for 11 provinces</td><td>Carried as missing, never as zero hazard</td></tr>
+<tr><td>Storm wind radii missing on up to 58% of track points</td><td>Fallback chain (US, then Japan radius, then fixed), tested in sensitivity</td></tr>
+<tr><td>Satellite flood maps disagreed with Copernicus at first</td><td>Same-orbit change detection with a dB-difference rule, validated against Copernicus EMS</td></tr>
+<tr><td>Short series make causal-discovery algorithms over-confident</td><td>False discovery rate control, tested on pure noise first</td></tr></table><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>07 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 08 / Method</span><span class='crit'>Technical rigor: validity of techniques</span></div><h1><em>Honest ranges</em>, tested like real time</h1>
+<div class='grid2'><div class='box'><h3>Model</h3><ul><li>One pooled XGBoost per horizon, 1-4 weeks ahead</li>
+<li>23 quantiles (the CDC FluSight standard), so every forecast is a range</li><li>Inputs: recent cases, season, rain, river, storm, flood, leader provinces</li>
+<li>A direct 4-week model gives the surge probability R; SHAP explains each one</li></ul></div>
+<div class='box'><h3>Evaluation without leakage</h3><ul><li>Rolling origin over 2018-2019: refit every 13 weeks on past data only</li>
+<li>The outbreak graph and surge thresholds are re-learned inside each window</li><li>Weighted interval score on case counts (Bracher et al., 2021)</li>
+<li>Bar to beat: "same week last year" (seasonal naive)</li></ul></div></div>
+<div class='g64' style='margin-top:.18in;align-items:center'><div class='card'><img src='../figures/f14_rolling.png' style='height:1.5in;width:auto'></div>
+<div class='stat'><div class='num' style='font-size:44pt'>34,170</div><p>out-of-sample forecasts scored: 85 provinces, 4 horizons, 2018-2019</p></div></div><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>08 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 09 / Result 1</span><span class='crit'>Execution: findings</span></div><h1>45% better than the bar: <em>relative WIS 0.55</em></h1>
+<div class='g64'><div class='card'><img src='../figures/f03_wis.png' style='height:3.6in;width:auto'></div>
+<div><div class='stat'><div class='num'>0.55</div><p>relative WIS vs seasonal naive (target below 1): 0.42 one week ahead, 0.66 four weeks ahead</p></div>
+<div class='stat' style='margin-top:.2in'><div class='num'>85%</div><p>of outcomes fall inside the 90% range (target 80-95%), at every horizon</p></div>
+<div class='stat' style='margin-top:.2in'><div class='num'>34k</div><p>forecasts scored out of sample, 85 provinces, 2018-2019</p></div></div></div><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>09 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 10 / Result 2</span><span class='crit'>Execution: findings and analysis</span></div><h1>What the forecast <em>looks like</em> in a storm year</h1>
+<div class='card'><img src='../figures/f05_fan.png' style='height:3.35in;width:auto'></div>
+<p style='margin-top:.15in'>Cagayan, where Ompong made landfall (dashed line). The model is refit every quarter on past data only and still follows the 2018
+season and the 2019 epidemic, with ranges that widen at four weeks. The seasonal-naive line (grey) misses the epidemic's timing and size.</p><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>10 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 11 / Result 3</span><span class='crit'>Technical rigor: analytical depth</span></div><h1>Surge probability R: <em>it ranks provinces well</em></h1>
+<div class='g46'><div><div class='stat'><div class='num'>0.089</div><p>Brier score of R, against 0.216 for always predicting the base rate</p></div>
+<ul style='margin-top:.2in'><li>When R says high, surges follow: above 0.7, 96% of province-weeks surged</li>
+<li>In the middle range R under-states the risk (forecasts of 0.1-0.7 verify 10-20 points higher), so mid-range provinces deserve attention</li>
+<li>2019's epidemic made surges common (32% of province-weeks)</li></ul></div>
+<div class='card'><img src='../figures/f04_reliability.png' style='height:4.0in;width:auto'></div></div><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>11 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 12 / Result 4</span><span class='crit'>Technical rigor: novelty and validity</span></div><h1>How outbreaks <em>travel</em> between provinces</h1>
+<div class='g46'><div><ul><li>PCMCI+ separates "A rises, then B" from "both rise in the rainy season" (Runge, 2020)</li>
+<li><b>8 lead-lag links</b> survive false-discovery control; plain correlation would have drawn 4,265</li>
+<li>Leaders are marked as <b>sentinel sites</b> on the dashboard: places to watch first</li></ul>
+<table style='margin-top:.1in;font-size:11.5pt'><tr><th>leader</th><th>follower</th><th class='n'>lead</th><th class='n'>bootstrap</th></tr><tr><td>Cavite</td><td>Sorsogon</td><td class='n'>1 wk</td><td class='n'>70%</td></tr><tr><td>NCR Second</td><td>Bulacan</td><td class='n'>3 wk</td><td class='n'>70%</td></tr><tr><td>Quirino</td><td>Surigao del Sur</td><td class='n'>1 wk</td><td class='n'>65%</td></tr><tr><td>Ilocos Norte</td><td>Romblon</td><td class='n'>1 wk</td><td class='n'>75%</td></tr><tr><td>NCR Third</td><td>Zamboanga del Norte</td><td class='n'>1 wk</td><td class='n'>85%</td></tr></table></div>
+<div class='card'><img src='../figures/f06_leadlag.png' style='height:4.5in;width:auto'></div></div><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>12 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 13 / Result 5</span><span class='crit'>Data: observed flood exposure</span></div><h1>Flood seen from <em>space</em>, through the clouds</h1>
+<div class='g64'><div><div class='card'><img src='../figures/f11_s1_flood.png' style='height:2.45in;width:auto'></div>
+<table style='margin-top:.12in;font-size:11.5pt'><tr><th>typhoon</th><th class='n'>people in new flood</th><th class='n'>provinces &gt;1% flooded</th><th>most people flooded</th></tr><tr><td>Ompong</td><td class='n'>0.5 M</td><td class='n'>5</td><td>Pampanga</td></tr><tr><td>Tisoy</td><td class='n'>1.1 M</td><td class='n'>14</td><td>Isabela</td></tr><tr><td>Rolly</td><td class='n'>0.6 M</td><td class='n'>10</td><td>Camarines Sur</td></tr><tr><td>Ulysses</td><td class='n'>1.5 M</td><td class='n'>15</td><td>Cagayan</td></tr></table></div>
+<div><div class='card'><img src='../figures/f12_s1_ems.png' style='height:3.0in;width:auto'></div><p class='dim' style='font-size:12pt;margin-top:.1in'>Checked against Copernicus EMS (Ompong): 55% of Sentinel-1 flood inside the EMS areas matches EMS polygons; Sentinel-1 recovers 24% of the EMS-mapped area (one radar pass every 6-12 days misses short floods).</p></div></div><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>13 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 14 / Result 6</span><span class='crit'>Execution: findings</span></div><h1>Who gets <em>cut off</em>: four typhoons</h1>
+<div class='card'><img src='../figures/f08_access.png' style='height:2.5in;width:auto'></div>
+<table style='margin-top:.1in;font-size:10.5pt'><tr><th>typhoon</th><th class='n'>ferry routes cut</th><th class='n'>people cut off</th><th class='n'>mean A</th><th class='n'>mean R</th><th class='n'>deploy / pre-position</th><th>top priority</th></tr>
+<tr><td>Ompong <span class='mono' style='color:var(--grey)'>Mangkhut 2018</span></td><td class='n'>42</td><td class='n'>0.3 M</td><td class='n'>0.2%</td><td class='n'>0.23</td><td class='n'>0 / 21</td><td>Pampanga</td></tr>
+<tr><td>Tisoy <span class='mono' style='color:var(--grey)'>Kammuri 2019</span></td><td class='n'>100</td><td class='n'>0.7 M</td><td class='n'>0.6%</td><td class='n'>0.08</td><td class='n'>0 / 6</td><td>Camarines Norte</td></tr>
+<tr><td>Rolly <span class='mono' style='color:var(--grey)'>Goni 2020</span></td><td class='n'>42</td><td class='n'>0.4 M</td><td class='n'>0.3%</td><td class='n'>0.02</td><td class='n'>0 / 0</td><td>Oriental Mindoro</td></tr>
+<tr><td>Ulysses <span class='mono' style='color:var(--grey)'>Vamco 2020</span></td><td class='n'>54</td><td class='n'>1.0 M</td><td class='n'>0.8%</td><td class='n'>0.04</td><td class='n'>0 / 2</td><td>Cagayan</td></tr></table>
+<p class='dim' style='margin-top:.08in;font-size:12.5pt'>Roads cut only where radar saw new water: a lower bound. Using flood-hazard maps instead gives
+4.8-10.3 M people cut off: an upper bound.</p><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>14 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 15 / Result 7</span><span class='crit'>Real-world application</span></div><h1>Ompong 2018: <em>Pampanga</em> first</h1>
+<div class='grid2'><div class='card'><img src='../figures/f07_priority_ompong.png' style='height:4.25in;width:auto'></div>
+<div><div class='card'><img src='../figures/f09_scatter.png' style='height:2.95in;width:auto'></div>
+<p style='margin-top:.15in'>Using data up to the landfall week only: 21 provinces flagged to <b>pre-position supplies</b>
+before the surge. In the next four weeks,
+<b>7 of the top 10</b> really surged.</p></div></div><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>15 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 16 / Result 8</span><span class='crit'>Technical rigor: validity</span></div><h1>It points at the <em>right places</em></h1>
+<div class='grid2'><div><div class='card'><img src='../figures/f10_validation.png' style='height:2.9in;width:auto'></div>
+<div class='grid3' style='margin-top:.2in'>
+<div class='stat'><div class='num' style='font-size:34pt'>0.74</div><p>rank correlation, Tisoy</p></div>
+<div class='stat'><div class='num' style='font-size:34pt'>&ge;0.99</div><p>ranking stability (Kendall's &tau;)</p></div>
+<div class='stat'><div class='num' style='font-size:34pt'>30%</div><p>NCR cut off vs ~22% published</p></div></div></div>
+<div><ul><li><b>Backtest</b>: R's ranking matches the next four weeks' incidence, &rho; = 0.69 (Ompong) and 0.74 (Tisoy)</li>
+<li><b>Ompong</b>: 7 of the 10 highest-priority provinces surged, against a 40% base rate</li>
+<li><b>Robust</b>: nine changes to travel speeds, ferry rules, cut-off rules and storm radius leave the ranking in place (Kendall's &tau; &ge; 0.99)</li>
+<li><b>Benchmark</b>: 30% of Metro Manila cut off when hazard-zone roads close; Tariverdi et al. (2023) found ~22% for a 15 cm flood, the same order</li></ul></div></div><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>16 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 17 / Demo</span><span class='crit'>Demonstration video: functional showcase</span></div>
+<div class='g64'><img class='shot' src='../figures/dashboard.png'>
+<div><h3>What a health officer sees</h3><ul style='font-size:12.5pt'><li>Pick a typhoon, or shift its track north, south or east</li>
+<li>A priority map with the track, gale swath and cancelled ferries</li><li>Risk vs access, with the action tier for every province</li>
+<li>Expected cases for the next 4 weeks with a 90% range, people cut off, and the drivers behind each risk</li>
+<li>Drill down to municipalities</li><li>Answers in seconds: every scenario is pre-computed</li></ul></div></div>
+<div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>17 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 18 / Deploy</span><span class='crit'>Future directions: real-world application</span></div><h1>Putting it <em>in the loop</em></h1>
+<div class='loop'>
+<div class='step'><div class='k'>1</div><h3>Storm watch</h3><p>PAGASA issues a tropical cyclone bulletin. Its forecast track goes in, along with shifted tracks for the cone of uncertainty.</p></div>
+<div class='step'><div class='k'>2</div><h3>Pre-landfall bulletin</h3><p>Within minutes: a ranked province list with action tiers to DOH regional offices, provincial health offices and DRRMOs, 48-72 h ahead.</p></div>
+<div class='step'><div class='k'>3</div><h3>Post-landfall update</h3><p>Days 1-7: Sentinel-1 flood maps replace the hazard estimate; ferry and road status updates who is cut off.</p></div>
+<div class='step'><div class='k'>4</div><h3>Learn every week</h3><p>Weeks 1-8: each PIDSR report is compared with the forecast; the model recalibrates and tiers are adjusted.</p></div></div>
+<p style='margin-top:.2in;font-size:17pt'>The output is an <b>action</b>, not a chart: monitor sentinel sites, pre-position doxycycline and vector control, or send mobile clinics
+<b>before</b> the roads and ferries close.</p>
+<div class='grid3' style='margin-top:.12in'>
+<div class='box'><h3>DOH regional office</h3><p>Ranked provinces with action tiers and expected cases (90% range) for the next 4 weeks</p></div>
+<div class='box'><h3>Provincial health office</h3><p>Which municipalities lose hospital access, and the drivers behind the risk</p></div>
+<div class='box'><h3>DRRMO</h3><p>Ferry routes and roads expected to close: where mobile clinics must go first</p></div></div><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>18 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 19 / Usable</span><span class='crit'>Future directions: deployment</span></div><h1>Built to be <em>used</em>, not just shown</h1>
+<div class='grid3'>
+<div class='box'><h3>Where the users are</h3><ul><li>Web dashboard for regional epidemiologists</li><li>One-page PDF bulletin per storm for provincial health offices</li>
+<li>SMS summary for the "deploy" provinces</li><li>Low bandwidth: maps need no tile server</li></ul></div>
+<div class='box'><h3>Designed with them</h3><ul><li>Action tiers co-designed with DOH and LGU health officers and DRRMOs</li><li>Filipino and English labels</li>
+<li>Usability tested (System Usability Scale) before each typhoon season</li></ul></div>
+<div class='box'><h3>Runs on what exists</h3><ul><li>Weekly PIDSR counts, PAGASA tracks, Sentinel-1, the DOH facility registry</li>
+<li>Extends to leptospirosis with city-level surveillance</li></ul></div></div>
+<div class='grid4' style='margin-top:.16in'>
+<div class='stat'><div class='num' style='font-size:34pt'>~4 s</div><p>to recompute hospital access for a new track, nationwide</p></div>
+<div class='stat'><div class='num' style='font-size:34pt'>~6 s</div><p>for the dashboard to load a scenario</p></div>
+<div class='stat'><div class='num' style='font-size:34pt'>100%</div><p>open data and open code</p></div>
+<div class='stat'><div class='num' style='font-size:34pt'>1</div><p>command rebuilds everything when new data arrive</p></div></div>
+<p style='margin-top:.08in;font-size:16pt'>The novelty is the join: <b>storm-specific</b> disease risk &times; <b>storm-specific</b> loss of access, ferries included, in one
+ranking a health officer can act on.</p><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>19 / 20</div></section><section class='s'><div class='top'><span class='sig'>Signal 20 / Sources</span><span class='crit'>Sources: APA 7th edition</span></div><div class='refs'><p>Ansari, A. F., Shchur, O., Küken, J., Auer, A., Han, B., Mercado, P., Rangapuram, S. S., Shen, H., Stella, L., Shen, X., Turkmen, C., Bohlke-Schneider, M., Erickson, N., Kapoor, S., Li, Z., Wang, B., Williams, A. R., Ahmed, A., Weber, S., ... Wang, Y. (2025). <i>Chronos-2: From univariate to universal forecasting</i>. arXiv. https://arxiv.org/abs/2510.15821</p><p>Balbuena, A., Herbosa, T., & Gundran, C. P. (2010). Cases of leptospirosis after Typhoon Ondoy (international name: Ketsana) seen at the emergency department: The Philippine General Hospital experience. <i>WIT Transactions on Information and Communication Technologies, 43</i>, 605–612. https://doi.org/10.2495/RISK100501</p><p>Benjamini, Y., & Hochberg, Y. (1995). Controlling the false discovery rate: A practical and powerful approach to multiple testing. <i>Journal of the Royal Statistical Society: Series B (Methodological), 57</i>(1), 289–300. https://doi.org/10.1111/j.2517-6161.1995.tb02031.x</p><p>Blondel, V. D., Guillaume, J.-L., Lambiotte, R., & Lefebvre, E. (2008). Fast unfolding of communities in large networks. <i>Journal of Statistical Mechanics: Theory and Experiment, 2008</i>(10), P10008. https://doi.org/10.1088/1742-5468/2008/10/P10008</p><p>Bracher, J., Ray, E. L., Gneiting, T., & Reich, N. G. (2021). Evaluating epidemic forecasts in an interval format. <i>PLoS Computational Biology, 17</i>(2), e1008618. https://doi.org/10.1371/journal.pcbi.1008618</p><p>Buczak, A. L., Baugher, B., Babin, S. M., Ramac-Thomas, L. C., Guven, E., Elbert, Y., Koshute, P. T., Velasco, J. M. S., Roque, V. G., Jr., Tayag, E. A., Yoon, I.-K., & Lewis, S. H. (2014). Prediction of high incidence of dengue in the Philippines. <i>PLoS Neglected Tropical Diseases, 8</i>(4), e2771. https://doi.org/10.1371/journal.pntd.0002771</p><p>Chen, T., & Guestrin, C. (2016). XGBoost: A scalable tree boosting system. In <i>Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining</i> (pp. 785–794). https://doi.org/10.1145/2939672.2939785</p><p>Copernicus Emergency Management Service. (2018). <i>EMSR312: Typhoon Mangkhut in the Philippines</i> [Rapid mapping activation]. European Commission. https://mapping.emergency.copernicus.eu/activations/EMSR312/</p><p>Department of Health Epidemiology Bureau. (2021). <i>DOH-Epi dengue data 2016–2021</i> [Data set]. Humanitarian Data Exchange. https://data.humdata.org/dataset/ac63a95e-7296-42fb-802b-7f7541c73e45</p><p>Funk, C., Peterson, P., Landsfeld, M., Pedreros, D., Verdin, J., Shukla, S., Husak, G., Rowland, J., Harrison, L., Hoell, A., & Michaelsen, J. (2015). The climate hazards infrared precipitation with stations—A new environmental record for monitoring extremes. <i>Scientific Data, 2</i>, 150066. https://doi.org/10.1038/sdata.2015.66</p><p>Gibbs, I., & Candès, E. (2021). Adaptive conformal inference under distribution shift. <i>Advances in Neural Information Processing Systems, 34</i>, 1660–1672.</p><p>Gorelick, N., Hancher, M., Dixon, M., Ilyushchenko, S., Thau, D., & Moore, R. (2017). Google Earth Engine: Planetary-scale geospatial analysis for everyone. <i>Remote Sensing of Environment, 202</i>, 18–27. https://doi.org/10.1016/j.rse.2017.06.031</p><p>Huffman, G. J., Stocker, E. F., Bolvin, D. T., Nelkin, E. J., & Tan, J. (2023). <i>GPM IMERG final precipitation L3 half hourly 0.1 degree x 0.1 degree V07</i> [Data set]. NASA Goddard Earth Sciences Data and Information Services Center. https://doi.org/10.5067/GPM/IMERG/3B-HH/07</p><p>Knapp, K. R., Kruk, M. C., Levinson, D. H., Diamond, H. J., & Neumann, C. J. (2010). The International Best Track Archive for Climate Stewardship (IBTrACS): Unifying tropical cyclone data. <i>Bulletin of the American Meteorological Society, 91</i>(3), 363–376. https://doi.org/10.1175/2009BAMS2755.1</p><p>Lehner, B., & Grill, G. (2013). Global river hydrography and network routing: Baseline data and new approaches to study the world's large river systems. <i>Hydrological Processes, 27</i>(15), 2171–2186. https://doi.org/10.1002/hyp.9740</p><p>Lundberg, S. M., & Lee, S.-I. (2017). A unified approach to interpreting model predictions. <i>Advances in Neural Information Processing Systems, 30</i>, 4765–4774.</p><p>Matsushita, N., Ng, C. F. S., Kim, Y., Suzuki, M., Saito, N., Ariyoshi, K., Salva, E. P., Dimaano, E. M., Villarama, J. B., Go, W. S., & Hashizume, M. (2018). The non-linear and lagged short-term relationship between rainfall and leptospirosis and the intermediate role of floods in the Philippines. <i>PLoS Neglected Tropical Diseases, 12</i>(4), e0006331. https://doi.org/10.1371/journal.pntd.0006331</p><p>OpenStreetMap contributors. (2026). <i>OpenStreetMap data extract: Philippines</i> [Data set]. Geofabrik. https://download.geofabrik.de/asia/philippines.html</p><p>Page, L., Brin, S., Motwani, R., & Winograd, T. (1999). <i>The PageRank citation ranking: Bringing order to the web</i> (Technical Report 1999-66). Stanford InfoLab.</p><p>Petricola, S., Reinmuth, M., Lautenbach, S., Hatfield, C., & Zipf, A. (2022). Assessing road criticality and loss of healthcare accessibility during floods: The case of Cyclone Idai, Mozambique 2019. <i>International Journal of Health Geographics, 21</i>, 14. https://doi.org/10.1186/s12942-022-00315-2</p><p>Philippine Statistics Authority. (2021). <i>Philippines: 2020 census of population and housing, population by municipality</i> [Data set]. Humanitarian Data Exchange. https://data.humdata.org/dataset/c1edf0c5-58c8-4d39-b566-937b1ad7907f</p><p>Philippine Statistics Authority & National Mapping and Resource Information Authority. (2025). <i>Philippines: Subnational administrative boundaries (COD-AB)</i> [Data set]. Humanitarian Data Exchange. https://data.humdata.org/dataset/caf116df-f984-4deb-85ca-41b349d3f313</p><p>Runge, J. (2020). Discovering contemporaneous and lagged causal relations in autocorrelated nonlinear time series datasets. In <i>Proceedings of the 36th Conference on Uncertainty in Artificial Intelligence</i> (PMLR 124, pp. 1388–1397). https://arxiv.org/abs/2003.03685</p><p>Runge, J., Nowack, P., Kretschmer, M., Flaxman, S., & Sejdinovic, D. (2019). Detecting and quantifying causal associations in large nonlinear time series datasets. <i>Science Advances, 5</i>(11), eaau4996. https://doi.org/10.1126/sciadv.aau4996</p><p>Tariverdi, M., Nunez-del-Prado, M., Leonova, N., & Rentschler, J. (2023). Measuring accessibility to public services and infrastructure criticality for disasters risk management. <i>Scientific Reports, 13</i>, 1569. https://doi.org/10.1038/s41598-023-28460-z</p><p>Tatem, A. J. (2017). WorldPop, open data for spatial demography. <i>Scientific Data, 4</i>, 170004. https://doi.org/10.1038/sdata.2017.4</p><p>Tellman, B., Sullivan, J. A., Kuhn, C., Kettner, A. J., Doyle, C. S., Brakenridge, G. R., Erickson, T. A., & Slayback, D. A. (2021). Satellite imaging reveals increased proportion of population exposed to floods. <i>Nature, 596</i>, 80–86. https://doi.org/10.1038/s41586-021-03695-w</p><p>UN-SPIDER. (n.d.). <i>Recommended practice: Flood mapping and damage assessment using Sentinel-1 SAR data in Google Earth Engine</i>. United Nations Office for Outer Space Affairs. https://www.un-spider.org/advisory-support/recommended-practices/recommended-practice-google-earth-engine-flood-mapping</p><p>van Panhuis, W. G., Choisy, M., Xiong, X., Chok, N. S., Akarasewi, P., Iamsirithaworn, S., Lam, S. K., Chong, C. K., Lam, F. C., Phommasak, B., Vongphrachanh, P., Bouaphanh, K., Rekol, H., Hien, N. T., Thai, P. Q., Duong, T. N., Chuang, J.-H., Liu, Y.-L., Ng, L.-C., ... Burke, D. S. (2015). Region-wide synchrony and traveling waves of dengue across eight countries in Southeast Asia. <i>Proceedings of the National Academy of Sciences, 112</i>(42), 13069–13074. https://doi.org/10.1073/pnas.1501375112</p><p>Weiss, D. J., Nelson, A., Vargas-Ruiz, C. A., Gligorić, K., Bavadekar, S., Gabrilovich, E., Bertozzi-Villa, A., Rozier, J., Gibson, H. S., Shekel, T., Kamath, C., Lieber, A., Schulman, K., Shao, Y., Qarkaxhija, V., Nandi, A. K., Keddie, S. H., Rumisha, S., Amratia, P., ... Gething, P. W. (2020). Global maps of travel time to healthcare facilities. <i>Nature Medicine, 26</i>, 1835–1838. https://doi.org/10.1038/s41591-020-0931-3</p></div><div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>20 / 20</div></section></body></html>

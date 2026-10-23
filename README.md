@@ -1,13 +1,30 @@
 # Bantay-Baha
 
 A graph-based early warning and response system for flood-linked disease outbreaks in the Philippines.
-Team **G is Cash**, PJDSC 2026. The concept and plan are in [docs/](docs/); start with
+PJDSC 2026. The concept and plan are in [docs/](docs/); start with
 `docs/Bantay-Baha_Team_Explainer.pdf`.
 
-**Current phase: data acquisition and a quick EDA.** No model or dashboard code yet. See [HANDOFF.md](HANDOFF.md) for
-where things stand and [AGENTS.md](AGENTS.md) for the rules on handling data and code.
+**Current phase: build.** The pipeline (panel, lead-lag graph, quantile forecast, access model, priority scenarios) and
+the Streamlit dashboard are in place; results are in [docs/results/](docs/results/). See [HANDOFF.md](HANDOFF.md) for where
+things stand and what is still missing, and [AGENTS.md](AGENTS.md) for the rules on handling data and code.
 
 ## Quick start (Windows)
+
+**Fastest: pull the team's copy from Cloud Storage** (all of `data/raw`, ~7 GB, checked against `MANIFEST.csv`).
+You need access to the GCP project `hackathonproper` (ask the project owner to grant you *Storage Object Viewer* on the bucket; that is all a pull needs).
+
+```bat
+setup.bat                      :: venv + packages + kernel + Google sign-in (once) + pull all data
+setup.bat dengue_hdx cchain    :: same, but only the listed sources
+```
+
+Sign in with the Google account that was given bucket access when the browser opens. Re-running is safe; finished steps are skipped.
+Then open `notebooks/00_data_eda.ipynb` with the **Python (bantay-baha)** kernel.
+
+The bucket is `gs://bantay-baha-raw-hackathonproper` (private, `asia-southeast1`). It mirrors what the download scripts produce;
+after adding or refreshing a source, run the download script and then `scripts\sync_data.py push`.
+
+**From the original sources** (slower; also what rebuilds the bucket):
 
 You need Python 3.10+ on PATH and roughly 8 GB of free disk (the open data are ~7 GB, 4.7 GB of it UP NOAH).
 
@@ -25,12 +42,30 @@ It is safe to re-run: finished files are skipped, so after a dropped connection 
 
 Then open `notebooks/00_data_eda.ipynb` with the **Python (bantay-baha)** kernel.
 
+### Build and run the dashboard
+
+```bat
+build.bat                 :: everything: crosswalk, panel, leadlag, forecast, scenarios, app (about 1 h the first time)
+build.bat panel forecast  :: selected stages
+run_app.bat               :: opens the dashboard in the browser
+python scripts\make_results.py   :: regenerates the report and slides in docs\results\
+```
+
+`build.bat` runs `scripts/build.py`. Inputs that are not on disk yet (Sentinel-1 flood masks, PSGC, NHFR, or anything still
+downloading) are skipped with a warning, their outputs are left empty and listed in `data/processed/status.json` and on the
+dashboard's *Data status* tab. Re-run the build after the files arrive; no code changes are needed. The panel's data card is
+written to `data/processed/panel_card.md`.
+
+Optional zero-shot benchmark (Chronos-2, installs torch): `pip install -r requirements-bench.txt`, then
+`python scripts/benchmark_tsfm.py`.
+
 ### Earth Engine (optional, free)
 
-IMERG rainfall, the MAP friction surface, the Global Flood Database and the Sentinel-1 scene inventory come from Google Earth Engine.
+IMERG rainfall, the MAP friction surface, the Global Flood Database, the Sentinel-1 scene inventory and the per-typhoon
+Sentinel-1 flood masks come from Google Earth Engine.
 1. Register a non-commercial project at <https://code.earthengine.google.com/register> (*Unpaid usage → Academia & Research*).
 2. `%USERPROFILE%\.venvs\bantay-baha\Scripts\earthengine.exe authenticate`
-3. `download_data.bat <your-project-id>`
+3. `download_data.bat <your-project-id>` (the team project is `hackathonproper`)
 
 No NASA Earthdata account is needed; IMERG comes through Earth Engine.
 
@@ -49,10 +84,18 @@ These sites block scripted downloads, so save the files by hand:
 docs/                       concept proposal, team explainer, submitted proposal (PDF)
 scripts/download_data.py    open-source downloads (idempotent, writes MANIFEST.csv)
 scripts/download_gee.py     Earth Engine downloads (needs --project)
+setup.bat                   one-click team setup: venv, kernel, sign-in, pull data from the bucket
+scripts/sync_data.py        push/pull data/raw to/from the team's private Cloud Storage bucket
 download_data.bat           one-click setup + download for Windows
+scripts/build.py            one-command rebuild of everything the dashboard reads (build.bat)
+scripts/make_results.py     regenerates docs/results/ (evaluation report + 20-slide deck, PDF)
+scripts/benchmark_tsfm.py   optional Chronos-2 benchmark (requirements-bench.txt)
+bantay/                     library: units, dengue, storms, rain, rivers, flood, grids, panel, leadlag, forecast, access, scenarios
+app/streamlit_app.py        the dashboard (run_app.bat)
 notebooks/00_data_eda.ipynb one notebook: a short EDA of every dataset + proposal checks
 data/raw/                   downloaded data (git-ignored, read-only; only MANIFEST.csv is tracked)
-data/interim/, processed/   derived data (git-ignored, rebuilt by scripts)
+data/crosswalks/            reviewed crosswalks into the harmonised 2016-2020 province units (tracked)
+data/interim/, processed/   derived data (git-ignored, rebuilt by scripts/build.py)
 ```
 
 ## Data sources
@@ -71,6 +114,7 @@ data/interim/, processed/   derived data (git-ignored, rebuilt by scripts)
 | `copernicus_ems` | EMSR312 (Ompong) flood delineation; EMSR478 (Rolly) damage grading | Flood cross-check | open |
 | `noah` | UP NOAH flood hazard, 5- and 25-year, per province | Static susceptibility | open (Google Drive) |
 | `gfd`, `sentinel1` | Global Flood Database events; Sentinel-1 scene inventory | Observed flood | GEE |
+| `s1_flood` | Sentinel-1 flood masks per backtest typhoon (UN-SPIDER change detection, 100 m tiles near each track) | Observed flood | GEE |
 | `hydrorivers` | HydroRIVERS v1.0 Australasia (covers PHL) | River routing | open |
 | `osm` | OpenStreetMap Philippines (Geofabrik PBF) | Road network | open |
 | `roroph` | MARINA/PPA RoRo routes (roroph R package data) | Ferry edges | open |

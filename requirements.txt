@@ -15,8 +15,17 @@ openpyxl
 requests
 rdata
 earthengine-api
+google-cloud-storage
 ipykernel
 nbformat
 nbconvert
 nbclient
 tqdm
+xgboost
+networkx
+scipy
+scikit-learn
+scikit-image
+tigramite
+streamlit
+plotly
