@@ -13,6 +13,7 @@ from .config import PROCESSED, INTERIM, STORMS, S1_AFTER_DAYS, week_ending, reco
 from . import dengue, units as U, storms, rain, rivers, flood, grids
 
 PANEL = PROCESSED / "panel.parquet"
+S1_BY_STORM = PROCESSED / "s1_unit_storm.parquet"  # per-storm observed flood; the panel merges overlapping storms by max
 CARD = PROCESSED / "panel_card.md"
 
 COLUMNS = {  # column -> (source, meaning)
@@ -100,16 +101,18 @@ def static_layers(u):
 def s1_layers(u, wk):
     """Observed flood per unit on the 4 weeks from when the map is known: the week containing landfall + S1_AFTER_DAYS
     (its last after-image), not the landfall week, so no feature at an origin uses radar taken after it."""
-    rows = []
+    rows, per_storm = [], []
     for key, s in STORMS.items():
         f = flood.s1_unit_flood(u, key)
         if f is None:
             continue
+        per_storm.append(f)
         w0 = week_ending(pd.Timestamp(s["landfall"]) + pd.Timedelta(days=S1_AFTER_DAYS))
         for k in range(4):
             rows.append(f.assign(week=w0 + pd.Timedelta(weeks=k)))
     if not rows:
         return None
+    pd.concat(per_storm, ignore_index=True).to_parquet(S1_BY_STORM)
     # storms close together (Rolly, Ulysses) share weeks: keep the larger observed flood per unit-week
     return pd.concat(rows, ignore_index=True).groupby(["unit_id", "week"], as_index=False)[["s1_flood_frac", "s1_flood_pop"]].max()
 

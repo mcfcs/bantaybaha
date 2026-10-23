@@ -48,6 +48,8 @@ SEQ = LinearSegmentedColormap.from_list("tide", ["#E6F2F7", "#7FC3DC", TEAL, "#0
 def load():
     d = dict(
         panel=pd.read_parquet(PROCESSED / "panel.parquet"),
+        s1_storm=(pd.read_parquet(PROCESSED / "s1_unit_storm.parquet") if (PROCESSED / "s1_unit_storm.parquet").exists()
+                  else pd.DataFrame(columns=["unit_id", "s1_flood_frac", "s1_flood_pop", "storm"])),
         scen=pd.read_parquet(APP_DATA / "scenarios.parquet"),
         adm3=pd.read_parquet(APP_DATA / "scenarios_adm3.parquet"),
         tracks=pd.read_parquet(APP_DATA / "tracks.parquet"),
@@ -119,8 +121,8 @@ def stats(d):
     s1 = p.dropna(subset=["s1_flood_frac"])
     k["s1_ok"] = len(s1) > 0
     if k["s1_ok"]:
-        w = {key: pd.Timestamp(v["landfall"]) for key, v in STORMS.items()}
-        lw = {key: s1[s1.week == s1[s1.week >= t].week.min()] for key, t in w.items()}
+        by = d["s1_storm"]  # per storm: panel weeks hold the max of overlapping storms (Rolly / Ulysses)
+        lw = {key: by[by.storm == key] for key in STORMS}
         k["s1_tab"] = {key: dict(pop=float(g.s1_flood_pop.sum()), units=int((g.s1_flood_frac > 0.01).sum()),
                                  frac_max=float(g.s1_flood_frac.max()), top=d["names"][g.loc[g.s1_flood_pop.idxmax(), "unit_id"]])
                        for key, g in lw.items() if len(g)}
@@ -422,15 +424,14 @@ def fig_validation(d):
 
 
 def fig_s1(d):
-    """Observed new flood share per unit, landfall week, one map per typhoon (Sentinel-1)."""
+    """Observed new flood share per unit, one map per typhoon (Sentinel-1; per-storm values, not the merged panel)."""
     p = d["panel"].dropna(subset=["s1_flood_frac"])
     if p.empty:
         return None
     fig, axs = plt.subplots(1, 4, figsize=(9.6, 3.0))
     vmax = p.s1_flood_frac.quantile(0.99)
     for ax, (k, st) in zip(axs, STORMS.items()):
-        t = pd.Timestamp(st["landfall"])
-        g = p[p.week == p[p.week >= t].week.min()]
+        g = d["s1_storm"][d["s1_storm"].storm == k]
         u = d["units"].merge(g[["unit_id", "s1_flood_frac"]], on="unit_id", how="left")
         u[u.s1_flood_frac.isna()].plot(ax=ax, color="#EEF1F3", edgecolor="#FFFFFF", linewidth=0.3)
         u[u.s1_flood_frac.notna()].plot(ax=ax, column="s1_flood_frac", cmap=SEQ, vmin=0, vmax=vmax, edgecolor="#FFFFFF", linewidth=0.3)

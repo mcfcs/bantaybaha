@@ -14,6 +14,4 @@ build.bat
 python scripts\make_results.py
 ```
 
-Every number in both documents is computed from `data/processed/` and `data/raw/MANIFEST.csv` at generation time. One exception
-is quoted from an earlier build and labelled as such: the relative WIS without rain / river / hazard features (0.547, build of
-2026-10-23). To refresh `dashboard.png`, start the app and run Chrome headless with `--screenshot` against `http://localhost:8501`.
+Every number in both documents is computed from `data/processed/` and `data/raw/MANIFEST.csv` at generation time. To refresh `dashboard.png`, start the app and run Chrome headless with `--screenshot` against `http://localhost:8501`.
