@@ -53,11 +53,30 @@ python scripts\make_results.py   :: regenerates the report and slides in docs\re
 
 `build.bat` runs `scripts/build.py`. Inputs that are not on disk yet (Sentinel-1 flood masks, PSGC, NHFR, or anything still
 downloading) are skipped with a warning, their outputs are left empty and listed in `data/processed/status.json` and on the
-dashboard's *Data status* tab. Re-run the build after the files arrive; no code changes are needed. The panel's data card is
+dashboard's *Data & caveats* tab. Re-run the build after the files arrive; no code changes are needed. The panel's data card is
 written to `data/processed/panel_card.md`.
 
 Optional zero-shot benchmark (Chronos-2, installs torch): `pip install -r requirements-bench.txt`, then
 `python scripts/benchmark_tsfm.py`.
+
+### Testing the dashboard
+
+The tests read the build outputs in `data/processed/app/` (they skip if those are missing) and never write there;
+SUS answers go to a temporary file. Screenshots and videos land in `tests/artifacts/` (git-ignored).
+
+```bat
+pip install -r requirements-dev.txt
+python -m playwright install chromium
+python -m pytest tests                    :: everything (~1 min): AppTest + Playwright end-to-end
+python -m pytest tests -m "not e2e"       :: fast AppTest checks only (~15 s)
+python tests\capture.py                   :: refresh docs\results\figures\dashboard.png + record the demo walkthrough video
+```
+
+`tests/test_app.py` runs the app headless with Streamlit's AppTest (every tab, storm and track controls, SUS form,
+and the hooks for outputs still being built). `tests/test_e2e.py` starts `streamlit run` on a free port and drives it in
+Chromium (every tab, storm and shift, dark mode, SUS submission), failing on any app exception or browser console error.
+User-test answers from the dashboard's *Usability test* tab go to `data/processed/sus/sus_responses.csv` (set
+`BANTAY_SUS_PATH` to write elsewhere); no names or identifiers are collected.
 
 ### Earth Engine (optional, free)
 
