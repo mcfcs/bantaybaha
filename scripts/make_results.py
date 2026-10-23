@@ -4,7 +4,8 @@ Usage:
     python scripts/make_results.py            # needs a finished `python scripts/build.py`
     python scripts/make_results.py --no-pdf   # figures + HTML only
 
-Reads data/processed/ (panel, app/*) and data/raw/MANIFEST.csv; never the raw data. Figures are drawn with matplotlib
+Reads data/processed/ (panel, app/*) and data/raw/MANIFEST.csv, plus three small raw tables read-only with pandas for
+data-finding numbers (the DOH dengue CSV, the 2020 census age table, IBTrACS gale radii). Figures are drawn with matplotlib
 in the vendored fonts (Big Shoulders Display, Barlow, Space Mono; docs/results/src/fonts, SIL OFL) and a palette checked with the dataviz validator (light surface:
 teal #0A86B5, amber #C77700, red #C8323F; grey #6B7A88 = baseline / context only). HTML is printed to PDF with headless
 Chrome or Edge. docs/results/figures/dashboard.png is a screenshot of the running app (see README in that folder).
@@ -45,8 +46,28 @@ SEQ = LinearSegmentedColormap.from_list("tide", ["#E6F2F7", "#7FC3DC", TEAL, "#0
 
 # ---------------------------------------------------------------- data
 
+def _opt_csv(p, **kw):
+    return pd.read_csv(p, **kw) if p.exists() else None
+
+
+def _opt_pq(p):
+    return pd.read_parquet(p) if p.exists() else None
+
+
 def load():
     d = dict(
+        methods=_opt_csv(APP_DATA / "access_methods.csv"),
+        methods_cat=_opt_csv(APP_DATA / "access_methods_catalog.csv"),
+        models=_opt_csv(APP_DATA / "eval_models.csv"),
+        models_meta=json.loads((APP_DATA / "eval_models.json").read_text()) if (APP_DATA / "eval_models.json").exists() else {},
+        bench_summary=_opt_csv(APP_DATA / "bench_summary.csv"),
+        scen_cat=_opt_pq(APP_DATA / "scenarios_catalog.parquet"),
+        cat_storms=_opt_csv(APP_DATA / "catalog_storms.csv"),
+        s1_adm3=_opt_pq(APP_DATA / "s1_adm3.parquet"),
+        lepto_city=_opt_csv(APP_DATA / "lepto_city_lag.csv"),
+        lepto_nat=_opt_csv(APP_DATA / "lepto_national_lag.csv"),
+        lepto_did=_opt_csv(APP_DATA / "lepto_events_did.csv"),
+        lepto_events=_opt_csv(APP_DATA / "lepto_events.csv"),
         panel=pd.read_parquet(PROCESSED / "panel.parquet"),
         s1_storm=(pd.read_parquet(PROCESSED / "s1_unit_storm.parquet") if (PROCESSED / "s1_unit_storm.parquet").exists()
                   else pd.DataFrame(columns=["unit_id", "s1_flood_frac", "s1_flood_pop", "storm"])),
@@ -111,9 +132,12 @@ def stats(d):
     k["n_scen"] = len(d["scen"][["storm", "dlat", "dlon"]].drop_duplicates())
     s = d["scen"]
     b = s[(s.dlat == 0) & (s.dlon == 0)]
+    b = b.assign(cut_lo=b.pop_cells * b.A_lo, cut_hi=b.pop_cells * b.A_hi)
     k["storm_tab"] = b.groupby("storm").agg(cut=("pop_cut", "sum"), A=("A", "mean"), ferries=("ferries_cancelled", "first"),
                                             t3=("tier", lambda t: int((t == 3).sum())), t2=("tier", lambda t: int((t == 2).sum())),
-                                            src=("flood_source", "first"), R=("R", "mean"))
+                                            src=("flood_source", "first"), R=("R", "mean"), R_raw=("R_raw", "mean"),
+                                            cutr=("pop_cut_raster", "sum"), Ar=("A_raster", "mean"), cut_lo=("cut_lo", "sum"),
+                                            cut_hi=("cut_hi", "sum"), u5=("pop_cut_u5", "sum"), o60=("pop_cut_60", "sum"))
     k["top"] = {st: d["names"][g.sort_values("P", ascending=False).unit_id.iloc[0]] for st, g in b.groupby("storm")}
     k["bench"] = d["bench"].share_cut.iloc[0]
     k["tau_min"] = d["sens"].kendall_tau.min()
@@ -128,7 +152,259 @@ def stats(d):
                        for key, g in lw.items() if len(g)}
         k["ems"] = s1_ems_agreement()
     k["src_obs"] = "Sentinel-1 observed flood" if b.flood_source.isin(["sentinel1", "observed"]).any() else "the NOAH 25-yr hazard proxy"
+    k["names_of"] = d["names"]
+    k["n_ferry"] = len(pd.read_parquet(APP_DATA / "ferries.parquet"))
+    stats_access(d, k, s, b)
+    stats_calibration(d, k)
+    stats_models(d, k)
+    stats_catalog(d, k, b)
+    stats_lepto(d, k)
+    stats_data(d, k)
+    k["n_edges_windows"] = d["graphs"][d["graphs"].method == "pcmciplus"].assign(y=lambda g: pd.to_datetime(g.end).dt.year)
+    gw = k["n_edges_windows"].groupby("y").n_edges.agg(["min", "max"])
+    k["edges_by_year"] = {int(y): (int(r["min"]), int(r["max"])) for y, r in gw.iterrows()}
     return k
+
+
+def _rng(lo, hi, f="{:.0f}"):
+    return f.format(lo) if f.format(lo) == f.format(hi) else f"{f.format(lo)}-{f.format(hi)}"
+
+
+def stats_access(d, k, s, b):
+    """Network vs MAP friction raster, the method range, Meta HRSL vulnerable groups, Sentinel-1 per municipality."""
+    from scipy import stats as ss
+
+    m = d["methods"]
+    k["raster_ok"] = m is not None and b.A_raster.notna().any()
+    if not k["raster_ok"]:
+        return
+    k["mbase"] = m[m.kind == "baseline"].iloc[0].to_dict()
+    sc = m[m.kind == "scenario"]
+    obs = sc[(sc.dlat == 0) & (sc.dlon == 0)].set_index("storm")
+    k["rho_A_obs"] = obs.spearman_A_units.to_dict()
+    sh = s[(s.dlat != 0) | (s.dlon != 0)]
+    g = sh.groupby(["storm", "dlat", "dlon"]).agg(cut=("pop_cut", "sum"), cutr=("pop_cut_raster", "sum"), A=("A", "mean"),
+                                                 Ar=("A_raster", "mean"), t3=("tier", lambda t: int((t == 3).sum())))
+    k["proxy"] = dict(cut=(g.cut.min(), g.cut.max()), cutr=(g.cutr.min(), g.cutr.max()),
+                      ratio=float((g.cutr / g.cut).median()), n=len(g),
+                      rho=(sc[(sc.dlat != 0) | (sc.dlon != 0)].spearman_A_units.min(), sc[(sc.dlat != 0) | (sc.dlon != 0)].spearman_A_units.max()),
+                      t3=(int(g.t3.min()), int(g.t3.max())))
+    k["proxy_storm"] = g.groupby(level=0).agg(cut_min=("cut", "min"), cut_max=("cut", "max"), t3_min=("t3", "min"), t3_max=("t3", "max"))
+    tau, ov = {}, {}
+    for st, gg in b.groupby("storm"):
+        pr = gg.R * gg.A_raster
+        tau[st] = ss.kendalltau(gg.P, pr).statistic
+        ov[st] = len(set(gg.nlargest(10, "P").unit_id) & set(gg.assign(pr=pr).nlargest(10, "pr").unit_id))
+    k["tau_methods"], k["top10_methods"] = tau, ov
+    sens = d["sens"]
+    k["tau_min_raster"] = sens.kendall_tau_raster.min() if "kendall_tau_raster" in sens else np.nan
+    # vulnerable groups (Meta HRSL) against the 2020 census age table
+    u = b.drop_duplicates("unit_id")
+    k["hrsl_ok"] = u.pop_u5.notna().any()
+    if k["hrsl_ok"]:
+        k["u5_share"], k["o60_share"] = u.pop_u5.sum() / u.pop_cells.sum(), u.pop_60.sum() / u.pop_cells.sum()
+        age = census_age()
+        if age is not None:
+            k["census_u5"], k["census_60"] = age
+        st = k["storm_tab"]
+        k["u5_cut_share"] = (st.u5 / st.cut).to_dict()
+        k["o60_cut_share"] = (st.o60 / st.cut).to_dict()
+    # Sentinel-1 per municipality
+    s3 = d["s1_adm3"]
+    if s3 is not None and len(s3):
+        a3 = d["adm3"]
+        a3 = a3[(a3.dlat == 0) & (a3.dlon == 0)].merge(s3[["storm", "adm3_pcode", "s1_flood_frac"]], on=["storm", "adm3_pcode"], how="left")
+        tab = {}
+        for key, gg in s3.groupby("storm"):
+            top = gg.nlargest(3, "s1_flood_pop")
+            aa = a3[(a3.storm == key) & a3.s1_flood_frac.notna()]
+            tab[key] = dict(n_seen=int((gg.seen_frac > 0.2).sum()), n_fl=int((gg.s1_flood_frac > 0.01).sum()), n=len(gg),
+                            top=[(r.adm3_name.replace(" (Capital)", ""), d["names"][r.unit_id], r.s1_flood_pop, r.s1_flood_frac) for r in top.itertuples()],
+                            rho=ss.spearmanr(aa.A, aa.s1_flood_frac).statistic if len(aa) > 5 else np.nan,
+                            n_A10=int((a3[a3.storm == key].A > 0.1).sum()))
+        k["s1_muni"] = tab
+
+
+def census_age():
+    """Under-5 and 60+ shares of the 2020 census (PSA CPH, HDX age-group sheet), read-only."""
+    p = RAW / "census2020" / "2020_CPH_SexAge_Popn_Mun_Admin3.xlsx"
+    if not p.exists():
+        return None
+    a = pd.read_excel(p, sheet_name="AgeGroup").groupby("Age_Group")["Popn Total"].sum()
+    old = [g for g in a.index if g.startswith(("60", "65", "70", "75", "80"))]
+    return float(a["0 - 4"] / a.sum()), float(a[old].sum() / a.sum())
+
+
+def stats_calibration(d, k):
+    c = d["cal"].get("calibrated")
+    k["cal_ok"] = c is not None and "observed_cal" in d["rel"]
+    if k["cal_ok"]:
+        k["calib"] = c
+        sc = d["scen"]
+        o = sc[(sc.storm == "ompong") & (sc.dlat == 0) & (sc.dlon == 0)]
+        top = o.R.round(6).value_counts()
+        top = top[top.index == o.R.round(6).max()] if len(top) else top
+        k["ties"] = (int(top.iloc[0]), float(top.index[0])) if len(top) else (1, float("nan"))
+        k["n_distinct_R"] = int(o.R.round(6).nunique())
+
+
+BENCH_LABEL = {"chronos2": "Chronos-2", "tabpfn_ts": "TabPFN-TS", "mpnn_lstm": "MPNN-LSTM", "ens_median": "median ensemble"}
+MODEL_LABEL = {"xgb": "XGBoost + graph (ours)", "xgb_nograph": "XGBoost, no graph", "xgb_noenv": "XGBoost, no rain/river/storm/flood",
+               "naive": "seasonal naive", "chronos2": "Chronos-2, zero-shot", "tabpfn_ts": "TabPFN-TS, zero-shot",
+               "mpnn_lstm": "MPNN-LSTM, graph neural net", "ens_median": "median ensemble"}
+
+
+def stats_models(d, k):
+    """Model comparison from eval_models.csv: whatever models are present; names the expected benchmarks that are not."""
+    m = d["models"]
+    k["models_ok"] = m is not None
+    if m is None:
+        k["bench_present"], k["bench_missing"] = [], list(BENCH_LABEL)
+        return
+    m = m.assign(horizon=m.horizon.astype(str))
+    k["mtab"] = m
+    present = list(dict.fromkeys(m.model))
+    k["bench_present"] = [x for x in BENCH_LABEL if x in present]
+    k["bench_missing"] = [x for x in BENCH_LABEL if x not in present]
+    al = m[m.horizon == "all"].set_index("model")
+    k["mall"] = al
+    k["n_common"] = int(al.n.iloc[0])
+    bench = [x for x in k["bench_present"] if x != "ens_median"]
+    k["bench_only"] = bench
+    if bench:
+        k["best_mean"] = al.relWIS_vs_naive.idxmin()
+        k["mw"], k["split"] = median_wis_split(bench)
+        meta = d["models_meta"].get("benchmarks", {})
+        k["bench_meta"] = {x: meta.get(x, {}).get("meta", {}) for x in bench}
+        bs = d["bench_summary"]
+        k["variants"] = ({r.model: r["relWIS vs naive"] for _, r in bs[bs.horizon.astype(str) == "all"].iterrows()} if bs is not None else {})
+
+
+def median_wis_split(bench):
+    """Median WIS per model and the mean-WIS ratio to XGBoost below / above the 90th percentile of weekly cases, re-scored
+    from eval_quantiles.parquet and the bench files exactly as forecast.evaluate_models does (same rows)."""
+    from bantay import forecast as Fc
+
+    q = pd.read_parquet(APP_DATA / "eval_quantiles.parquet")
+    mats_b, _ = Fc.load_bench(q, log=lambda *a: None)
+    mats = {x: np.vstack(q[x].to_numpy()) for x in Fc.MODELS}
+    mats.update(mats_b)
+    if mats_b:
+        mats[Fc.ENSEMBLE] = np.sort(np.median(np.stack([mats[x] for x in ["xgb"] + list(mats_b)]), axis=0), axis=1)
+    keep = q.target.notna().to_numpy()
+    y, rows = Fc.score_rows({x: v[keep] for x, v in mats.items()}, q.target[keep].to_numpy(), q["pop"][keep].to_numpy())
+    s = pd.DataFrame(rows).assign(y=y)
+    s = s[s[[f"wis_{x}" for x in mats]].notna().all(axis=1)]
+    thr = s.y.quantile(0.9)
+    lo, hi = s.y < thr, s.y >= thr
+    split = dict(thr=float(thr), lo={x: s[f"wis_{x}"][lo].mean() / s.wis_xgb[lo].mean() for x in mats},
+                 hi={x: s[f"wis_{x}"][hi].mean() / s.wis_xgb[hi].mean() for x in mats})
+    return {x: float(s[f"wis_{x}"].median()) for x in mats}, split
+
+
+def stats_catalog(d, k, b):
+    """All storms with a scenario: the 4 backtests (observed track, Sentinel-1 flood) + the catalogue (NOAH proxy)."""
+    c = d["scen_cat"]
+    k["cat_ok"] = c is not None and len(c) > 0
+    if not k["cat_ok"]:
+        return
+
+    def agg(g):
+        return g.groupby("storm").agg(name=("name", "first"), season=("season", "first"), origin=("origin", "first"), R=("R", "mean"),
+                                      cal=("R_calibrated", "all"), cut=("pop_cut", "sum"), cutr=("pop_cut_raster", "sum"),
+                                      rcut=("Rcut", "sum"), ferries=("ferries_cancelled", "first"), src=("flood_source", "first"),
+                                      t3=("tier", lambda t: int((t == 3).sum())), t2=("tier", lambda t: int((t == 2).sum())),
+                                      flag=("flag_2020", "first"))
+
+    cat = agg(c.assign(Rcut=c.R * c.pop_cut))
+    bb = b.assign(Rcut=b.R * b.pop_cut, name=b.storm.map(lambda x: STORMS[x]["local"]), season=b.storm.map(lambda x: STORMS[x]["season"]))
+    back = agg(bb)
+    allst = pd.concat([cat.assign(kind="catalogue"), back.assign(kind="backtest")]).sort_values("origin")
+    allst["label"] = [f"{n.title() if k_ == 'catalogue' else n} {s_}" for n, s_, k_ in zip(allst.name, allst.season, allst.kind)]
+    k["allst"] = allst
+    k["n_cat"] = len(cat)
+    k["n_cal_cat"] = int(cat.cal.sum())
+    cs = d["cat_storms"]
+    if cs is not None:
+        sk = cs[(cs.status == "skipped") & cs.reason.str.contains("history", na=False)]
+        k["cat_skipped"] = sk
+        k["cat_n_land"] = int(cs.swath_hits_land.sum())
+    mc = d["methods_cat"]
+    if mc is not None:
+        r = mc.spearman_A_units.dropna()
+        k["cat_rho"] = (r.min(), r.median(), len(r))
+
+
+def _irr(df, variant, exposure, model="joint"):
+    g = df[(df.variant == variant) & (df.exposure == exposure) & (df.model == model)]
+    lags = g[g.lag.notna()].sort_values("lag")
+    cum = g[g.term.str.startswith("cum")]
+    return lags, (cum.iloc[0] if len(cum) else None)
+
+
+def stats_lepto(d, k):
+    c, n = d["lepto_city"], d["lepto_nat"]
+    k["lepto_ok"] = c is not None and n is not None
+    if not k["lepto_ok"]:
+        return
+    L = {}
+    lags, cum = _irr(c, "12 cities", "rain_7d")
+    pk = lags.loc[lags.irr.idxmax()]
+    L["city"] = dict(lags=lags, cum=cum, peak=pk, n_cases=int(lags.n_cases.iloc[0]), n_obs=int(lags.n_obs.iloc[0]),
+                     sig=lags[lags.ci_lo > 1].lag.astype(int).tolist())
+    hl, hc = _irr(c, "12 cities", "heavy")
+    L["heavy_peak"] = hl.loc[hl.irr.idxmax()]
+    lags, cum = _irr(n, "2019-2020", "rain_7d")
+    L["nat"] = dict(lags=lags, cum=cum, peak=lags.loc[lags.irr.idxmax()], n_obs=int(lags.n_obs.iloc[0]), n_cases=int(lags.n_cases.iloc[0]))
+    _, c19 = _irr(n, "2019 only", "rain_7d")
+    L["nat19_cum"] = c19
+    did = d["lepto_did"]
+    if did is not None:
+        def row(storms, term):
+            r = did[(did.storms == storms) & (did.term == term)]
+            return r.iloc[0] if len(r) else None
+        L["ru_post"], L["ru_pre"] = row("rolly+ulysses", "inside_x_post1_4"), row("rolly+ulysses", "inside_x_pre")
+        L["ot_post"], L["ot_pre"] = row("ompong+tisoy", "inside_x_post1_4"), row("ompong+tisoy", "inside_x_pre")
+    ev = d["lepto_events"]
+    if ev is not None:
+        pairs = ev.drop_duplicates(["storm", "city"])
+        seen = pairs[pairs.s1_seen_frac > 0.2]
+        L["s1_pairs"] = (len(pairs), len(seen), int((pairs.s1_flood_frac > 0).sum()), float(pairs.s1_flood_frac.max()))
+        L["n_cities"] = pairs.city.nunique()
+    k["lepto"] = L
+
+
+def stats_data(d, k):
+    """Data-finding numbers from the raw DOH file, the panel and IBTrACS (read-only), and the SUS responses if any."""
+    p = RAW / "dengue_hdx" / "doh-epi-dengue-data-2016-2021.csv"
+    if p.exists():
+        dg = pd.read_csv(p, skiprows=[1])
+        dg["loc"] = dg["loc"].str.strip()
+        dg["year"] = pd.to_datetime(dg["date"], format="%m/%d/%Y").dt.year
+        y = dg.groupby("year")[["cases", "deaths"]].sum()
+        k["dg_units"] = dg["loc"].nunique()
+        k["cfr16"] = y.loc[2016, "deaths"] / y.loc[2016, "cases"]
+        k["cases_by_year"] = y.cases.to_dict()
+    try:
+        from bantay.storms import IBTRACS, R34
+
+        ib = pd.read_csv(IBTRACS, skiprows=[1], usecols=["SEASON", "NAME", "USA_WIND", "WMO_WIND", "TOKYO_WIND", *R34], low_memory=False,
+                         na_values=[" ", ""])
+        out = {}
+        for key, s_ in STORMS.items():
+            t = ib[(ib.NAME == s_["name"]) & (ib.SEASON == s_["season"])]
+            w = t.USA_WIND.fillna(t.WMO_WIND).fillna(t.TOKYO_WIND)
+            t = t[w >= 34]
+            usa = t[R34].max(axis=1)
+            out[key] = float((usa.isna() | (usa <= 0)).mean())
+        k["r34_missing"] = out
+    except Exception as e:  # noqa: BLE001 - a data-finding number, never fatal
+        print(f"  WARNING IBTrACS radius check skipped: {e}")
+    sp = PROCESSED / "sus" / "sus_responses.csv"
+    sus = pd.read_csv(sp) if sp.exists() else pd.DataFrame(columns=["sus"])
+    k["sus_n"], k["sus_mean"] = len(sus), (sus.sus.mean() if len(sus) else np.nan)
+    p = d["panel"]
+    k["unit_weeks"] = len(p)
 
 
 def s1_ems_agreement():
@@ -234,56 +510,174 @@ def fig_coverage(d):
     return save(fig, "f02_coverage")
 
 
+KIND_COLOR = {"model": TEAL, "ablation": "#7FC3DC", "baseline": GREY, "benchmark": AMBER, "ensemble": RED}
+
+
 def fig_wis(d):
+    """Left: relative WIS vs seasonal naive for every model in eval_models.csv (same rows). Right: coverage by horizon."""
+    m = d["models"]
     e = d["evals"].drop(index="all")
     h = e.index.astype(int)
-    fig, ax = plt.subplots(1, 2, figsize=(8.4, 2.9), gridspec_kw={"width_ratios": [1.25, 1]})
+    fig, ax = plt.subplots(1, 2, figsize=(8.6, 3.0), gridspec_kw={"width_ratios": [1.3, 1]})
     a = ax[0]
-    a.plot(h, e["WIS naive"], color=GREY, marker="o", ms=7, label="seasonal naive", ls=(0, (3, 2)))
-    a.plot(h, e["WIS xgb_nograph"], color=AMBER, marker="s", ms=7, label="XGBoost, no graph")
-    a.plot(h, e["WIS xgb"], color=TEAL, marker="o", ms=7, label="XGBoost + graph")
-    for x, y, r in zip(h, e["WIS xgb"], e["relWIS xgb/naive"]):
-        a.annotate(f"rel {r:.2f}", (x, y), textcoords="offset points", xytext=(0, -16), ha="center", fontsize=8, fontfamily="Space Mono", color=TEAL)
-    a.set_xticks(h)
-    a.set_xlim(0.6, 4.4)
-    a.set_xlabel("weeks ahead")
-    a.set_ylabel("mean WIS (cases)")
-    a.set_ylim(0, e["WIS naive"].max() * 1.15)
-    a.set_title("Weighted interval score (lower is better)")
-    a.legend(fontsize=8, loc="lower right")
+    if m is not None:
+        al = m[m.horizon.astype(str) == "all"].sort_values("relWIS_vs_naive", ascending=False)
+        h1 = m[m.horizon.astype(str) == "1"].set_index("model").relWIS_vs_naive
+        h4 = m[m.horizon.astype(str) == "4"].set_index("model").relWIS_vs_naive
+        y = np.arange(len(al))
+        a.barh(y, al.relWIS_vs_naive, color=[KIND_COLOR.get(x, INK) for x in al.kind], height=0.62)
+        a.scatter(h1.reindex(al.model), y, marker="|", s=90, color=INK, lw=1.4, zorder=3)
+        a.scatter(h4.reindex(al.model), y, marker="x", s=22, color=INK, lw=1.1, zorder=3)
+        for yy, v in zip(y, al.relWIS_vs_naive):
+            a.text(1.06, yy, f"{v:.3f}", va="center", fontsize=7.8, fontfamily="Space Mono")
+        a.set_yticks(y)
+        a.set_yticklabels([MODEL_LABEL.get(x, x) for x in al.model], fontsize=8)
+        a.axvline(1, color=GREY, lw=0.8)
+        a.set_xlim(0, 1.24)
+        a.set_xticks([0, 0.25, 0.5, 0.75, 1])
+        a.set_xlabel("relative WIS vs seasonal naive (bar: 1-4 wk; | 1 wk; x 4 wk)")
+        a.grid(axis="y", visible=False)
+        a.set_title("Every model, same rows (lower is better)")
     b = ax[1]
     b.axhspan(0.80, 0.95, color=TEAL, alpha=0.08, lw=0)
     b.text(1.0, 0.955, "proposal target 80-95%", fontsize=7.5, color=TEAL)
-    b.plot(h, e["cov90 xgb"], color=TEAL, marker="o", ms=7, label="90% interval")
-    b.plot(h, e["cov90 conformal"], color=AMBER, marker="D", ms=6, label="90% online conformal")
-    b.plot(h, e["cov50 xgb"], color=TEAL, marker="o", ms=7, ls=(0, (1, 1.5)), label="50% interval")
+    b.plot(h, e["cov90 xgb"], color=TEAL, marker="o", ms=6, label="XGBoost 90%")
+    if m is not None and "ens_median" in set(m.model):
+        en = m[(m.model == "ens_median") & (m.horizon.astype(str) != "all")]
+        b.plot(en.horizon.astype(int), en.cov90, color=RED, marker="s", ms=5, label="ensemble 90%")
+    b.plot(h, e["cov90 conformal"], color=AMBER, marker="D", ms=5, label="online conformal 90%")
+    b.plot(h, e["cov50 xgb"], color=TEAL, marker="o", ms=6, ls=(0, (1, 1.5)), label="XGBoost 50%")
     b.axhline(0.9, color=GREY, lw=0.8)
     b.axhline(0.5, color=GREY, lw=0.8)
     b.set_ylim(0.3, 1.0)
     b.set_xticks(h)
     b.set_xlabel("weeks ahead")
     b.set_title("Empirical coverage")
-    b.legend(fontsize=7.5, loc="center right")
+    b.legend(fontsize=7, loc="center right")
     for x in ax:
         mono(x)
+    ax[0].tick_params(axis="y", labelsize=8)
+    for t in ax[0].get_yticklabels():
+        t.set_fontfamily("Barlow")
     fig.tight_layout()
     return save(fig, "f03_wis")
 
 
 def fig_reliability(d):
+    """Reliability of R before (model) and after isotonic recalibration on past rolling-origin forecasts only."""
     r = d["rel"]
-    fig, ax = plt.subplots(figsize=(3.6, 3.3))
+    fig, ax = plt.subplots(figsize=(3.7, 3.4))
     ax.plot([0, 1], [0, 1], color=GREY, lw=1, ls=(0, (3, 2)))
-    ax.plot(r.mean_R, r.observed, color=TEAL, marker="o", ms=7)
-    for x, y, n in zip(r.mean_R, r.observed, r.n):
-        ax.annotate(f"n={n:,}", (x, y), textcoords="offset points", xytext=(6, -10), fontsize=7.5, fontfamily="Space Mono", color=GREY)
+    ax.plot(r.mean_R, r.observed, color=AMBER, marker="o", ms=6, label="model R (raw)")
+    if "observed_cal" in r:
+        ax.plot(r.mean_R_cal, r.observed_cal, color=TEAL, marker="s", ms=6, label="recalibrated R")
+        for x, y, n in zip(r.mean_R_cal, r.observed_cal, r.n_cal):
+            ax.annotate(f"{n:,}", (x, y), textcoords="offset points", xytext=(6, -10), fontsize=7, fontfamily="Space Mono", color=GREY)
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.set_xlabel("mean predicted R")
     ax.set_ylabel("observed surge rate")
     ax.set_title("Surge probability R: reliability")
+    ax.legend(fontsize=7.5, loc="upper left")
     mono(ax)
     return save(fig, "f04_reliability")
+
+
+def fig_methods(d, k):
+    """People cut off, road+ferry network vs MAP friction raster: observed tracks (Sentinel-1) and every proxy track."""
+    if not k.get("raster_ok"):
+        return None
+    st = k["storm_tab"]
+    fig, ax = plt.subplots(1, 2, figsize=(8.6, 3.0), gridspec_kw={"width_ratios": [1, 1.15]})
+    a = ax[0]
+    keys = list(STORMS)
+    x = np.arange(len(keys))
+    a.bar(x - 0.19, st.loc[keys, "cut"] / 1e6, 0.36, color=TEAL, label="network")
+    a.bar(x + 0.19, st.loc[keys, "cutr"] / 1e6, 0.36, color=AMBER, label="friction raster")
+    a.set_xticks(x)
+    a.set_xticklabels([STORMS[s]["local"] for s in keys])
+    a.set_ylabel("people cut off (M)")
+    a.set_title("Observed tracks, Sentinel-1 flood")
+    a.legend(fontsize=7.5, loc="upper left")
+    a.grid(axis="x", visible=False)
+    b = ax[1]
+    m = d["methods"]
+    sc = m[(m.kind == "scenario") & ((m.dlat != 0) | (m.dlon != 0))]
+    b.scatter(sc.pop_cut_network / 1e6, sc.pop_cut_raster / 1e6, s=16, color=TEAL, alpha=0.75, lw=0, label=f"shifted backtest tracks ({len(sc)})")
+    mc = d["methods_cat"]
+    if mc is not None:
+        b.scatter(mc.pop_cut_network / 1e6, mc.pop_cut_raster / 1e6, s=16, facecolor="none", edgecolor=GREY, lw=0.9, label=f"catalogue storms ({len(mc)})")
+    ob = m[(m.kind == "scenario") & (m.dlat == 0) & (m.dlon == 0)]
+    b.scatter(ob.pop_cut_network / 1e6, ob.pop_cut_raster / 1e6, s=34, marker="D", color=AMBER, label="observed tracks (Sentinel-1)")
+    hi = max(sc.pop_cut_network.max(), sc.pop_cut_raster.max()) / 1e6 * 1.05
+    b.plot([0, hi], [0, hi], color=GREY, lw=0.8, ls=(0, (3, 2)))
+    b.text(hi * 0.62, hi * 0.70, "1:1", color=GREY, fontsize=8)
+    b.set_xlim(0, hi)
+    b.set_ylim(0, hi)
+    b.set_xlabel("network: people cut off (M)")
+    b.set_ylabel("raster: people cut off (M)")
+    b.set_title("Every track: NOAH proxy flood")
+    b.legend(fontsize=7, loc="upper left")
+    for z in ax:
+        mono(z)
+    fig.tight_layout()
+    return save(fig, "f15_methods")
+
+
+def fig_catalog(d, k):  # noqa: C901
+    """Surge risk vs people cut off for every scored storm 2017-2020; the line spans the two access methods."""
+    if not k.get("cat_ok"):
+        return None
+    a = k["allst"]
+    fig, ax = plt.subplots(figsize=(8.6, 3.1))
+    for r in a.itertuples():
+        ax.plot([r.R, r.R], [min(r.cut, r.cutr) / 1e6, max(r.cut, r.cutr) / 1e6], color=GREY, lw=1, alpha=0.7, zorder=1)
+    cat = a[a.kind == "catalogue"]
+    first = pd.Timestamp(k["calib"]["first_calibrated_origin"]).strftime("%b %Y") if k.get("calib") else "calibration"
+    for cal, face in ((True, TEAL), (False, "none")):
+        g = cat[cat.cal == cal]
+        ax.scatter(g.R, g.cut / 1e6, s=30, facecolor=face, edgecolor=TEAL, lw=1.1, zorder=3,
+                   label=f"catalogue, NOAH proxy flood{'' if cal else ', raw R (before ' + first + ')'}: {len(g)}")
+    bt = a[a.kind == "backtest"]
+    ax.scatter(bt.R, bt.cut / 1e6, s=48, marker="D", color=AMBER, zorder=4, label=f"backtest, Sentinel-1 flood: {len(bt)}")
+    lab = pd.concat([a.nlargest(5, "cut"), a.nlargest(3, "R"), bt]).drop_duplicates("label").sort_values("R")
+    last = {}
+    for r in lab.itertuples():  # nudge labels that would sit on top of each other
+        y = r.cut / 1e6
+        key = round(r.R / 0.08)
+        dy = 3 + 9 * last.get(key, 0) * (1 if y > 1 else -1)
+        last[key] = last.get(key, 0) + 1
+        ax.annotate(r.label, (r.R, y), textcoords="offset points", xytext=(5, dy), fontsize=7.2)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, a[["cut", "cutr"]].max().max() / 1e6 * 1.12)
+    ax.set_xlabel("mean surge probability R over 85 units (forecast at the storm's week)")
+    ax.set_ylabel("people cut off (M, network)")
+    ax.set_title(f"{len(a)} storms, {pd.Timestamp(a.origin.min()).year}-{pd.Timestamp(a.origin.max()).year}: risk vs access (vertical line = network-to-raster range)")
+    ax.legend(fontsize=7.3, loc="upper right")
+    mono(ax)
+    return save(fig, "f16_catalog")
+
+
+def fig_lepto(d, k):
+    """Leptospirosis vs rain l weeks earlier: joint distributed-lag IRR per +50 mm/week, cities and national."""
+    if not k.get("lepto_ok"):
+        return None
+    L = k["lepto"]
+    fig, ax = plt.subplots(figsize=(5.2, 2.9))
+    for lab, key, col, off in ((f"{L.get('n_cities', 12)} cities (CCHAIN), 2016-2020", "city", TEAL, -0.1),
+                               ("national (PIDSR), 2019-2020", "nat", AMBER, 0.1)):
+        g = L[key]["lags"]
+        ax.errorbar(g.lag + off, g.irr, yerr=[g.irr - g.ci_lo, g.ci_hi - g.irr], fmt="o", ms=5, color=col, capsize=2, lw=1.2, label=lab)
+    ax.axhline(1, color=GREY, lw=0.8)
+    ax.set_yscale("log")
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:g}"))
+    ax.set_yticks([0.8, 1, 1.25, 1.5, 2])
+    ax.set_xlabel("lag (weeks after the rain)")
+    ax.set_ylabel("incidence rate ratio")
+    ax.set_title("Leptospirosis vs rain: joint lag model, per +50 mm/week")
+    ax.legend(fontsize=7.5, loc="upper left")
+    mono(ax)
+    return save(fig, "f17_lepto")
 
 
 def fig_fan(d, unit_name="Cagayan"):
@@ -505,11 +899,12 @@ def fig_rolling(d):
     return save(fig, "f14_rolling")
 
 
-def make_figures(d):
+def make_figures(d, k):
     style()
     return dict(timeline=fig_timeline(d), coverage=fig_coverage(d), wis=fig_wis(d), rel=fig_reliability(d), fan=fig_fan(d),
                 leadlag=fig_leadlag(d), priority=fig_priority(d), access=fig_access_multiples(d), scatter=fig_scatter(d),
-                valid=fig_validation(d), s1=fig_s1(d), s1ems=fig_s1_ems(d), network=fig_network(d), rolling=fig_rolling(d))
+                valid=fig_validation(d), s1=fig_s1(d), s1ems=fig_s1_ems(d), network=fig_network(d), rolling=fig_rolling(d),
+                methods=fig_methods(d, k), catalog=fig_catalog(d, k), lepto=fig_lepto(d, k))
 
 
 # ---------------------------------------------------------------- shared HTML pieces
@@ -538,6 +933,7 @@ REFERENCES = [
     "Benjamini, Y., & Hochberg, Y. (1995). Controlling the false discovery rate: A practical and powerful approach to multiple testing. <i>Journal of the Royal Statistical Society: Series B (Methodological), 57</i>(1), 289–300. https://doi.org/10.1111/j.2517-6161.1995.tb02031.x",
     "Blondel, V. D., Guillaume, J.-L., Lambiotte, R., & Lefebvre, E. (2008). Fast unfolding of communities in large networks. <i>Journal of Statistical Mechanics: Theory and Experiment, 2008</i>(10), P10008. https://doi.org/10.1088/1742-5468/2008/10/P10008",
     "Bracher, J., Ray, E. L., Gneiting, T., & Reich, N. G. (2021). Evaluating epidemic forecasts in an interval format. <i>PLoS Computational Biology, 17</i>(2), e1008618. https://doi.org/10.1371/journal.pcbi.1008618",
+    "Brooke, J. (1996). SUS: A \"quick and dirty\" usability scale. In P. W. Jordan, B. Thomas, B. A. Weerdmeester, &amp; I. L. McClelland (Eds.), <i>Usability evaluation in industry</i> (pp. 189–194). Taylor &amp; Francis.",
     "Buczak, A. L., Baugher, B., Babin, S. M., Ramac-Thomas, L. C., Guven, E., Elbert, Y., Koshute, P. T., Velasco, J. M. S., Roque, V. G., Jr., Tayag, E. A., Yoon, I.-K., & Lewis, S. H. (2014). Prediction of high incidence of dengue in the Philippines. <i>PLoS Neglected Tropical Diseases, 8</i>(4), e2771. https://doi.org/10.1371/journal.pntd.0002771",
     "Chen, T., & Guestrin, C. (2016). XGBoost: A scalable tree boosting system. In <i>Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining</i> (pp. 785–794). https://doi.org/10.1145/2939672.2939785",
     "Copernicus Emergency Management Service. (2018). <i>EMSR312: Typhoon Mangkhut in the Philippines</i> [Rapid mapping activation]. European Commission. https://mapping.emergency.copernicus.eu/activations/EMSR312/",
@@ -545,6 +941,7 @@ REFERENCES = [
     "Funk, C., Peterson, P., Landsfeld, M., Pedreros, D., Verdin, J., Shukla, S., Husak, G., Rowland, J., Harrison, L., Hoell, A., & Michaelsen, J. (2015). The climate hazards infrared precipitation with stations—A new environmental record for monitoring extremes. <i>Scientific Data, 2</i>, 150066. https://doi.org/10.1038/sdata.2015.66",
     "Gibbs, I., & Candès, E. (2021). Adaptive conformal inference under distribution shift. <i>Advances in Neural Information Processing Systems, 34</i>, 1660–1672.",
     "Gorelick, N., Hancher, M., Dixon, M., Ilyushchenko, S., Thau, D., & Moore, R. (2017). Google Earth Engine: Planetary-scale geospatial analysis for everyone. <i>Remote Sensing of Environment, 202</i>, 18–27. https://doi.org/10.1016/j.rse.2017.06.031",
+    "Hoo, S. B., Müller, S., Salinas, D., &amp; Hutter, F. (2025). <i>From tables to time: Extending TabPFN-v2 to time series forecasting</i>. arXiv. https://arxiv.org/abs/2501.02945",
     "Huffman, G. J., Stocker, E. F., Bolvin, D. T., Nelkin, E. J., & Tan, J. (2023). <i>GPM IMERG final precipitation L3 half hourly 0.1 degree x 0.1 degree V07</i> [Data set]. NASA Goddard Earth Sciences Data and Information Services Center. https://doi.org/10.5067/GPM/IMERG/3B-HH/07",
     "Knapp, K. R., Kruk, M. C., Levinson, D. H., Diamond, H. J., & Neumann, C. J. (2010). The International Best Track Archive for Climate Stewardship (IBTrACS): Unifying tropical cyclone data. <i>Bulletin of the American Meteorological Society, 91</i>(3), 363–376. https://doi.org/10.1175/2009BAMS2755.1",
     "Lehner, B., & Grill, G. (2013). Global river hydrography and network routing: Baseline data and new approaches to study the world's large river systems. <i>Hydrological Processes, 27</i>(15), 2171–2186. https://doi.org/10.1002/hyp.9740",
@@ -552,6 +949,7 @@ REFERENCES = [
     "Matsushita, N., Ng, C. F. S., Kim, Y., Suzuki, M., Saito, N., Ariyoshi, K., Salva, E. P., Dimaano, E. M., Villarama, J. B., Go, W. S., & Hashizume, M. (2018). The non-linear and lagged short-term relationship between rainfall and leptospirosis and the intermediate role of floods in the Philippines. <i>PLoS Neglected Tropical Diseases, 12</i>(4), e0006331. https://doi.org/10.1371/journal.pntd.0006331",
     "OpenStreetMap contributors. (2026). <i>OpenStreetMap data extract: Philippines</i> [Data set]. Geofabrik. https://download.geofabrik.de/asia/philippines.html",
     "Page, L., Brin, S., Motwani, R., & Winograd, T. (1999). <i>The PageRank citation ranking: Bringing order to the web</i> (Technical Report 1999-66). Stanford InfoLab.",
+    "Panagopoulos, G., Nikolentzos, G., &amp; Vazirgiannis, M. (2021). Transfer graph neural networks for pandemic forecasting. <i>Proceedings of the AAAI Conference on Artificial Intelligence, 35</i>(6), 4838–4845. https://doi.org/10.1609/aaai.v35i6.16616",
     "Petricola, S., Reinmuth, M., Lautenbach, S., Hatfield, C., & Zipf, A. (2022). Assessing road criticality and loss of healthcare accessibility during floods: The case of Cyclone Idai, Mozambique 2019. <i>International Journal of Health Geographics, 21</i>, 14. https://doi.org/10.1186/s12942-022-00315-2",
     "Philippine Statistics Authority. (2021). <i>Philippines: 2020 census of population and housing, population by municipality</i> [Data set]. Humanitarian Data Exchange. https://data.humdata.org/dataset/c1edf0c5-58c8-4d39-b566-937b1ad7907f",
     "Philippine Statistics Authority & National Mapping and Resource Information Authority. (2025). <i>Philippines: Subnational administrative boundaries (COD-AB)</i> [Data set]. Humanitarian Data Exchange. https://data.humdata.org/dataset/caf116df-f984-4deb-85ca-41b349d3f313",
@@ -560,9 +958,11 @@ REFERENCES = [
     "Tariverdi, M., Nunez-del-Prado, M., Leonova, N., & Rentschler, J. (2023). Measuring accessibility to public services and infrastructure criticality for disasters risk management. <i>Scientific Reports, 13</i>, 1569. https://doi.org/10.1038/s41598-023-28460-z",
     "Tatem, A. J. (2017). WorldPop, open data for spatial demography. <i>Scientific Data, 4</i>, 170004. https://doi.org/10.1038/sdata.2017.4",
     "Tellman, B., Sullivan, J. A., Kuhn, C., Kettner, A. J., Doyle, C. S., Brakenridge, G. R., Erickson, T. A., & Slayback, D. A. (2021). Satellite imaging reveals increased proportion of population exposed to floods. <i>Nature, 596</i>, 80–86. https://doi.org/10.1038/s41586-021-03695-w",
+    "Tiecke, T. G., Liu, X., Zhang, A., Gros, A., Li, N., Yetman, G., Kilic, T., Murray, S., Blankespoor, B., Prydz, E. B., &amp; Dang, H.-A. H. (2017). <i>Mapping the world population one building at a time</i>. arXiv. https://arxiv.org/abs/1712.05839",
     "UN-SPIDER. (n.d.). <i>Recommended practice: Flood mapping and damage assessment using Sentinel-1 SAR data in Google Earth Engine</i>. United Nations Office for Outer Space Affairs. https://www.un-spider.org/advisory-support/recommended-practices/recommended-practice-google-earth-engine-flood-mapping",
     "van Panhuis, W. G., Choisy, M., Xiong, X., Chok, N. S., Akarasewi, P., Iamsirithaworn, S., Lam, S. K., Chong, C. K., Lam, F. C., Phommasak, B., Vongphrachanh, P., Bouaphanh, K., Rekol, H., Hien, N. T., Thai, P. Q., Duong, T. N., Chuang, J.-H., Liu, Y.-L., Ng, L.-C., ... Burke, D. S. (2015). Region-wide synchrony and traveling waves of dengue across eight countries in Southeast Asia. <i>Proceedings of the National Academy of Sciences, 112</i>(42), 13069–13074. https://doi.org/10.1073/pnas.1501375112",
     "Weiss, D. J., Nelson, A., Vargas-Ruiz, C. A., Gligorić, K., Bavadekar, S., Gabrilovich, E., Bertozzi-Villa, A., Rozier, J., Gibson, H. S., Shekel, T., Kamath, C., Lieber, A., Schulman, K., Shao, Y., Qarkaxhija, V., Nandi, A. K., Keddie, S. H., Rumisha, S., Amratia, P., ... Gething, P. W. (2020). Global maps of travel time to healthcare facilities. <i>Nature Medicine, 26</i>, 1835–1838. https://doi.org/10.1038/s41591-020-0931-3",
+    "Zadrozny, B., &amp; Elkan, C. (2002). Transforming classifier scores into accurate multiclass probability estimates. In <i>Proceedings of the 8th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining</i> (pp. 694–699). https://doi.org/10.1145/775047.775151",
 ]
 
 
@@ -579,6 +979,73 @@ def storm_rows(k):
                     f"<td class='n'>{int(r.ferries)}</td><td class='n'>{fmt_m(r.cut)}</td><td class='n'>{r.A:.1%}</td>"
                     f"<td class='n'>{r.R:.2f}</td><td class='n'>{r.t3} / {r.t2}</td><td>{k['top'][key]}</td></tr>")
     return "\n".join(rows)
+
+
+def method_rows(k):
+    """Per observed track: people cut off by each access method, the per-unit range, agreement, vulnerable groups."""
+    t = k["storm_tab"]
+    out = []
+    for key, s in STORMS.items():
+        r = t.loc[key]
+        out.append(f"<tr><td>{s['local']}</td><td class='n'>{fmt_m(r.cut)}</td><td class='n'>{fmt_m(r.cutr)}</td>"
+                   f"<td class='n'>{r.cut_lo / 1e6:.1f}-{fmt_m(r.cut_hi)}</td><td class='n'>{k['rho_A_obs'][key]:.2f}</td>"
+                   f"<td class='n'>{k['tau_methods'][key]:.2f}</td><td class='n'>{k['top10_methods'][key]}/10</td>"
+                   f"<td class='n'>{r.u5 / 1e3:,.0f}k</td><td class='n'>{r.o60 / 1e3:,.0f}k</td></tr>")
+    return "\n".join(out)
+
+
+def model_rows(k, compact=False):
+    """eval_models.csv: one row per model present, all scored on the same rows."""
+    m, al = k["mtab"], k["mall"]
+    order = sorted(al.index, key=lambda x: al.loc[x, "relWIS_vs_naive"])
+    out = []
+    for x in order:
+        r = al.loc[x]
+        hh = {h: m[(m.model == x) & (m.horizon == h)].relWIS_vs_naive.iloc[0] for h in ("1", "4")}
+        lab = MODEL_LABEL.get(x, x)
+        bold = " style='font-weight:700'" if x in ("xgb", k.get("best_mean")) else ""
+        mw = f"{k['mw'][x]:.2f}" if k.get("mw") else "–"
+        if compact:
+            out.append(f"<tr{bold}><td>{lab}</td><td class='n'>{r.relWIS_vs_naive:.3f}</td><td class='n'>{r.relWIS_vs_xgb:.3f}</td>"
+                       f"<td class='n'>{mw}</td><td class='n'>{r.cov90:.2f}</td></tr>")
+        else:
+            out.append(f"<tr{bold}><td>{lab}</td><td class='mono' style='font-size:7pt;color:var(--grey)'>{r.kind}</td><td class='n'>{r.WIS:.1f}</td>"
+                       f"<td class='n'>{mw}</td><td class='n'>{hh['1']:.3f}</td><td class='n'>{hh['4']:.3f}</td><td class='n'>{r.relWIS_vs_naive:.3f}</td>"
+                       f"<td class='n'>{r.relWIS_vs_xgb:.3f}</td><td class='n'>{r.cov50:.2f}</td><td class='n'>{r.cov90:.2f}</td></tr>")
+    return "\n".join(out)
+
+
+def bench_missing_text(k):
+    miss = [BENCH_LABEL[x] for x in k["bench_missing"]]
+    return "" if not miss else f"Not in this build: {', '.join(miss)} (no forecast file yet); the table fills in when they are added."
+
+
+def catalog_rows(k, cols=2):
+    """All scored storms in date order, split over `cols` side-by-side tables."""
+    a = k["allst"]
+    rows = []
+    for r in a.itertuples():
+        star = "" if r.kind == "catalogue" else " &#9670;"
+        raw = "" if r.cal else "&dagger;"
+        rows.append(f"<tr><td>{r.label}{star}</td><td class='n'>{r.R:.2f}{raw}</td>"
+                    f"<td class='n'>{r.cut / 1e6:.2f}</td><td class='n'>{r.cutr / 1e6:.2f}</td><td class='n'>{r.rcut / 1e3:,.0f}k</td>"
+                    f"<td class='n'>{r.ferries}</td><td class='n'>{r.t3}/{r.t2}</td></tr>")
+    n = (len(rows) + cols - 1) // cols
+    head = ("<tr><th>storm</th><th class='n'>R</th><th class='n'>cut M</th><th class='n'>raster</th>"
+            "<th class='n'>R&times;cut</th><th class='n'>ferry</th><th class='n'>D/P</th></tr>")
+    return [head + "".join(rows[i * n:(i + 1) * n]) for i in range(cols)]
+
+
+def s1_muni_rows(k):
+    out = []
+    for key, s in STORMS.items():
+        t = k.get("s1_muni", {}).get(key)
+        if not t:
+            continue
+        top = "; ".join(f"{a} ({p}) {fl / 1e3:.0f}k, {fr:.0%}" for a, p, fl, fr in t["top"])
+        out.append(f"<tr><td>{s['local']}</td><td class='n'>{t['n_seen']:,}</td><td class='n'>{t['n_fl']}</td><td>{top}</td>"
+                   f"<td class='n'>{t['rho']:.2f}</td></tr>")
+    return "\n".join(out)
 
 
 def eval_rows(k):
@@ -631,16 +1098,17 @@ def source_rows(d):
         "noah": ("UP NOAH flood hazard 5/25-yr, 139 provinces", "static susceptibility, road proxy", "UP NOAH (Drive)"),
         "copernicus_ems": ("EMSR312 / EMSR478 vector packages", "observed flood (Ompong AOIs)", "Copernicus EMS"),
         "worldpop": ("WorldPop 2020 100 m UN-adjusted", "population grid", "WorldPop"),
-        "meta_hrsl": ("Meta HRSL under-5 / 60+", "vulnerability (not yet used)", "HDX"),
+        "meta_hrsl": ("Meta HRSL under-5 / 60+", "vulnerable groups cut off", "HDX"),
         "osm": ("OpenStreetMap Philippines PBF", "road network", "Geofabrik"),
         "roroph": ("roroph RoRo routes (108)", "ferry edges (2024–26 proxy)", "pinasr/roroph"),
         "hotosm_health": ("HOT OSM health facilities", "hospital nodes (fallback)", "HDX"),
         "noah_facilities": ("UP NOAH critical facilities", "hospital nodes (fallback)", "UP NOAH"),
-        "map_friction": ("MAP friction surface 2019", "raster access (wired next)", "Earth Engine"),
-        "gfd": ("Global Flood Database events", "context (ends 2018)", "Earth Engine"),
-        "sentinel1": ("Sentinel-1 scene inventory", "flood-mapping plan", "Earth Engine"),
-        "cchain": ("Project CCHAIN PIDSR city-week", "leptospirosis (stretch)", "HDX"),
-        "mendeley_parreno": ("Parreño national weekly notifiable diseases", "cross-check", "Mendeley Data"),
+        "map_friction": ("MAP friction surface 2019", "raster access method", "Earth Engine"),
+        "gfd": ("Global Flood Database events", "context only (ends 2017)", "Earth Engine"),
+        "sentinel1": ("Sentinel-1 scene inventory", "pass dates per storm", "Earth Engine"),
+        "s1_flood": ("Sentinel-1 new-flood masks per typhoon", "observed flood", "Earth Engine"),
+        "cchain": ("Project CCHAIN PIDSR city-week", "leptospirosis, 12 cities", "HDX"),
+        "mendeley_parreno": ("Parreño national weekly notifiable diseases", "leptospirosis, national", "Mendeley Data"),
         "opendengue": ("OpenDengue V1.3", "national cross-check", "OpenDengue"),
     }
     rows = []
@@ -648,9 +1116,10 @@ def source_rows(d):
         if src in m.index:
             rows.append(f"<tr><td class='mono'>{src}</td><td>{desc}</td><td>{role}</td><td>{where}</td>"
                         f"<td class='n'>{int(m.loc[src, 'files'])}</td><td class='n'>{'&lt;1' if m.loc[src, 'mb'] < 1 else f'{m.loc[src, "mb"]:,.0f}'}</td></tr>")
-    for src, desc, role, where in [("s1_flood", "Sentinel-1 flood masks per typhoon (UN-SPIDER)", "observed flood", "Earth Engine"),
-                                   ("psgc", "PSA PSGC 2Q 2026", "pcode check", "manual"), ("nhfr", "DOH NHFR", "hospital list", "manual")]:
-        rows.append(f"<tr class='pend'><td class='mono'>{src}</td><td>{desc}</td><td>{role}</td><td>{where}</td><td class='n'>–</td><td class='n'>pending</td></tr>")
+    for src, desc, role, where in [("psgc", "PSA PSGC 2Q 2026", "not needed: COD-AB pcodes resolve every unit", "manual"),
+                                   ("nhfr", "DOH NHFR facility registry", "not used: OSM + NOAH fallback", "manual")]:
+        if src not in m.index:
+            rows.append(f"<tr class='pend'><td class='mono'>{src}</td><td>{desc}</td><td>{role}</td><td>{where}</td><td class='n'>–</td><td class='n'>–</td></tr>")
     return "\n".join(rows)
 
 
@@ -717,7 +1186,7 @@ def demo_script_html():
             c = [x.strip() for x in line.strip().strip("|").split("|")]
             rows.append(f"<tr><td class='t'>{c[0].strip('*')}</td><td class='cue'>{_md_inline(c[1])}</td><td class='say'>{_md_inline(c[2])}</td></tr>")
         elif line.startswith("## "):
-            extra.append(f"<h2>{_md_inline(line[3:])}</h2><ul>")
+            extra.append(("</ul>" if extra else "") + f"<h2>{_md_inline(line[3:])}</h2><ul>")
         elif line.startswith("- "):
             extra.append(f"<li>{_md_inline(line[2:])}</li>")
     if extra:
@@ -781,7 +1250,7 @@ def main(pdf=True):
 
     d = load()
     k = stats(d)
-    F = make_figures(d)
+    F = make_figures(d, k)
     SRC.mkdir(parents=True, exist_ok=True)
     report, slides = SRC / "report.html", SRC / "slides.html"
     report.write_text(RP.report_html(d, k, F), encoding="utf-8")

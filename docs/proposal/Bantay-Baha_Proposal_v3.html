@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Bantay-Baha: concept proposal (revised)</title>
+<!-- Source of docs/proposal/Bantay-Baha_Proposal_v3.pdf. Render with: python scripts/make_proposal.py
+     Word counts (<span class="wc" data-for="ID" ...>) are filled in by the script from the <div class="body" id="ID"> they name.
+     Anonymous by design: no team name, member names, school or e-mail. -->
+<style>
+@page { size: letter; margin: 20mm 20mm 18mm 20mm; }
+* { box-sizing: border-box; }
+body { font-family: Arial, "Liberation Sans", Helvetica, sans-serif; font-size: 10.5pt; line-height: 1.38; color: #1a1a1a; margin: 0; }
+h1 { font-size: 22pt; color: #1F3864; margin: 0 0 3mm; letter-spacing: .01em; }
+h2 { font-size: 12.5pt; color: #1F3864; text-transform: uppercase; margin: 6mm 0 1mm; letter-spacing: .02em; break-after: avoid; }
+h3 { font-size: 10.5pt; margin: 3mm 0 1mm; break-after: avoid; }
+p { margin: 0 0 2.4mm; text-align: left; }
+.wc { display: block; font-size: 8.5pt; color: #6b6b6b; font-style: italic; margin: 0 0 2mm; }
+.cover { height: 235mm; position: relative; break-after: page; }
+.cover .sub { font-size: 13pt; font-style: italic; margin: 0 0 4mm; }
+.cover .theme { font-size: 11pt; font-style: italic; color: #C55A11; margin: 0 0 8mm; }
+.cover .note { font-size: 9pt; color: #6b6b6b; font-style: italic; margin-bottom: 6mm; }
+.cover .rev { position: absolute; bottom: 0; left: 0; right: 0; font-size: 9pt; color: #444; border-top: 1px solid #bbb; padding-top: 3mm; }
+ul.obj { padding-left: 6mm; margin: 0 0 2mm; } ul.obj li { margin-bottom: 1.6mm; }
+.refs p { padding-left: 8mm; text-indent: -8mm; font-size: 9.6pt; margin-bottom: 1.8mm; overflow-wrap: anywhere; }
+table { border-collapse: collapse; width: 100%; font-size: 9pt; margin: 2mm 0 4mm; }
+th, td { border: 1px solid #9a9a9a; padding: 1.6mm 2mm; vertical-align: top; text-align: left; }
+th { background: #E8ECF3; }
+.pb { break-before: page; }
+figure { margin: 2mm 0 3mm; }
+figcaption { font-size: 9pt; font-style: italic; margin-top: 1mm; }
+.changes td:first-child { width: 6mm; text-align: right; }
+.changes { font-size: 8.6pt; }
+.changes td, .changes th { padding: 1.2mm 1.6mm; }
+tr { break-inside: avoid; }
+</style></head><body>
+
+<section class="cover">
+<p class="note">Cover page (paste into the template cover). Keep the template's PJDSC 2026 header and theme line.</p>
+<h1>BANTAY-BAHA</h1>
+<p class="sub">A Graph-Based Early Warning and Response System for Flood-Linked Disease Outbreaks</p>
+<p class="theme">Trace the Pattern, Target the Cure: Advancing Public Health Through Data Science</p>
+<p class="rev">Revised concept proposal (v3). It keeps the structure and limits of the submitted proposal and changes only what the
+build corrected or changed; Appendix D lists each change and why. Anonymous submission: no team or member names.</p>
+</section>
+
+<h2>Executive summary</h2>
+<span class="wc" data-for="exec" data-limit="250"></span>
+<div class="body" id="exec">
+<p>Eight to nine tropical cyclones cross the Philippines each year, and flood-linked disease follows within weeks: Typhoon Ondoy (2009) was
+followed by 2,089 leptospirosis cases and 162 deaths, and the 2019 dengue epidemic reached 146,062 cases by July. Response still begins after
+hospitals fill, and the communities most at risk are often the ones a storm has cut off from care.</p>
+<p>Bantay-Baha ("flood watch") is a decision-support dashboard that tells DOH regional offices and LGU health officers, before or immediately
+after a typhoon, which provinces are most likely to see a disease surge and which of those will lose access to a hospital. It links three
+graphs: (1) a flood-exposure layer from Sentinel-1 flood extent, UP NOAH hazard maps and river-routed rainfall; (2) a causal
+lead-lag outbreak graph learned from province-week DOH dengue surveillance with PCMCI+, which identifies sentinel provinces that rise first; and
+(3) a road-and-RoRo ferry network that simulates storm-closed routes to measure lost hospital access. The
+first two feed a quantile gradient-boosted forecast of 1- to 4-week-ahead incidence, benchmarked against time-series foundation models and scored as forecast hubs do. Calibrated surge probability and the population cut off from care combine into one priority ranking with
+recommended action tiers.</p>
+<p>We backtest on Typhoons Ompong (2018), Tisoy (2019), Rolly and Ulysses (2020), plus every other 2017-2020 storm. No Philippine
+tool conditions outbreak risk on a specific storm and joins it with storm-specific loss of healthcare access; Bantay-Baha moves response from
+reacting to outbreaks to getting ahead of them.</p>
+</div>
+
+<h2>Keywords</h2>
+<p>early warning system, dengue, leptospirosis, flooding, typhoon, graph analytics, causal discovery, probabilistic forecasting, healthcare
+access, Philippines</p>
+
+<h2>Background</h2>
+<span class="wc" data-for="background"></span>
+<div class="body" id="background">
+<p>About 20 tropical cyclones enter the Philippine Area of Responsibility each year and eight or nine cross the country, mostly between July and
+October (PAGASA, n.d.). Each storm brings flooding, and flooding brings disease. After Typhoon Ondoy in 2009, more than 2,089 people were treated
+for leptospirosis and 162 died, over five times the national leptospirosis deaths of 2008 (Balbuena et al., 2010); Manila hospital data show the
+leptospirosis risk from rainfall peaks two weeks later and is mediated by flooding (Matsushita et al., 2018). Dengue rises with the same rains: in
+2019 the DOH declared a national epidemic after 146,062 cases and 622 deaths from January to July (The Philippine Star, 2019). Recent reviews call
+for a unified surveillance registry and tools that prioritise where to act (Interior et al., 2025; Labana, 2026).</p>
+<p>The data needed to act early exist but are scattered across surveillance, hazard, climate and facility datasets. Dengue forecasting from climate
+has been studied repeatedly in the Philippines, from province-level early warning (Buczak et al., 2014) to Metro Manila machine learning (Carvajal
+et al., 2018) and a nationwide comparison of eight forecasters (Olana et al., 2025). Flood-driven loss of hospital access has been modelled for
+Metro Manila, where a 15 cm flood leaves about 22% of residents without access to higher-level care (Tariverdi et al., 2023), and dengue source
+regions have been identified by synchrony analysis (van Panhuis et al., 2015). These strands have never been joined: no tool conditions surge risk
+on a specific typhoon, models nationwide loss of access including ferry links, or combines the two into one ranking for health officers. The
+problems share a structure that graph methods model directly: water flows along rivers, outbreaks move between connected places, and patients
+travel along roads and ferries.</p>
+</div>
+
+<h2>The problem</h2>
+<span class="wc" data-for="problem"></span>
+<div class="body" id="problem">
+<p>Philippine health authorities have no tool that anticipates, before or immediately after a typhoon, where flood-linked disease surges will
+occur and which affected communities will be cut off from care. Prophylaxis, vector control and medical teams are deployed after cases rise, and
+isolated communities are reached last. Existing dengue models are not storm-conditioned, give point forecasts without calibrated uncertainty and
+ignore whether patients can reach a hospital; hazard tools such as UP NOAH carry no health layer.</p>
+<p><b>Guiding question:</b> Can observed flood extent, a causal graph of outbreak spread and a storm-disrupted transport network, combined with
+calibrated machine-learning forecasts, rank the provinces that need help first, early enough to act?</p>
+</div>
+
+<h2>Objectives</h2>
+<span class="wc" data-for="objectives"></span>
+<div class="body" id="objectives">
+<p>By the PJDSC 2026 final-round submission, the team will:</p>
+<ul class="obj">
+<li>By 24 October 2026, assemble a province-by-week panel for 85 harmonised province units (the dengue file's 126 province and city units, crosswalked), 2016 to 2020, joining DOH-Epi dengue cases, CHIRPS and IMERG rainfall, Sentinel-1
+flood fraction, UP NOAH hazard share and IBTrACS typhoon exposure on PSGC codes.</li>
+<li>By 24 October 2026, learn a lead-lag outbreak graph with PCMCI+, identify sentinel provinces (PageRank) and communities (Louvain), and test
+whether sentinel features reduce follower-province forecast error out of sample.</li>
+<li>By 24 October 2026, forecast 1- to 4-week-ahead dengue incidence per province with a quantile gradient-boosted model, achieving a relative
+Weighted Interval Score below 1.0 against the seasonal-naive baseline and 90% interval coverage of 80 to 95% on rolling-origin evaluation over
+2018 to 2019.</li>
+<li>By 24 October 2026, quantify storm-specific loss of hospital access for every city and municipality with a friction-surface and a
+road-plus-RoRo network method for Ompong, Tisoy, Rolly and Ulysses, reporting their disagreement as a range, with sensitivity bounds and the Metro
+Manila benchmark of Tariverdi et al. (2023).</li>
+<li>By 24 October 2026, deploy the dashboard that returns a ranked province list with calibrated risk, access loss, sentinel status, drivers and an
+action tier for any historical or shifted track in under one minute, and before the final-round submission collect System Usability Scale scores
+from three target users.</li>
+</ul>
+</div>
+
+<h2>Scope &amp; limitations</h2>
+<span class="wc" data-for="scope"></span>
+<div class="body" id="scope">
+<p><b>Scope.</b> Nationwide, the 85 province units that the 2016 to 2020 DOH-Epi dengue file on HDX supports, at weekly resolution; access analysis per city and municipality, summarised per province as the share
+of population cut off. Dengue is the primary disease because consistent subnational data exist. Leptospirosis is a stretch goal: an open weekly
+series exists for 12 cities (Project CCHAIN), so it enters as a city and national lag analysis and a typhoon event study, not as a province
+forecast. Storm scenarios use historical IBTrACS tracks and shifted variants. Users are DOH regional offices, LGU health offices and local DRRM
+offices.</p>
+<p><b>Limitations.</b> Surveillance data carry reporting delays and under-reporting, and COVID-19 collapsed 2020 reporting, so 2020 is used for
+access scenarios only. Sentinel-1 misses urban and vegetated floods and can miss the peak; tracks without an image use hazard maps, which give an
+upper bound. Hazard maps cover 74 of 85 units, and a unit with no map is missing, not zero hazard. OpenStreetMap completeness outside Luzon is
+uneven, so two access methods are reported; hospital lists and 2024 to 2026 ferry routes are proxies. PCMCI+ links are statistical dependencies, not proof of transmission. The tool supports decisions and does not replace clinical or field
+judgment; it uses only aggregated, non-identifiable data.</p>
+</div>
+
+<h2>Methodology</h2>
+<span class="wc" data-for="method"></span>
+<div class="body" id="method">
+<p>Bantay-Baha builds three graphs, turns each into features for one province-week table, and combines a calibrated disease forecast with
+storm-driven access loss into one priority ranking (Figure 1, Appendix A; data sources in Table 1, Appendix B).</p>
+<h3>Layer 1: Flood exposure (prevent)</h3>
+<p>For each typhoon, Sentinel-1 radar before-and-after change detection in Google Earth Engine (UN-SPIDER practice, same-orbit images, a backscatter-drop rule) yields the flooded fraction and flooded population (WorldPop 100 m) per
+province and municipality, cross-checked against Copernicus EMS observed flood (EMSR312, Ompong; EMSR478 grades damage only). Static susceptibility is the share of population inside UP NOAH 5- and 25-year flood hazard maps. Dynamic forcing uses CHIRPS and GPM IMERG
+7-day rainfall and rainfall accumulated downstream along the HydroRIVERS network, so towns near river mouths register upstream rain.</p>
+<h3>Layer 2: Causal lead-lag outbreak graph (stop outbreaks early)</h3>
+<p>Province-week incidence is log-transformed and seasonally differenced so shared rainy-season peaks do not create false links. PCMCI+ (Runge,
+2020) in Tigramite, with partial-correlation tests and lags up to three weeks, recovers a directed lead-lag graph with bootstrap confidence per
+edge and Benjamini-Hochberg control of false links; lagged cross-correlation is the baseline graph. PageRank ranks
+sentinel provinces that rise first; Louvain groups provinces that move together for coordinated response. Graphs are learned only inside each
+training window to avoid leakage.</p>
+<h3>Forecast model</h3>
+<p>A pooled XGBoost model with province as a categorical feature predicts 1- to 4-week-ahead incidence from lagged cases, calendar week, lagged
+rainfall, flood exposure (Layer 1) and lagged cases of PCMCI+ leader provinces (Layer 2), trained with the multi-quantile objective at the 23
+levels used by the CDC FluSight hub and explained with SHAP. Models without graph or environmental features are the ablations. Baselines set the bar: zero-shot Chronos-2 (Ansari et al., 2025) and TabPFN-TS, a seasonal-naive forecast and an
+MPNN-LSTM on province-border and ferry adjacency; their median ensemble with XGBoost is evaluated too. Because only XGBoost takes the storm track,
+storm scenarios use XGBoost. Surge probability is recalibrated by isotonic regression on past forecasts only (Zadrozny &amp; Elkan, 2002); an online conformal band checks the intervals (Gibbs &amp; Candès, 2021). Models train on
+earlier years and are evaluated by rolling-origin re-forecasts, never a random split, scored with the Weighted Interval Score (Bracher et al.,
+2021), relative WIS and coverage.</p>
+<h3>Layer 3: Access graph and storm scenarios (strengthen healthcare reach)</h3>
+<p>Nodes are OSM road junctions and hospitals from OSM and UP NOAH facilities (the DOH facility registry blocks scripted download). Edges are OSM road links and the 108 RoRo routes in the MARINA inventory (roroph), weighted by travel time
+and frequency. Population on a 1 km grid joins the nearest road, and a multi-source shortest-path search gives each cell's travel time to the
+nearest hospital. For each typhoon, ferry routes crossing the IBTrACS gale swath are removed and road links inside the observed flood are cut;
+shifted tracks, which have no image, use UP NOAH hazard inside the swath. Cells that lose their route, or whose trip
+doubles and grows by over an hour, are cut off; Meta HRSL counts the under-5 and 60+ among them. A raster method, the Malaria Atlas Project friction
+surface (Weiss et al., 2020) with flooded cells impassable, runs in parallel following Petricola et al. (2022); the disagreement between methods
+is reported as uncertainty.</p>
+<h3>Priority score and product</h3>
+<p>For a chosen typhoon, each province's priority is P = R x A, where R is the calibrated probability that incidence over the next four weeks
+exceeds the province's 90th percentile and A is the share of population cut off from hospital care, so P reads as the expected share of residents
+at elevated risk who cannot reach care. The Streamlit dashboard takes a historical or shifted track and returns a priority map, a
+risk-versus-access 2x2, a ranked table with predicted cases and intervals, cut-off population, sentinel status and SHAP drivers, and an action
+tier: monitor sentinel sites; pre-position doxycycline and vector-control supplies; or deploy mobile clinics before roads and ferries close.
+Scenarios are pre-computed (15 tracks per backtest typhoon, plus every other 2017-2020 storm), so results return in under one minute.</p>
+<h3>Validation</h3>
+<p>We backtest the forecast on Ompong (2018), Tisoy (2019) and the 2019 season, and the access module on all four typhoons, checking whether
+high-priority provinces saw higher incidence in the following four weeks. Sensitivity to travel speed, ferry rules and storm buffer is reported
+as rank stability (Kendall's tau) for both access methods. Three target users complete a 15-minute scenario task and the System Usability Scale.</p>
+<h3>Tools</h3>
+<p>Python with pandas, GeoPandas, GDAL, SciPy and scikit-image (road graph, shortest paths and cost-distance), Tigramite, XGBoost,
+scikit-learn, SHAP, statsmodels, chronos-forecasting, tabpfn-time-series and PyTorch; Google Earth Engine; Streamlit; all code in a public
+GitHub repository with a one-command rebuild.</p>
+</div>
+
+<h2 class="pb">References</h2>
+<span class="wc" data-refs="1"></span>
+<div class="refs">
+<p>Ansari, A. F., Shchur, O., Küken, J., Auer, A., Han, B., Mercado, P., Rangapuram, S. S., Shen, H., Stella, L., Shen, X., Turkmen, C., Bohlke-Schneider, M., Erickson, N., Kapoor, S., Li, Z., Wang, B., Williams, A. R., Ahmed, A., Weber, S., ... Wang, Y. (2025). <i>Chronos-2: From univariate to universal forecasting</i>. arXiv. https://arxiv.org/abs/2510.15821</p>
+<p>Balbuena, A., Herbosa, T., &amp; Gundran, C. P. (2010). Cases of leptospirosis after Typhoon Ondoy (international name: Ketsana) seen at the emergency department: The Philippine General Hospital experience. <i>WIT Transactions on Information and Communication Technologies, 43</i>, 605-612. https://doi.org/10.2495/RISK100501</p>
+<p>Bracher, J., Ray, E. L., Gneiting, T., &amp; Reich, N. G. (2021). Evaluating epidemic forecasts in an interval format. <i>PLoS Computational Biology, 17</i>(2), e1008618. https://doi.org/10.1371/journal.pcbi.1008618</p>
+<p>Buczak, A. L., Baugher, B., Babin, S. M., Ramac-Thomas, L. C., Guven, E., Elbert, Y., Koshute, P. T., Velasco, J. M. S., Roque, V. G., Jr., Tayag, E. A., Yoon, I.-K., &amp; Lewis, S. H. (2014). Prediction of high incidence of dengue in the Philippines. <i>PLoS Neglected Tropical Diseases, 8</i>(4), e2771. https://doi.org/10.1371/journal.pntd.0002771</p>
+<p>Carvajal, T. M., Viacrusis, K. M., Hernandez, L. F. T., Ho, H. T., Amalin, D. M., &amp; Watanabe, K. (2018). Machine learning methods reveal the temporal pattern of dengue incidence using meteorological factors in metropolitan Manila, Philippines. <i>BMC Infectious Diseases, 18</i>, 183. https://doi.org/10.1186/s12879-018-3066-0</p>
+<p>Gibbs, I., &amp; Candès, E. (2021). Adaptive conformal inference under distribution shift. <i>Advances in Neural Information Processing Systems, 34</i>, 1660-1672.</p>
+<p>Interior, J. S., Bigay-Iringan, K. J. J., Bondad-Delson, R. N. D., Iringan, R. A. A., Calderon, X. M. S., &amp; Castro, A. G. P. (2025). Leptospirosis in the Philippines: Confronting the structural roots of a recurring threat. <i>Pathogens, 14</i>(10), 963. https://doi.org/10.3390/pathogens14100963</p>
+<p>Labana, R. V. (2026). Rethinking leptospirosis prevention, the Philippines. <i>Emerging Infectious Diseases, 32</i>(3). https://doi.org/10.3201/eid3203.251250</p>
+<p>Matsushita, N., Ng, C. F. S., Kim, Y., Suzuki, M., Saito, N., Ariyoshi, K., Salva, E. P., Dimaano, E. M., Villarama, J. B., Go, W. S., &amp; Hashizume, M. (2018). The non-linear and lagged short-term relationship between rainfall and leptospirosis and the intermediate role of floods in the Philippines. <i>PLoS Neglected Tropical Diseases, 12</i>(4), e0006331. https://doi.org/10.1371/journal.pntd.0006331</p>
+<p>Olana, K. O. A., Poprom, N., Siewchaisakul, P., Punyapornwithaya, V., &amp; Thongprachum, A. (2025). Spatial distribution analysis and comparative forecasting of dengue resurgence in the Philippines (2025-2027): A nationwide study. <i>Transboundary and Emerging Diseases, 2025</i>, 7480710. https://doi.org/10.1155/tbed/7480710</p>
+<p>Petricola, S., Reinmuth, M., Lautenbach, S., Hatfield, C., &amp; Zipf, A. (2022). Assessing road criticality and loss of healthcare accessibility during floods: The case of Cyclone Idai, Mozambique 2019. <i>International Journal of Health Geographics, 21</i>, 14. https://doi.org/10.1186/s12942-022-00315-2</p>
+<p>Philippine Atmospheric, Geophysical and Astronomical Services Administration. (n.d.). <i>Tropical cyclone information</i>. DOST-PAGASA. https://www.pagasa.dost.gov.ph/climate/tropical-cyclone-information</p>
+<p>Runge, J. (2020). Discovering contemporaneous and lagged causal relations in autocorrelated nonlinear time series datasets. In <i>Proceedings of the 36th Conference on Uncertainty in Artificial Intelligence (UAI)</i> (PMLR 124, pp. 1388-1397). https://arxiv.org/abs/2003.03685</p>
+<p>Tariverdi, M., Nunez-del-Prado, M., Leonova, N., &amp; Rentschler, J. (2023). Measuring accessibility to public services and infrastructure criticality for disasters risk management. <i>Scientific Reports, 13</i>, 1569. https://doi.org/10.1038/s41598-023-28460-z</p>
+<p>The Philippine Star. (2019, August 6). <i>DOH declares national dengue epidemic</i>. https://www.philstar.com/headlines/2019/08/06/1941094/doh-declares-national-dengue-epidemic</p>
+<p>van Panhuis, W. G., Choisy, M., Xiong, X., Chok, N. S., Akarasewi, P., Iamsirithaworn, S., Lam, S. K., Chong, C. K., Lam, F. C., Phommasak, B., Vongphrachanh, P., Bouaphanh, K., Rekol, H., Hien, N. T., Thai, P. Q., Duong, T. N., Chuang, J.-H., Liu, Y.-L., Ng, L.-C., ... Burke, D. S. (2015). Region-wide synchrony and traveling waves of dengue across eight countries in Southeast Asia. <i>Proceedings of the National Academy of Sciences, 112</i>(42), 13069-13074. https://doi.org/10.1073/pnas.1501375112</p>
+<p>Weiss, D. J., Nelson, A., Vargas-Ruiz, C. A., Gligorić, K., Bavadekar, S., Gabrilovich, E., Bertozzi-Villa, A., Rozier, J., Gibson, H. S., Shekel, T., Kamath, C., Lieber, A., Schulman, K., Shao, Y., Qarkaxhija, V., Nandi, A. K., Keddie, S. H., Rumisha, S., Amratia, P., ... Gething, P. W. (2020). Global maps of travel time to healthcare facilities. <i>Nature Medicine, 26</i>, 1835-1838. https://doi.org/10.1038/s41591-020-0931-3</p>
+<p>Zadrozny, B., &amp; Elkan, C. (2002). Transforming classifier scores into accurate multiclass probability estimates. In <i>Proceedings of the 8th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining</i> (pp. 694-699). https://doi.org/10.1145/775047.775151</p>
+</div>
+
+<h2 class="pb">Appendices</h2>
+<h3>Appendix A. Figure 1. Bantay-Baha pipeline: three graphs, two models, one ranking</h3>
+<figure>
+<svg viewBox="0 0 680 300" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="Arial, Liberation Sans, sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#7a7a7a"/></marker></defs>
+<text x="8" y="14" font-size="13" font-weight="bold" fill="#1a1a1a">Three graphs feed one calibrated priority ranking</text>
+<g font-size="9" fill="#555"><text x="8" y="36">Prevent</text><text x="8" y="124">Stop outbreaks early</text><text x="8" y="212">Strengthen healthcare reach</text></g>
+<g stroke="#9a9a9a" fill="#fff"><rect x="8" y="42" width="200" height="62" rx="4"/><rect x="8" y="130" width="200" height="62" rx="4"/><rect x="8" y="218" width="200" height="72" rx="4"/>
+<rect x="250" y="70" width="190" height="96" rx="4"/><rect x="250" y="218" width="190" height="72" rx="4"/></g>
+<rect x="482" y="112" width="190" height="66" rx="4" fill="#E8F0FB" stroke="#3B6FB6"/>
+<rect x="482" y="218" width="190" height="72" rx="4" fill="#fff" stroke="#9a9a9a"/>
+<g font-size="10.5" font-weight="bold" fill="#1a1a1a"><text x="16" y="58">River and flood exposure</text><text x="16" y="146">Lead-lag outbreak graph</text>
+<text x="16" y="234">Road and RoRo access graph</text><text x="258" y="86">Forecast and benchmarks</text><text x="258" y="234">Access loss, two methods</text>
+<text x="490" y="128">Priority score</text><text x="490" y="234">Bantay-Baha dashboard</text></g>
+<g font-size="8.6" fill="#3B6FB6">
+<text x="16" y="72">Sentinel-1 flood per typhoon, EMS-checked</text><text x="16" y="84">UP NOAH 5/25-yr hazard share</text><text x="16" y="96">CHIRPS + IMERG rain, routed down rivers</text>
+<text x="16" y="160">PCMCI+ on province-week cases, FDR</text><text x="16" y="172">PageRank sentinels, Louvain communities</text><text x="16" y="184">tested as features (ablation)</text>
+<text x="16" y="248">OSM roads, 108 RoRo routes, hospitals</text><text x="16" y="260">storm cuts ferries and flooded roads</text><text x="16" y="272">1 km population cells (HRSL under-5, 60+)</text>
+<text x="258" y="100">XGBoost quantiles + SHAP</text><text x="258" y="112">vs Chronos-2, TabPFN-TS, MPNN-LSTM,</text><text x="258" y="124">median ensemble; rolling origin, WIS</text>
+<text x="258" y="136">surge probability R, isotonic-calibrated</text><text x="258" y="148">on past forecasts only</text>
+<text x="258" y="248">road + ferry network (primary)</text><text x="258" y="260">MAP friction raster (check)</text><text x="258" y="272">people cut off per municipality; range</text>
+<text x="490" y="142">P = calibrated R x access loss A</text><text x="490" y="154">range from the two access methods</text><text x="490" y="166">2x2 view, sensitivity bounds</text>
+<text x="490" y="248">ranked provinces, drivers,</text><text x="490" y="260">action tier per scenario: 4 typhoons</text><text x="490" y="272">x 15 tracks + other 2017-2020 storms</text></g>
+<g stroke="#7a7a7a" stroke-width="1.4" fill="none" marker-end="url(#ar)">
+<path d="M208,73 L250,100"/><path d="M208,161 L250,136"/><path d="M208,254 L250,254"/><path d="M440,118 L482,140"/><path d="M440,254 L520,180"/><path d="M577,178 L577,218"/></g>
+</svg>
+<figcaption>Figure 1. The flood and lead-lag graphs become features of a quantile forecast; the access graph becomes a population-cut-off estimate
+from two methods; the two meet only in the priority score, so each can be validated on its own.</figcaption>
+</figure>
+
+<h3>Appendix B. Table 1. Data sources</h3>
+<table>
+<tr><th>Data</th><th>Source</th><th>Role</th></tr>
+<tr><td>Dengue cases, 126 province and city units x week, 2016-Jan 2021 (deaths not used)</td><td>DOH Epidemiology Bureau via Humanitarian Data Exchange (DOH-Epi Dengue Data 2016-2021)</td><td>Forecast target; lead-lag graph</td></tr>
+<tr><td>National weekly dengue, leptospirosis and other notifiable diseases, 2017-2023</td><td>Mendeley Data (Parreño, 2024; v98325dpxv); OpenDengue V1.3</td><td>Lepto national lag analysis; cross-check</td></tr>
+<tr><td>City weekly leptospirosis and dengue, 12 cities</td><td>Project CCHAIN PIDSR city-week (HDX)</td><td>Lepto city lag analysis; typhoon event study</td></tr>
+<tr><td>Flood extent per typhoon</td><td>Sentinel-1 SAR change detection in Google Earth Engine (after the UN-SPIDER practice); Copernicus EMS EMSR312 (observed flood), EMSR478 (damage grading only); Global Flood Database (no Philippine event after 2017; context only)</td><td>Observed flood exposure</td></tr>
+<tr><td>Flood hazard maps, 5/25-year</td><td>UP NOAH (DOST) per-province hazard maps</td><td>Static susceptibility; flood proxy for tracks without an image</td></tr>
+<tr><td>Daily rainfall</td><td>GPM IMERG V07 (0.1°); CHIRPS v2.0 (0.05°)</td><td>Dynamic forcing</td></tr>
+<tr><td>River network with downstream links</td><td>HydroRIVERS v1.0 Australasia (the Asia file has no Philippine rivers)</td><td>Upstream rainfall routing</td></tr>
+<tr><td>Typhoon tracks</td><td>IBTrACS v04r01 (basin WP)</td><td>Storm scenarios; storm catalogue</td></tr>
+<tr><td>Roads and ferry routes</td><td>OpenStreetMap (Geofabrik Philippines); MARINA RoRo inventory via roroph (108 routes, 2024-2026 operations)</td><td>Access graph edges</td></tr>
+<tr><td>Hospital locations</td><td>HOT OSM health facilities (HDX); UP NOAH critical facilities; DOH National Health Facility Registry (optional, manual)</td><td>Access graph destinations</td></tr>
+<tr><td>Friction surface and travel time</td><td>Malaria Atlas Project 2019 (Weiss et al., 2020)</td><td>Raster access method</td></tr>
+<tr><td>Population and vulnerability</td><td>WorldPop 2020 100 m; Meta High Resolution Population Density (under-5, 60+)</td><td>Population weights; vulnerable people cut off</td></tr>
+<tr><td>Boundaries, PSGC codes, census</td><td>HDX COD-AB (PSA/NAMRIA); 2020 CPH; reviewed crosswalk to 85 units</td><td>Join keys</td></tr>
+</table>
+
+<h3>Appendix C. Table 2. Development plan, 13 October to final-round submission (revised)</h3>
+<table>
+<tr><th>Dates</th><th>Workstream</th><th>Deliverable</th><th>Status</th></tr>
+<tr><td>13-22 Oct</td><td>Data acquisition and checks</td><td>Manifest of verified source files; data findings; crosswalk to 85 units</td><td>done</td></tr>
+<tr><td>23-24 Oct</td><td>Province-week panel; flood and climate layers (GEE)</td><td>Parquet panel and data card; Sentinel-1 flood, IMERG, NOAH shares</td><td>done</td></tr>
+<tr><td>23-24 Oct</td><td>Forecasting and lead-lag graph</td><td>PCMCI+ graph, quantile XGBoost, calibrated R, WIS table</td><td>done</td></tr>
+<tr><td>24 Oct</td><td>Benchmarks</td><td>Chronos-2, TabPFN-TS, MPNN-LSTM, median ensemble on the same rows</td><td>done</td></tr>
+<tr><td>23-24 Oct</td><td>Access network</td><td>Network and friction travel times, cut-off population per scenario, sensitivity, storm catalogue</td><td>done</td></tr>
+<tr><td>24 Oct</td><td>Dashboard and integration</td><td>Streamlit app with pre-computed scenarios and a built-in usability test</td><td>done</td></tr>
+<tr><td>to submission</td><td>User test, video, deck, repository</td><td>SUS with three target users; 3-minute demo; 20 slides; README with one-command rebuild</td><td>in progress</td></tr>
+</table>
+
+<h3 class="pb">Appendix D. Changes from the submitted proposal</h3>
+<table class="changes">
+<tr><th>#</th><th>Submitted proposal</th><th>Revised</th><th>Why</th></tr>
+<tr><td>1</td><td>Panel for all 81 provinces</td><td>85 harmonised 2016-2020 province units</td><td>The DOH file has 126 reporting units that mix provinces with cities and use pre-2022 boundaries; a reviewed crosswalk folds cities into provinces, undoes the Maguindanao split and the Special Geographic Area, and keeps Metro Manila as four districts.</td></tr>
+<tr><td>2</td><td>Dengue cases and deaths</td><td>Cases only</td><td>2016 deaths imply a case fatality several times that of other years.</td></tr>
+<tr><td>3</td><td>LiPAD 5-, 25- and 100-year hazard maps</td><td>UP NOAH 5- and 25-year maps</td><td>The per-province maps come from the UP NOAH archive; 11 units have no 25-year map and are carried as missing. The 25-year map is the road-flood proxy, so the 100-year map is not used.</td></tr>
+<tr><td>4</td><td>Sentinel-1 cross-checked against EMSR312 and EMSR478</td><td>EMSR312 only</td><td>EMSR478 (Rolly) has damage grading only, no flood delineation.</td></tr>
+<tr><td>5</td><td>Sentinel-1 change detection (UN-SPIDER practice)</td><td>Same-orbit before/after, backscatter-drop rule</td><td>The after/before ratio on dB values with mixed orbits recovered almost none of the EMS-confirmed flood.</td></tr>
+<tr><td>6</td><td>Global Flood Database as a flood-extent source</td><td>Context only</td><td>Its Philippine events end in 2017; it covers none of the four backtest storms.</td></tr>
+<tr><td>7</td><td>HydroRIVERS v1.0 Asia</td><td>HydroRIVERS v1.0 Australasia</td><td>HydroSHEDS places the Philippines in the Australasia region; the Asia file has no Philippine rivers.</td></tr>
+<tr><td>8</td><td>IMERG rainfall</td><td>CHIRPS and IMERG</td><td>Both were already in the data table; CHIRPS also drives river routing.</td></tr>
+<tr><td>9</td><td>PCMCI+ graph</td><td>PCMCI+ with Benjamini-Hochberg control</td><td>Without it, PCMCI+ returned many false links on pure-noise checks.</td></tr>
+<tr><td>10</td><td>"The final forecast is the median ensemble"</td><td>Ensemble evaluated; storm scenarios use XGBoost</td><td>The zero-shot models take no storm-track input, so they cannot condition on a shifted track; the ensemble has the best mean WIS, XGBoost the best median WIS.</td></tr>
+<tr><td>11</td><td>Chronos-2, TabPFN-TS, MPNN-LSTM as specified</td><td>Chronos-2 on the incidence scale; TabPFN v2 weights; border + ferry adjacency</td><td>Chronos-2 on log incidence, as first specified, collapsed on one-week reporting spikes (reported too); the default TabPFN-TS weights need a login and licence; no fixed adjacency was given.</td></tr>
+<tr><td>12</td><td>Conformal (EnbPI) intervals with MAPIE</td><td>Online conformal check from past errors</td><td>It fits the rolling origin without refitting the model (Gibbs &amp; Candès, 2021).</td></tr>
+<tr><td>13</td><td>Calibrated risk (no method named)</td><td>Isotonic recalibration of R on past forecasts only</td><td>The model's surge probability was under-confident in the middle range.</td></tr>
+<tr><td>14</td><td>Leptospirosis: "no open subnational series exists"</td><td>City and national lag analysis, typhoon event study</td><td>Project CCHAIN publishes weekly city counts for 12 cities; nothing is extrapolated to provinces.</td></tr>
+<tr><td>15</td><td>Hospitals from the DOH NHFR and OSM</td><td>HOT OSM + UP NOAH facilities</td><td>The NHFR site blocks scripted download; it stays an optional manual input.</td></tr>
+<tr><td>16</td><td>Access nodes at city and municipality centres</td><td>1 km population cells joined to the road graph</td><td>Centres misplace spread-out populations; results are still summed per municipality.</td></tr>
+<tr><td>17</td><td>Roads cut inside the observed flood polygon</td><td>Observed flood for real tracks; NOAH 25-year hazard for shifted tracks</td><td>A track that did not happen has no image; the proxy gives an upper bound, radar a lower bound.</td></tr>
+<tr><td>18</td><td>Two access methods</td><td>Same, with the per-unit range shown as uncertainty</td><td>The methods agree on normal-day rankings but not on the size of a storm's cut.</td></tr>
+<tr><td>19</td><td>Meta HRSL for population and vulnerability</td><td>Used for under-5 and 60+ counts cut off</td><td>HRSL under-counts people aged 60+ against the 2020 census; counts are low estimates.</td></tr>
+<tr><td>20</td><td>Four backtest typhoons</td><td>Plus the observed track of every other 2017-2020 storm whose gale swath reaches land</td><td>Shows the tool on any historical track; storms of 2016 are skipped because their model would have under a year of history.</td></tr>
+<tr><td>21</td><td>OSMnx in the tools</td><td>GDAL, SciPy and scikit-image</td><td>The nationwide graph is built from the Geofabrik extract and solved with compiled shortest-path and cost-distance routines.</td></tr>
+<tr><td>22</td><td>Development plan, 13-24 October</td><td>Revised dates (Table 2)</td><td>The panel and model deadlines of 15 and 20 October were missed; the build ran on 23-24 October.</td></tr>
+</table>
+
+</body></html>
