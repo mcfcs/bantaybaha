@@ -183,19 +183,27 @@ def s1_tiles(storm):
     return sorted(d.glob("*.tif")) if d.exists() else []
 
 
-def s1_unit_flood(units, storm):
-    """Per unit: flooded fraction of observed land and flooded population, from the S1 tiles of one storm."""
-    tiles = s1_tiles(storm)
-    if not tiles:
-        return missing(f"s1_flood_{storm}", f"no Sentinel-1 flood tiles in {S1 / STORMS[storm]['gee']} (needs GEE)")
-    if not UNIT_RASTER.exists() or not WORLDPOP.exists():
-        return missing(f"s1_flood_{storm}", "WorldPop / unit raster needed to aggregate S1 flood")
-    n = len(unit_index(units)) + 1
+def _tile_cell(path):
+    """Nominal 1-degree cell (left, bottom, right, top) of an S1 tile named like s1flood_121E_17N.tif, else None."""
+    m = re.search(r"_(\d+)E_(\d+)N", Path(path).stem)
+    return (int(m[1]), int(m[2]), int(m[1]) + 1, int(m[2]) + 1) if m else None
+
+
+def _s1_zone_sums(tiles, zone_raster, n, crop=False):
+    """Observed (seen), flooded pixel counts and flooded WorldPop people per zone code (0..n-1) of `zone_raster`
+    (unit or ADM3 codes on the WorldPop grid), over the S1 tiles of one storm resampled to that grid (nearest).
+    crop: read each tile only over its nominal 1-degree cell. The tiles are 1115 px of 0.000898 deg, so neighbours
+    overlap by ~2 WorldPop pixels and the uncropped sums count those strips twice (s1_unit_flood keeps that, the panel
+    was built with it; the overlap is ~0.3% of a tile)."""
     seen, flooded, pop_fl = np.zeros(n), np.zeros(n), np.zeros(n)
-    with rasterio.open(WORLDPOP) as sp, rasterio.open(UNIT_RASTER) as su:
+    with rasterio.open(WORLDPOP) as sp, rasterio.open(zone_raster) as su:
         for t in tiles:
             with rasterio.open(t) as st:
-                win = from_bounds(*st.bounds, sp.transform).round_offsets().round_lengths().intersection(Window(0, 0, sp.width, sp.height))
+                b = st.bounds
+                if crop and _tile_cell(t):
+                    l, bo, r, to = _tile_cell(t)
+                    b = (max(b.left, l), max(b.bottom, bo), min(b.right, r), min(b.top, to))
+                win = from_bounds(*b, sp.transform).round_offsets().round_lengths().intersection(Window(0, 0, sp.width, sp.height))
                 wt = rasterio.windows.transform(win, sp.transform)
                 fl = np.full((int(win.height), int(win.width)), 255, "uint8")
                 reproject(st.read(1), fl, src_transform=st.transform, src_crs=st.crs, dst_transform=wt, dst_crs=sp.crs,
@@ -206,12 +214,65 @@ def s1_unit_flood(units, storm):
             seen += np.bincount(uid, (fl != 255).astype(float), n)
             flooded += np.bincount(uid, (fl == 1).astype(float), n)
             pop_fl += np.bincount(uid, pop * (fl == 1), n)
+    return seen, flooded, pop_fl
+
+
+def s1_unit_flood(units, storm):
+    """Per unit: flooded fraction of observed land and flooded population, from the S1 tiles of one storm."""
+    tiles = s1_tiles(storm)
+    if not tiles:
+        return missing(f"s1_flood_{storm}", f"no Sentinel-1 flood tiles in {S1 / STORMS[storm]['gee']} (needs GEE)")
+    if not UNIT_RASTER.exists() or not WORLDPOP.exists():
+        return missing(f"s1_flood_{storm}", "WorldPop / unit raster needed to aggregate S1 flood")
+    n = len(unit_index(units)) + 1
+    seen, flooded, pop_fl = _s1_zone_sums(tiles, UNIT_RASTER, n)
     inv = {v: k for k, v in unit_index(units).items()}
     with np.errstate(invalid="ignore", divide="ignore"):
         frac = np.where(seen[1:] > 0, flooded[1:] / seen[1:], np.nan)
     record(f"s1_flood_{storm}", True, f"{len(tiles)} tiles")
     return pd.DataFrame({"unit_id": [inv[i] for i in range(1, n)], "s1_flood_frac": frac,
                          "s1_flood_pop": np.where(seen[1:] > 0, pop_fl[1:], np.nan), "storm": storm})
+
+
+def s1_adm3_flood(adm3, storms=None):
+    """Layer 1 per municipality: for each storm with S1 tiles, the flooded share of observed land (s1_flood_frac),
+    people in observed new flood (s1_flood_pop, WorldPop 2020) and the share of the municipality's land the radar
+    observed (seen_frac; NaN fractions / populations where it saw none). Same tiles, grid and rules as s1_unit_flood,
+    on the ADM3 raster, with each tile cropped to its 1-degree cell so overlapping tile edges are counted once.
+    adm3: polygons with adm3_pcode, adm3_name, unit_id (units.adm3_with_units)."""
+    from .grids import build_adm3_raster, adm3_index
+
+    storms = list(STORMS) if storms is None else storms
+    todo = {k: s1_tiles(k) for k in storms}
+    if not any(todo.values()):
+        return missing("s1_adm3", "no Sentinel-1 flood tiles on disk")
+    zr = build_adm3_raster(adm3)
+    if zr is None or not WORLDPOP.exists():
+        return missing("s1_adm3", "WorldPop / ADM3 raster needed to aggregate S1 flood per municipality")
+    code = adm3_index(adm3)
+    n = len(code) + 1
+    total = np.zeros(n)
+    for _, (z,) in iter_blocks(zr):
+        total += np.bincount(z.ravel(), minlength=n)
+    inv = {v: k for k, v in code.items()}
+    meta = adm3.drop_duplicates("adm3_pcode").set_index("adm3_pcode")
+    rows = []
+    for storm, tiles in todo.items():
+        if not tiles:
+            missing(f"s1_flood_{storm}", f"no Sentinel-1 flood tiles in {S1 / STORMS[storm]['gee']} (needs GEE)")
+            continue
+        seen, flooded, pop_fl = _s1_zone_sums(tiles, zr, n, crop=True)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            pc = [inv[i] for i in range(1, n)]
+            rows.append(pd.DataFrame({
+                "storm": storm, "adm3_pcode": pc, "adm3_name": meta.adm3_name.reindex(pc).to_numpy(),
+                "unit_id": meta.unit_id.reindex(pc).to_numpy(),
+                "s1_flood_frac": np.where(seen[1:] > 0, flooded[1:] / seen[1:], np.nan),
+                "s1_flood_pop": np.where(seen[1:] > 0, pop_fl[1:], np.nan),
+                "seen_frac": np.where(total[1:] > 0, seen[1:] / total[1:], np.nan)}))
+    out = pd.concat(rows, ignore_index=True)
+    record("s1_adm3", True, f"{out.storm.nunique()} storms x {out.adm3_pcode.nunique()} municipalities")
+    return out
 
 
 def s1_flood_lookup(storm):

@@ -10,7 +10,9 @@ Stages (in order):
   panel      unit x week panel + data card: data/processed/panel.parquet, panel_card.md
   leadlag    final lead-lag graph (PCMCI+, bootstrap) and the cross-correlation baseline
   forecast   rolling-origin evaluation 2018-2019: WIS, coverage, relative WIS, ablation, surge calibration
-  scenarios  access loss + priority for the 4 typhoons x shifted tracks, validation, sensitivity, benchmark
+  scenarios  access loss (network + raster methods) + priority for the 4 typhoons x shifted tracks, validation,
+             sensitivity, benchmark, Sentinel-1 flood per municipality
+  catalog    unshifted scenario for every other 2016-2020 storm whose gale swath meets PHL land (*_catalog files)
   app        small files for the map (simplified units)
 
 Inputs that are not on disk (GEE sources, PSGC, NHFR, or anything still downloading) are skipped with a warning and
@@ -36,7 +38,7 @@ from bantay import units as U, panel as PN, leadlag as LL, forecast as F, scenar
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.filterwarnings("ignore", message="In analysis mode")  # tigramite shape notice (T < N is expected)
-STAGES = ["crosswalk", "panel", "leadlag", "forecast", "scenarios", "app"]
+STAGES = ["crosswalk", "panel", "leadlag", "forecast", "scenarios", "catalog", "app"]
 
 
 def stage_crosswalk(a):
@@ -93,15 +95,36 @@ def stage_forecast(a):
                                     f"cov90 = {summ.loc['all', 'cov90 xgb']:.3f}")
 
 
+def population_cells(u, adm3):
+    """1 km WorldPop cells with Meta HRSL under-5 / 60+ people attached (NaN columns if HRSL is missing)."""
+    cells = grids.build_pop_cells(u, adm3)
+    v = grids.build_vulnerable_cells(cells)
+    if v is not None:
+        for c in SC.VULNERABLE:
+            cells[c] = v[c].to_numpy()
+    return cells
+
+
 def stage_scenarios(a):
     p = PN.load_panel()
     u = U.load_units()
     adm3 = U.adm3_with_units()
-    cells = grids.build_pop_cells(u, adm3)
+    cells = population_cells(u, adm3)
     hz = flood.unit_hazard_shares(u)
     nodes = pd.read_parquet(C.APP_DATA / "leadlag_nodes_pcmciplus.parquet")
     edges = pd.read_parquet(C.APP_DATA / "leadlag_edges_pcmciplus.parquet")
     scen, am = SC.run_all(p, u, cells, hz, edges, nodes)
+    m = C.APP_DATA / "access_methods.csv"
+    if m.exists():  # network vs raster method: baseline agreement, then the observed tracks
+        m = pd.read_csv(m)
+        print(m[m.kind == "baseline"].dropna(axis=1).round(3).T.to_string(header=False))
+        obs = m[(m.kind == "scenario") & (m.dlat == 0) & (m.dlon == 0)]
+        print(obs[["storm", "flood_source", "mean_A_network", "mean_A_raster", "pop_cut_network", "pop_cut_raster",
+                   "spearman_A_units"]].round(3).to_string(index=False))
+    s1 = flood.s1_adm3_flood(adm3)
+    if s1 is not None:
+        s1.to_parquet(C.APP_DATA / "s1_adm3.parquet")
+        print(f"  s1_adm3: {len(s1):,} rows; flooded people per storm (M):", (s1.groupby("storm").s1_flood_pop.sum() / 1e6).round(2).to_dict())
     v = SC.validate(p, scen)
     print(v.round(3).to_string())
     v.to_csv(C.APP_DATA / "validation.csv", index=False)
@@ -114,6 +137,15 @@ def stage_scenarios(a):
         if b is not None:
             print(b.to_string())
             b.to_csv(C.APP_DATA / "benchmark_ncr.csv", index=False)
+
+
+def stage_catalog(a):
+    p = PN.load_panel()
+    u = U.load_units()
+    adm3 = U.adm3_with_units()
+    cells = population_cells(u, adm3)
+    nodes = pd.read_parquet(C.APP_DATA / "leadlag_nodes_pcmciplus.parquet")
+    SC.run_catalog(p, u, cells, nodes)
 
 
 def stage_app(a):
