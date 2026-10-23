@@ -237,7 +237,7 @@ with calibrated forecasts, rank the provinces that need help first, early enough
         S.append(_slide(10, "Signal 05 / Result 2", "Technical rigor: analytical depth", f"""<h1>Surge risk R, <em>calibrated</em> on the past</h1>
 <div class='g46'><div><div class='grid2' style='gap:.2in'>
 <div class='stat'><div class='num' style='font-size:42pt'>{a_['brier_raw']:.3f}</div><p>Brier score of the model's R</p></div>
-<div class='stat'><div class='num' style='font-size:42pt'>{a_['brier_cal']:.3f}</div><p>after recalibration (base rate: {a_['brier_climatology']:.3f})</p></div></div>
+<div class='stat'><div class='num' style='font-size:42pt'>{a_['brier_cal']:.3f}</div><p>after recalibration ({a_['brier_climatology']:.3f} if always predicting the base rate)</p></div></div>
 <ul style='margin-top:.2in'><li>The model under-stated mid-range risk; an isotonic map fitted only on <b>past</b> forecasts with known outcomes fixes it</li>
 <li>When R says high, surges follow: above 0.7, {r.observed_cal.iloc[-1]:.0%} of province-weeks surged</li>
 <li>2019's epidemic made surges common ({a_['base_rate']:.0%} of province-weeks)</li></ul></div>

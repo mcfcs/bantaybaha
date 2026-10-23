@@ -164,7 +164,7 @@ Results of the full pipeline run on {k['n_files']} verified source files.</div><
                f"Gale swaths cancel {int(st.ferries.min())}-{int(st.ferries.max())} of {k['n_ferry']} RoRo routes; Kendall's &tau; under nine setting changes is at least "
                f"{min(k['tau_min'], k.get('tau_min_raster', 1)):.2f}.</li>") if k["raster_ok"] else ""
     cal_txt = (f"<li><b>Surge probability R, recalibrated.</b> Isotonic regression on past rolling-origin forecasts only lowers the Brier score from "
-               f"{cal['all_rows']['brier_raw']:.3f} to {cal['all_rows']['brier_cal']:.3f} (base rate {cal['all_rows']['brier_climatology']:.3f}) and removes the "
+               f"{cal['all_rows']['brier_raw']:.3f} to {cal['all_rows']['brier_cal']:.3f} ({cal['all_rows']['brier_climatology']:.3f} for always predicting the base rate) and removes the "
                f"model's under-confidence in the middle range.</li>") if cal else ""
     lep_txt = (f"<li><b>Leptospirosis (stretch).</b> In {L.get('n_cities', 12)} cities, rain is followed by leptospirosis "
                f"{min(L['city']['sig'])}-{max(L['city']['sig'])} weeks later (peak IRR {L['city']['peak'].irr:.2f} per +50 mm/week at lag "
