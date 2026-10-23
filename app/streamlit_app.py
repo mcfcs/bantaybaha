@@ -450,7 +450,7 @@ def drivers(r):
 
 def ranked():
     t = s
-    out = pd.DataFrame({"Province": t.unit_name, "Action": t.tier.map(TIER_SHORT), "P": t.P, "R": t.R})
+    out = pd.DataFrame({"Province": t.unit_name, "Action": t.tier.map(ui.TIER_TINY), "P": t.P, "R": t.R})
     if "R_raw" in t:
         out["R raw"] = t.R_raw
     out["A %"] = 100 * t.A
@@ -478,7 +478,8 @@ def tab_table():
     st.caption("Sorted by priority. Click a column header to re-sort; hover it for its definition.")
     show = ranked()
     cfg = dict(ACT_COLS)
-    cfg.update({"P": st.column_config.NumberColumn("Priority P", format="%.3f", help=HELP["P"]),
+    cfg.update({"Province": st.column_config.TextColumn(pinned=True),
+                "P": st.column_config.NumberColumn("Priority P", format="%.3f", help=HELP["P"]),
                 "R": st.column_config.ProgressColumn("Surge risk R", min_value=0, max_value=1, format="%.2f",
                                                      help=HELP["R"]),
                 "R raw": st.column_config.NumberColumn(format="%.2f", help="Surge risk before recalibration."),
