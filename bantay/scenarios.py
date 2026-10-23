@@ -113,12 +113,14 @@ def run_all(panel, units, cells, hazard, edges_final, nodes_final, fixed_km=150.
     am = AccessModel(cells)
     rows, adm3_rows, tracks, ferry_rows, swaths = [], [], [], [], []
     fits = {}  # by training end: Rolly and Ulysses both train to MODEL_END, so they share one fit
+    cals = {}  # R calibration hook (forecast.surge_calibrator): isotonic on rolling-origin forecasts with target week <= train end
     for key, s in STORMS.items():
         tr = S.storm_track(key, ib=ib)
         origin = week_ending(s["landfall"])
         end = min(origin, pd.Timestamp(MODEL_END))
         if end not in fits:
             fits[end] = F.fit_at(panel, origin)
+            cals[end] = F.surge_calibrator(end)
         fitted = dict(fits[end], origin=origin)
         log(f"  {s['local']}: origin {origin.date()}, model trained to {fitted['train_end'].date()}")
         for dlat, dlon in SHIFTS:
@@ -126,6 +128,7 @@ def run_all(panel, units, cells, hazard, edges_final, nodes_final, fixed_km=150.
             t2 = S.shift_track(tr, dlat, dlon)
             sw = S.swath(t2, fixed_km)
             fc = F.predict_at(fitted, overrides_for(units, ib, key, dlat, dlon, origin, hazard, fixed_km))
+            fc = F.calibrate_R(fc, cals[end])  # R_raw = model probability; R (used for P and tiers) = calibrated
             q = np.vstack(fc.q_cum4)
             pop = fc["pop"].to_numpy()
             fc["cases4_med"] = F.to_cases(q, pop)[:, F.IQ50]
