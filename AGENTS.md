@@ -78,9 +78,20 @@ steps and the data findings. [README.md](README.md) has setup and the source lis
 - Commit the EDA notebook *with* outputs (it is the deliverable), but keep it under ~5 MB by using decimated rasters and small figures.
 - Commit messages: imperative, one line, plus detail if needed.
 
+## Every change (always, no exceptions)
+
+- **Always update `README.md`** in the same change when it affects how someone sets up, builds, runs, tests or reads the
+  project: new or renamed commands, stages, scripts, outputs, folders, dependencies or documents. If nothing user-facing
+  changed, say so in the commit message.
+- **Always add test cases** in the same change: a new function, rule, stage, output or bug fix comes with tests in
+  `tests/` that would fail without it (pure-logic tests on small hand-built inputs; tests that read build outputs skip
+  when the outputs are missing). Run `python -m pytest tests` and keep it green before committing.
+- If the change moves code that `docs/CODE_GUIDE.md` links to, run `python scripts/check_code_guide.py` and fix the guide.
+
 ## Subagents
 
 - Give each subagent one dataset or one question. Tell it to read `HANDOFF.md` and these rules first.
+- Every subagent brief repeats the two "Every change" rules: update `README.md` and add test cases.
 - Subagents **report** findings and do not edit `HANDOFF.md`, the download scripts or the notebook unless the task says
   so. The lead agent merges their results and updates `HANDOFF.md`.
 - A subagent must not start a large download (> 100 MB) or a GEE job without the lead agent's say-so.
