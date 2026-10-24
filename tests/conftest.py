@@ -1,7 +1,10 @@
-"""Shared fixtures: paths, a throw-away SUS responses file, and a live dashboard server for the Playwright tests.
+"""Shared fixtures: paths, a throw-away SUS responses file, a live dashboard server for the Playwright tests, and the
+isolation and skip helpers of the pipeline tests.
 
 The dashboard reads the real build outputs in data/processed/app/; tests never write there. SUS answers go to a
-temporary CSV through BANTAY_SUS_PATH. Screenshots land in tests/artifacts/ (git-ignored).
+temporary CSV through BANTAY_SUS_PATH. Screenshots land in tests/artifacts/ (git-ignored). Pipeline unit tests send
+the status registry (bantay.config.record) to a temporary file; `data_untouched` fails the session if any file under
+data/ changed while the tests ran.
 """
 
 import os
@@ -19,6 +22,9 @@ APP = ROOT / "app" / "streamlit_app.py"
 APP_DATA = ROOT / "data" / "processed" / "app"
 ARTIFACTS = ROOT / "tests" / "artifacts"
 sys.path.insert(0, str(ROOT / "app"))
+PROCESSED = ROOT / "data" / "processed"
+sys.path.insert(0, str(ROOT))  # `bantay` without an install
+sys.path.append(str(ROOT / "scripts"))  # download_data, sync_data, check_code_guide, make_results
 
 needs_data = pytest.mark.skipif(not (APP_DATA / "scenarios.parquet").exists(),
                                 reason="build outputs missing: run build.bat first")
@@ -26,6 +32,7 @@ needs_data = pytest.mark.skipif(not (APP_DATA / "scenarios.parquet").exists(),
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "e2e: browser tests (Playwright); deselect with -m 'not e2e'")
+    config.addinivalue_line("markers", "data: invariants of the build outputs in data/processed/ (skip when missing)")
 
 
 def free_port():
@@ -78,3 +85,36 @@ def shots():
     d = ARTIFACTS / "screenshots"
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+@pytest.fixture
+def isolated_status(tmp_path, monkeypatch):
+    """Send bantay.config's status registry (record / missing / have) to a temporary status.json."""
+    from bantay import config
+
+    monkeypatch.setattr(config, "PROCESSED", tmp_path / "processed")
+    monkeypatch.setattr(config, "_STATUS_FILE", tmp_path / "processed" / "status.json")
+    return config._STATUS_FILE
+
+
+def need(*paths):
+    """Skip the calling test unless every build output exists."""
+    for p in paths:
+        if not Path(p).exists():
+            pytest.skip(f"build output missing: {Path(p).relative_to(ROOT)} (run build.bat)")
+
+
+def _snapshot():
+    files = [p for d in ("processed", "interim", "crosswalks") for p in (ROOT / "data" / d).rglob("*") if p.is_file()]
+    files.append(ROOT / "data" / "raw" / "MANIFEST.csv")
+    return {p: (p.stat().st_size, p.stat().st_mtime_ns) for p in files if p.exists()}
+
+
+@pytest.fixture(scope="session", autouse=True)
+def data_untouched():
+    """Fail the session if a test created, changed or deleted a file under data/ (raw/MANIFEST.csv included)."""
+    before = _snapshot()
+    yield
+    after = _snapshot()
+    changed = sorted(str(p.relative_to(ROOT)) for p in set(before) | set(after) if before.get(p) != after.get(p))
+    assert not changed, f"tests wrote into data/: {changed[:10]}"
