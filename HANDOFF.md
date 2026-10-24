@@ -24,6 +24,7 @@ and pick the files up on the next `build.bat` with no code change. No fake or sy
 | Benchmarks: Chronos-2, TabPFN-TS, MPNN-LSTM + median ensemble | **run** (separate GPU venv `bantay-bench`, `requirements-bench.txt`); scored on the same rolling-origin rows (`eval_models.csv`) |
 | Sentinel-1 flood masks (`download_gee.py s1_flood`) | **done** (2026-10-24, GEE project `csci-199-2-thesis`): 357 tiles, 251 written + in MANIFEST.csv (the rest open sea, no pass); regenerated 2026-10-24 with `hackathonproper`: all 251 byte-identical; **pushed to the team bucket**, so `setup.bat` pulls them |
 | PSGC + NHFR manual downloads | **not done, not required**: PSGC skipped (adds nothing); NHFR optional (see next steps); hospitals use the HOT OSM + NOAH fallback (2,199) |
+| Agent skills (`.claude/skills/`) | **added** 2026-10-24: scikit-learn, statsmodels, shap, statistical-analysis, scientific-critical-thinking, timesfm-forecasting, vendored from K-Dense-AI/scientific-agent-skills (MIT) at a pinned commit after a safety review (no network/process code beyond a macOS RAM probe, no prompt injection, no hidden Unicode); their `allowed-tools` lines (blanket Bash / Write / Edit without a prompt) removed as a recorded local patch; hashes in `VENDORED.json`, checked by `tests/test_skills.py`; rules in AGENTS.md "Agent skills" |
 | Shared data bucket | `gs://bantay-baha-raw-hackathonproper` (GCP project `hackathonproper`, private, `asia-southeast1`); `setup.bat` / `scripts/sync_data.py pull`; team accounts have bucket read access |
 
 A full `build.bat` from scratch takes about 1.5 h on this machine (NOAH rasters 15 min one-off, lead-lag 10 min, forecast
@@ -244,6 +245,7 @@ Outputs: `data/processed/app/` (scenarios, eval_*, leadlag_*, validation, sensit
    walkthrough, `python tests\capture.py`, can be the screen track).
 10. **Before making the repo public** (the proposal promises a public GitHub repo; it is private now): member names are in
     the git history (author email) and on the covers of the three PDFs in `docs/` (one filename has the team name).
+11. **Forecast work with the new skills** (targets from Results 5-6): (a) widen the 50% intervals (cov 0.43): online conformal on every quantile level, not just 90% (scikit-learn / statsmodels); (b) test whether relative WIS differs from 1 per horizon with a paired test on the rolling-origin rows, e.g. Diebold-Mariano with HAC errors (statistical-analysis); (c) SHAP on the per-horizon XGBoost to show why rain/river/storm features add nothing at 1-4 weeks (shap); (d) TimesFM 2.5 as a fourth benchmark in `bantay-bench`, scored like Chronos-2 (timesfm-forecasting); (e) a leakage and claims review of the report before submission (scientific-critical-thinking).
 
 ## Findings so far (checked against the real files)
 

@@ -1,0 +1,104 @@
+{
+  "_comment": "Agent skills vendored verbatim, except the local patches below, from K-Dense-AI/scientific-agent-skills (MIT) at the pinned commit, after a safety review on 2026-10-24 (no network/exfiltration code, no prompt injection, no hidden Unicode). Files must not be edited: tests/test_skills.py checks every sha256 (of the file with CRLF normalised to LF, so git autocrlf does not matter). To update, re-download at a new commit, re-review, and regenerate this file. Usage rules: AGENTS.md 'Agent skills'.",
+  "source": "https://github.com/K-Dense-AI/scientific-agent-skills",
+  "commit": "593377bb048752abb0152deab9fbb1083a6087df",
+  "reviewed": "2026-10-24",
+  "excluded": {
+    "timesfm-forecasting/examples/": "optional demos (temperature data, shell script, CDN-loading HTML); not needed"
+  },
+  "patches_reason": "In Claude Code a skill's allowed-tools grants those tools without a permission prompt for the turn that invokes it, even in an untrusted folder (code.claude.com/docs/en/skills). The upstream skills granted Bash or Write/Edit; removed so the normal permission settings apply.",
+  "patches": {
+    "scikit-learn/SKILL.md": {
+      "upstream_sha256": "a1765797d072ab40094522abe68fb04505d0881f66b7dfceeb8582422dbe488d",
+      "change": "removed the frontmatter 'allowed-tools' line"
+    },
+    "shap/SKILL.md": {
+      "upstream_sha256": "9c395662e608accd60acb62158f1d25299b12ec0e40f9f94b70a46ec527d52c1",
+      "change": "removed the frontmatter 'allowed-tools' line"
+    },
+    "statsmodels/SKILL.md": {
+      "upstream_sha256": "9e6c034bb4acbf0972fda18892d2feea907885ac5ad7194d220182d8810295a3",
+      "change": "removed the frontmatter 'allowed-tools' line"
+    },
+    "scientific-critical-thinking/SKILL.md": {
+      "upstream_sha256": "563af70571b7dcd6a96bf2e303bedfdcba623b4e9f082d58f04aacbc961fdae4",
+      "change": "removed the frontmatter 'allowed-tools' line"
+    },
+    "timesfm-forecasting/SKILL.md": {
+      "upstream_sha256": "6f785fe73b133e9af7720fa46cf9013645198950155624889ef611b7b0dc74b8",
+      "change": "removed the frontmatter 'allowed-tools' line"
+    }
+  },
+  "skills": {
+    "scikit-learn": {
+      "references/common_workflows.md": "dfe19c80358acb5f418a21cea4de3b7e83733481441f3c76d0a2ead4420261de",
+      "references/core_capabilities.md": "c869d9c207fcfc345207d397021a289f3820492ddf0fcd0b3a56a336bd0e1453",
+      "references/model_evaluation.md": "e6f581c0ce2abffaac2f0bafc1a7bfbe86ec18f8969c6e9b91cc732a12a5fea5",
+      "references/pipelines_and_composition.md": "a1810cd67dc9141d962fa1972e11b06be6bd437213e10a563e5ec4256fb274a9",
+      "references/preprocessing.md": "098506f0ca83e57d0c7cccd166164d025552ad7310b79d1010f5ff34e1cc4818",
+      "references/quick_reference.md": "5401b75fdaa10bf393b024f3c559631011c7be233d2313da37a3f27d7389659a",
+      "references/supervised_learning.md": "d4e5911d175c3a349dd42e33c984b05cdafce230f264b6774996d0eeef36608a",
+      "references/unsupervised_learning.md": "cb476ef499fe35ee2c0416fdc31abad42384ac0110f6d3932901e99b039ae1b1",
+      "scripts/classification_pipeline.py": "46abbb2b11095147cc31314405910b211c313d142f2480599f8508d47e5809f3",
+      "scripts/clustering_analysis.py": "5d1f962a70e049907a39a75cd7a130000a5d3e3de5a4fa4889d07f007c052a17",
+      "SKILL.md": "1ea786f44c31c42895da670e7777704838ac8756a56f3894cbfff0da1670b4a8"
+    },
+    "shap": {
+      "references/data-maskers.md": "fe586f1d7aac5c799437506c2353dc7c0b4916a09c10ea714b22db49aaa12f12",
+      "references/explainers.md": "d173b54e0ee1d5c5e627609967000926fd6036e8efba282534f68857d9cdefca",
+      "references/migration.md": "81278c5d30634b1e2f16bf7b6b703b2b968bfa01636bd7eecae2201baa76e721",
+      "references/modalities.md": "dd19dc010438ed9dca06bce06d3820d617c2fa5740bf0ac86706081ae2ade518",
+      "references/plots.md": "634067fd6d2c951ac4db35a182109f8313be501b6fcd04e0d99e7957f77d3ec2",
+      "references/theory.md": "103d0f50131649c63d6c0895a723d28f5fc175cb5ef923adec0655adc7a136dd",
+      "references/troubleshooting.md": "92ddecfa7a40e30274b812f14abd0ae2e1ec9ab6f14d1a93e77cb15208e754f8",
+      "references/workflows.md": "d227b27899216451daa89b145c6f9e0f4850efacba687d0db00a06921743132e",
+      "scripts/tabular_report.py": "06161aefd48914406f41ad8b26389853537235c5577a962a29fb4a246013214e",
+      "SKILL.md": "347b0ca6a99d239578e179812934c3c314b546359915606b42539d541e7f2e06"
+    },
+    "statsmodels": {
+      "references/discrete_choice.md": "30422e14c2e05bfc4a3da924086c8f067b6e4eb9c1c828ec7f25ab79ed16d54e",
+      "references/glm.md": "dca241c58df3b08c05aa4f0a96e4efd8ebb24ce37c57dd23402c236f86db57e4",
+      "references/linear_models.md": "a14ce5ba795442bc8805f6d59e9a397efe9e6587b09b19dcaba40e88d3c4654c",
+      "references/model_selection.md": "5666665df87dccdb82ddae0d2ffcf13c7e681fee6b410ea279a8edf4688ad75a",
+      "references/modeling_capabilities.md": "7794c4a3d7c82e647f4705caa47614796f34cc07db9d11bc057dec2310e9787c",
+      "references/quick_start_guide.md": "202c61810e3bb59a72f1736c6624899c8ad0c2eabffbf11eff98a987f13eaa2d",
+      "references/review.md": "38d49c7d705d250376c013be489bc5dad2b94b9373e1c7aaa0afe51980af29da",
+      "references/stats_diagnostics.md": "23fd23d9b415b9060151409220f03f203cc1775d517b51d978d5ffe8edad009e",
+      "references/time_series.md": "29b97f1de7fedd5be582cd6e4168403978a5094f54211ccfc53b896f3bece04e",
+      "SKILL.md": "5a3ea3e8a23100ebe7d578dbc3f2fc0716249ddc2381b4d9a09c4a9248cef066"
+    },
+    "statistical-analysis": {
+      "references/assumptions_and_diagnostics.md": "6e1ebc110c092845b93e5c6d28f38c8a990780105ba1865f0bd47c007620b073",
+      "references/bayesian_statistics.md": "34d62e1b20dd82a11497be40e07c93e4fdb555d56e4944e200f881c1b7629cbf",
+      "references/effect_sizes_and_power.md": "5e1321c9058b2931a1bd2a753c7a8f4295f58274412d62e99a34eabd478e42b2",
+      "references/reporting_standards.md": "0a30a1bec63231c94c9c285977acaa4218c50a34c8385857d18f62c61ac817b7",
+      "references/test_selection_guide.md": "e72e00b6ebe9450e5e84849503db223c4908a8d9a68c3b87cf0ab8ec3254fe83",
+      "scripts/assumption_checks.py": "3e37a4e04407b5f040f103962ed0e73935d114d3892ee45b5a06a1da42c10341",
+      "SKILL.md": "e112848726b3713267cac65e4e2c15491a0a26ee1ed628db01195f7e43f97997"
+    },
+    "scientific-critical-thinking": {
+      "references/common_biases.md": "641e8e8e6dfadac1643ea8691b7d3e4e58cf013f134cd42c71301878096a5a39",
+      "references/core_capabilities.md": "0f337b96aa2d7453433a17824368fbd0638b9469d4f90a5fd23f4167c9dee180",
+      "references/evidence_hierarchy.md": "534fbe991ecfb2d162f755004dc528118ce74a78862917c2911595a522d76e6c",
+      "references/experimental_design.md": "eca7e42025393984c07676f3d4bc354d217e5604dc2209c76215d31953a7c74c",
+      "references/logical_fallacies.md": "becfc5bfac7b831dca67cc442cd0fcb42d8eea527a6fc2921c1b704e592ff593",
+      "references/review_sources.md": "71e75106f36f3e69b28959ad1fec503ccdb21b7f5361ab230173e4812accbf62",
+      "references/scientific_method.md": "5aa925b97c7a916f819dafc8b42a9c24e4bd3eb2836594e724f1e7f9ae75ea0f",
+      "references/statistical_pitfalls.md": "0c43204a0a81110cfeb7c982fa4caa89f274bdcebf096e09e5adfccf31241cb9",
+      "SKILL.md": "bf584dc70776068b36c269d77b742318fbbaef4fa6a47c244aef67d7d9b3dfc0"
+    },
+    "timesfm-forecasting": {
+      "references/api_reference.md": "e56d8921fa04b2312b49cf52ecd8814bbf4a9016a46ceab7f8aad3e6774d639e",
+      "references/data_preparation.md": "3bb3910e541f5d81307e2f41b3d4f1f991c34af431d974dbeaacb99db8cdeb94",
+      "references/examples_and_validation.md": "8f2a1c53328d59b7ed95351eaec556e4a0d907df2fed61de66890d671b042fd9",
+      "references/output_and_config.md": "3f261ac97ca9ec4b1c1ccf6f688010a2ee5603ee2eae80dfa33399f13d26a908",
+      "references/performance_tuning.md": "59a622f82572937e055c2306298e0b4f67da5ba7df6f9825797ef86c87de61b2",
+      "references/system_requirements.md": "cd0d4612452062cc49c07594b79ab08a26c43ea9b68cd5ec60a6f698eb362d72",
+      "references/timesfm3.md": "9c43ae9428a6022195c4bed1ca6a9d6189f69360b10b68bb203fc40865f7fb00",
+      "references/workflows.md": "fc702f51534461c7c1225287102366a1926cc2ee5e875205ddcfa875c615e5f7",
+      "scripts/check_system.py": "3fabbf00a3882bd73fd8a2c65e4c161386ea995e2dd322690f1e1f149a1fb590",
+      "scripts/forecast_csv.py": "1f2969934ea6273a83fdc33fbf3e2e3e34b3fa416421977ea35c5ef669dd0b9b",
+      "SKILL.md": "4b2b776279037838bff449bc0b2129c71d6a44773a08c91ffce7fc632006f6d3"
+    }
+  }
+}
