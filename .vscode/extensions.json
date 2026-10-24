@@ -1,0 +1,4 @@
+{
+  // LaTeX Workshop builds and previews the technical specification (docs/spec/main.tex); see docs/spec/GUIDE.md.
+  "recommendations": ["james-yu.latex-workshop"]
+}

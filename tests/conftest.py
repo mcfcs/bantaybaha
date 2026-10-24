@@ -25,7 +25,7 @@ needs_data = pytest.mark.skipif(not (APP_DATA / "scenarios.parquet").exists(),
 
 
 def pytest_configure(config):
-    config.addinivalue_line("markers", "e2e: browser tests (Playwright); deselect with -m 'not e2e'")
+    for m in ("e2e: browser tests (Playwright); deselect with -m 'not e2e'", "slow: builds a document (LaTeX); deselect with -m 'not slow'"): config.addinivalue_line("markers", m)  # noqa: E501,E701
 
 
 def free_port():
