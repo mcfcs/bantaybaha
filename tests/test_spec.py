@@ -198,6 +198,15 @@ def test_one_paragraph_per_source_line():
     assert not wrapped, f"hard-wrapped paragraphs (join them into one line): {wrapped}"
 
 
+def test_no_space_swallowed_after_conditionals():
+    """TeX drops the space after a control word: 'estimates.\\fi Among' prints 'estimates.Among'. Write '\\fi{} Among'."""
+    bad = []
+    for p in SECTIONS:
+        for i, line in enumerate(strip_comments(p.read_text(encoding="utf-8")).splitlines(), 1):
+            bad += [f"{p.name}:{i}: ...{m.group(0)}" for m in re.finditer(r"\S\\fi [A-Za-z(]", line)]
+    assert not bad, "missing {} after \\fi before a word:\n" + "\n".join(bad)
+
+
 def test_no_hyphenation_preamble():
     main = (SPEC / "main.tex").read_text(encoding="utf-8")
     for setting in ("\\hyphenpenalty=10000", "\\exhyphenpenalty=10000"):
