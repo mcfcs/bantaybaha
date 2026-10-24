@@ -14,6 +14,9 @@ import networkx as nx
 from scipy import stats
 
 TAU_MAX = 3
+MIN_T = 52  # weeks of differenced data needed to learn a graph (the earliest rolling-origin window has T = 53); a
+            # shorter window (training ends in 2017: the catalogue's early storms) gets an empty graph
+EDGE_COLS = ["source", "target", "lag", "weight", "q", "method", "confidence"]
 
 
 def prepare(panel, end, value="incidence"):
@@ -110,7 +113,10 @@ def node_metrics(edges, nodes, seed=0):
 def learn(panel, end, method="pcmciplus", boot=0):
     """Edges + node metrics for the training window ending at `end`."""
     d = prepare(panel, end)
-    edges = pcmci_graph(d, boot=boot) if method == "pcmciplus" else xcorr_graph(d)
+    if len(d) < MIN_T:
+        edges = pd.DataFrame({c: pd.Series(dtype=float if c in ("weight", "q", "confidence") else object) for c in EDGE_COLS})
+    else:
+        edges = pcmci_graph(d, boot=boot) if method == "pcmciplus" else xcorr_graph(d)
     nodes = sorted(panel.unit_id.unique())
     m = node_metrics(edges, nodes)
     meta = dict(end=str(pd.Timestamp(end).date()), method=method, T=len(d), n_series=d.shape[1], n_edges=len(edges))

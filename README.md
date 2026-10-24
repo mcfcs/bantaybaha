@@ -4,8 +4,9 @@ A graph-based early warning and response system for flood-linked disease outbrea
 PJDSC 2026. The concept and plan are in [docs/](docs/); start with
 `docs/Bantay-Baha_Team_Explainer.pdf`.
 
-**Current phase: build.** The pipeline (panel, lead-lag graph, quantile forecast, access model, priority scenarios) and
-the Streamlit dashboard are in place; results are in [docs/results/](docs/results/). See [HANDOFF.md](HANDOFF.md) for where
+**Current phase: build.** The pipeline (panel, lead-lag graph, quantile forecast with calibrated surge risk and benchmark
+models, two access methods, priority scenarios for the 4 backtest typhoons and a catalogue of 38 more storms,
+leptospirosis lag analysis) and the Streamlit dashboard are in place; results are in [docs/results/](docs/results/). See [HANDOFF.md](HANDOFF.md) for where
 things stand and what is still missing, and [AGENTS.md](AGENTS.md) for the rules on handling data and code.
 
 ## Quick start (Windows)
@@ -45,7 +46,7 @@ Then open `notebooks/00_data_eda.ipynb` with the **Python (bantay-baha)** kernel
 ### Build and run the dashboard
 
 ```bat
-build.bat                 :: everything: crosswalk, panel, leadlag, forecast, scenarios, app (about 1 h the first time)
+build.bat                 :: everything: crosswalk panel leadlag forecast ensemble scenarios catalog app lepto (~1.5 h first time)
 build.bat panel forecast  :: selected stages
 run_app.bat               :: opens the dashboard in the browser
 python scripts\make_results.py   :: regenerates the report and slides in docs\results\
@@ -53,11 +54,41 @@ python scripts\make_results.py   :: regenerates the report and slides in docs\re
 
 `build.bat` runs `scripts/build.py`. Inputs that are not on disk yet (Sentinel-1 flood masks, PSGC, NHFR, or anything still
 downloading) are skipped with a warning, their outputs are left empty and listed in `data/processed/status.json` and on the
-dashboard's *Data status* tab. Re-run the build after the files arrive; no code changes are needed. The panel's data card is
+dashboard's *Data & caveats* tab. Re-run the build after the files arrive; no code changes are needed. The panel's data card is
 written to `data/processed/panel_card.md`.
 
-Optional zero-shot benchmark (Chronos-2, installs torch): `pip install -r requirements-bench.txt`, then
-`python scripts/benchmark_tsfm.py`.
+**Benchmark models (optional, GPU).** Chronos-2, TabPFN-TS and an MPNN-LSTM run in a separate venv (Python 3.12, CUDA
+torch; exact commands in `requirements-bench.txt`) and write `data/processed/app/bench_<model>.parquet`:
+
+```bat
+%USERPROFILE%\.venvs\bantay-bench\Scripts\python scripts\benchmark_tsfm.py     :: Chronos-2 (incidence context + past covariates)
+%USERPROFILE%\.venvs\bantay-bench\Scripts\python scripts\benchmark_tabpfn.py   :: TabPFN-TS (ungated TabPFN v2 weights)
+%USERPROFILE%\.venvs\bantay-bench\Scripts\python scripts\benchmark_mpnn.py     :: MPNN-LSTM (border + RoRo graph)
+%USERPROFILE%\.venvs\bantay-bench\Scripts\python scripts\benchmark_score.py    :: bench_summary.csv incl. variants
+build.bat ensemble                                                          :: re-score + median ensemble, no refit
+```
+
+Only `chronos2`, `tabpfn_ts` and `mpnn_lstm` (`bantay/forecast.py: BENCH_MODELS`) join the median ensemble; other
+`bench_*` files are variants.
+
+### Testing the dashboard
+
+The tests read the build outputs in `data/processed/app/` (they skip if those are missing) and never write there;
+SUS answers go to a temporary file. Screenshots and videos land in `tests/artifacts/` (git-ignored).
+
+```bat
+pip install -r requirements-dev.txt
+python -m playwright install chromium
+python -m pytest tests                    :: everything (~1 min): AppTest + Playwright end-to-end
+python -m pytest tests -m "not e2e"       :: fast AppTest checks only (~15 s)
+python tests\capture.py                   :: refresh docs\results\figures\dashboard.png + record the demo walkthrough video
+```
+
+`tests/test_app.py` runs the app headless with Streamlit's AppTest (every tab, storm and track controls, SUS form,
+and the hooks for outputs still being built). `tests/test_e2e.py` starts `streamlit run` on a free port and drives it in
+Chromium (every tab, storm and shift, dark mode, SUS submission), failing on any app exception or browser console error.
+User-test answers from the dashboard's *Usability test* tab go to `data/processed/sus/sus_responses.csv` (set
+`BANTAY_SUS_PATH` to write elsewhere); no names or identifiers are collected.
 
 ### Earth Engine (optional, free)
 
@@ -81,7 +112,7 @@ These sites block scripted downloads, so save the files by hand:
 ## Repository layout
 
 ```
-docs/                       concept proposal, team explainer, submitted proposal (PDF)
+docs/                       concept proposal, team explainer, submitted proposal (PDF); docs/proposal/ revised v3; docs/results/ report + deck
 docs/CODE_GUIDE.md          walkthrough of every file and code block (start here to read the code)
 scripts/download_data.py    open-source downloads (idempotent, writes MANIFEST.csv)
 scripts/download_gee.py     Earth Engine downloads (needs --project)
@@ -90,9 +121,12 @@ scripts/sync_data.py        push/pull data/raw to/from the team's private Cloud 
 download_data.bat           one-click setup + download for Windows
 scripts/build.py            one-command rebuild of everything the dashboard reads (build.bat)
 scripts/make_results.py     regenerates docs/results/ (evaluation report + 20-slide deck, PDF)
-scripts/benchmark_tsfm.py   optional Chronos-2 benchmark (requirements-bench.txt)
-bantay/                     library: units, dengue, storms, rain, rivers, flood, grids, panel, leadlag, forecast, access, scenarios
-app/streamlit_app.py        the dashboard (run_app.bat)
+scripts/benchmark_*.py      optional benchmarks: Chronos-2, TabPFN-TS, MPNN-LSTM + scorer (requirements-bench.txt)
+scripts/make_proposal.py    revised anonymous proposal v3 (docs/proposal/, PDF via headless Chrome)
+bantay/                     library: units, dengue, storms, rain, rivers, flood, grids, panel, leadlag, forecast, access,
+                            scenarios, lepto
+app/                        the dashboard (streamlit_app.py + ui, sus, lepto_tab; run_app.bat)
+tests/                      AppTest + Playwright end-to-end tests (requirements-dev.txt)
 notebooks/00_data_eda.ipynb one notebook: a short EDA of every dataset + proposal checks
 data/raw/                   downloaded data (git-ignored, read-only; only MANIFEST.csv is tracked)
 data/crosswalks/            reviewed crosswalks into the harmonised 2016-2020 province units (tracked)

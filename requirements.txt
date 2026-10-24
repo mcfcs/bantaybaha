@@ -27,6 +27,6 @@ scipy
 scikit-learn
 scikit-image
 tigramite
-streamlit
+streamlit>=1.66
 plotly
 markdown

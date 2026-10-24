@@ -1,4 +1,21 @@
-# Optional, heavy: only for scripts/benchmark_tsfm.py (Chronos-2 zero-shot benchmark). Installs torch (GBs).
+# Optional, heavy: only for the benchmarks (scripts/benchmark_tsfm.py = Chronos-2, benchmark_tabpfn.py = TabPFN-TS,
+# benchmark_mpnn.py = MPNN-LSTM, benchmark_score.py). Installs torch (GBs). Use a SEPARATE venv, outside the repo:
+# the main venv is Python 3.14 with pandas 3, while tabpfn-client pins pandas <= 2.3.3 and gluonts pandas < 3.
+#
+# Tested setup (Windows 11, RTX 5090 Laptop = Blackwell sm_120, which needs a CUDA >= 12.8 torch build), with uv:
+#   uv venv --python 3.12 %USERPROFILE%\.venvs\bantay-bench
+#   uv pip install --python %USERPROFILE%\.venvs\bantay-bench\Scripts\python.exe torch ^
+#       --index-url https://download.pytorch.org/whl/cu128
+#   uv pip install --python %USERPROFILE%\.venvs\bantay-bench\Scripts\python.exe -r requirements-bench.txt ^
+#       --extra-index-url https://download.pytorch.org/whl/cu128 --index-strategy unsafe-best-match
+# (add `-c constraint.txt` holding `torch==2.11.0+cu128` so no later step swaps in a CPU torch from PyPI)
+# Tested versions: Python 3.12.13, torch 2.11.0+cu128, chronos-forecasting 2.3.2, transformers 5.20.2,
+# tabpfn-time-series 1.3.0, tabpfn 9.2.0, pandas 2.3.3, numpy 2.5.4.
+#
+# Weights (downloaded on first run into the user cache, never into the repo): amazon/chronos-2 (Apache-2.0, not
+# gated); TabPFN v2 regressor (Prior-Labs/TabPFN-v2-reg, not gated). The tabpfn-time-series default TabPFN v3.5 is
+# gated (Prior Labs login + licence acceptance) and is NOT used; no token or API key is needed for any benchmark.
 -r requirements.txt
 torch
 chronos-forecasting>=2.0
+tabpfn-time-series>=1.3

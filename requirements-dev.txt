@@ -1,0 +1,5 @@
+# Dashboard tests (see README, "Testing"). After installing: python -m playwright install chromium
+-r requirements.txt
+pytest>=9
+pytest-playwright>=0.10
+playwright>=1.64

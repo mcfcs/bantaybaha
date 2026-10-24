@@ -15,3 +15,5 @@ __pycache__/
 .netrc
 *.json.key
 .env
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
