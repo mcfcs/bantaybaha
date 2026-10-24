@@ -122,6 +122,7 @@ def load_hospitals():
     h = _nhfr()
     if h is not None and len(h):
         record("hospitals", True, f"NHFR: {len(h)} hospitals")
+        record("nhfr", True, f"{len(h)} hospitals")  # clears an earlier 'missing' from a build before the file arrived
         return h, "nhfr"
     missing("nhfr", "NHFR manual download not in data/raw/nhfr/; using HOT OSM + NOAH facilities (fallback)")
     parts = []

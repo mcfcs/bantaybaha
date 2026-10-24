@@ -2,8 +2,9 @@
 
 For a storm, the forecast origin is the DOH week containing landfall (data to the end of that week, i.e. "immediately
 after"). Models are fit on data up to that week (never past 2019-12-29; 2020 storms use the 2019 model, and their R is
-flagged because 2020 surveillance collapsed). A shifted track replaces the origin-week storm features (gale hit, wind,
-distance, storm x hazard) with the shifted track's exposure; observed rain is left as it was.
+flagged because 2020 surveillance collapsed). Every track (the unshifted one too) gets its origin-week storm features
+(gale hit, wind, distance, storm x hazard over the 4 weeks to the origin) rebuilt the way training builds them, with this
+storm's fixes moved and other storms' fixes kept, so tracks differ only by the shift; observed rain is left as it was.
 
 Action tiers are provisional rules (TIERS), to be reviewed with the target users:
   deploy mobile clinics  R >= 0.5 and A >= 0.10
@@ -36,11 +37,12 @@ def tier(R, A):
     return t
 
 
-def overrides_for(units, track, hazard, fixed_km):
-    ex = S.scenario_exposure(units, track, fixed_km)
-    o = pd.DataFrame({"unit_id": ex.unit_id, "storm_gale_4w": ex.storm_gale_hit, "storm_wind_4w": ex.storm_max_wind_near_kt,
-                      "storm_dist_4w": ex.storm_min_dist_km})
-    if hazard is not None:
+def overrides_for(units, ib, key, dlat, dlon, origin, hazard, fixed_km):
+    """Origin-week storm features for this storm moved by (dlat, dlon), built like the training features (see
+    storms.origin_exposure). Used for every track, the unshifted one included, so differences between tracks come from
+    the shift alone; the unshifted track reproduces the panel's own values."""
+    o = S.origin_exposure(units, S.shift_storm(ib, key, dlat, dlon), origin, fixed_km)
+    if hazard is not None:  # panel: storm_hazard_exposure = gale hit x hazard_any_25yr (static), so its 4-week max is this
         o["storm_hazard_4w"] = o.storm_gale_4w * o.unit_id.map(hazard.set_index("unit_id").hazard_any_25yr)
     return o
 
@@ -57,6 +59,7 @@ class AccessModel:
         if not self.ok:
             missing("access", "road graph, hospitals or population cells missing: access loss A is NaN")
             return
+        record("access", True, f"road graph + {len(self.hosp)} hospitals ({self.hosp_source}) + population cells")
         self.net = AC.Network(self.roads, self.ferries, self.hosp, cells, speed_factor)
         self.base = self.net.solve(self.net.road_hours())
         self.haz = AC.hazard_at(self.roads)
@@ -109,16 +112,20 @@ def run_all(panel, units, cells, hazard, edges_final, nodes_final, fixed_km=150.
     ib = S.load_ibtracs()
     am = AccessModel(cells)
     rows, adm3_rows, tracks, ferry_rows, swaths = [], [], [], [], []
+    fits = {}  # by training end: Rolly and Ulysses both train to MODEL_END, so they share one fit
     for key, s in STORMS.items():
         tr = S.storm_track(key, ib=ib)
         origin = week_ending(s["landfall"])
-        fitted = F.fit_at(panel, origin)
+        end = min(origin, pd.Timestamp(MODEL_END))
+        if end not in fits:
+            fits[end] = F.fit_at(panel, origin)
+        fitted = dict(fits[end], origin=origin)
         log(f"  {s['local']}: origin {origin.date()}, model trained to {fitted['train_end'].date()}")
         for dlat, dlon in SHIFTS:
             shifted = (dlat, dlon) != (0.0, 0.0)
             t2 = S.shift_track(tr, dlat, dlon)
             sw = S.swath(t2, fixed_km)
-            fc = F.predict_at(fitted, overrides_for(units, t2, hazard, fixed_km) if shifted else None)
+            fc = F.predict_at(fitted, overrides_for(units, ib, key, dlat, dlon, origin, hazard, fixed_km))
             q = np.vstack(fc.q_cum4)
             pop = fc["pop"].to_numpy()
             fc["cases4_med"] = F.to_cases(q, pop)[:, F.IQ50]
@@ -215,6 +222,7 @@ def sensitivity(am, scen, units, fixed_km=150.0, ib=None):
             top10 = len(set(base.P[ok].nlargest(10).index) & set(P[ok].nlargest(10).index))
             rows.append(dict(storm=STORMS[key]["local"], variant=name, kendall_tau=tau, top10_overlap=top10,
                              mean_A=float(A.mean())))
+    record("sensitivity", True, f"{len(variants)} variants x {len(STORMS)} storms")
     return pd.DataFrame(rows)
 
 
@@ -230,5 +238,6 @@ def metro_manila_benchmark(am, units):
     acc = AC.summarise(am.cells, am.base, st, cut, "unit_id")
     ncr = acc[acc.unit_id.isin(units[units.unit_name.str.startswith("Metropolitan Manila")].unit_id)]
     share = ncr.pop_cut.sum() / ncr["pop"].sum() if len(ncr) else np.nan
+    record("benchmark", True, f"NCR share cut off {share:.1%}")
     return pd.DataFrame([dict(scenario="NCR, all NOAH 25-yr medium/high hazard roads cut", ncr_pop=ncr["pop"].sum(),
                               pop_cut=ncr.pop_cut.sum(), share_cut=share, tariverdi_2023="~22% (15 cm flood, higher-level care)")])

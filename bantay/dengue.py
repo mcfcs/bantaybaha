@@ -24,6 +24,7 @@ def load_dengue():
     dg["loc"] = dg["loc"].str.strip()
     dg["date"] = pd.to_datetime(dg["date"])
     assert (dg.date.dt.weekday == 6).all(), "DOH weeks should end on Sunday"
+    record("dengue_hdx", True, f"{dg['loc'].nunique()} reporting units, {dg.date.nunique()} weeks")
     return dg[["loc", "date", "cases", "Region"]]  # deaths deliberately dropped (finding 2)
 
 
@@ -40,6 +41,7 @@ def unit_week_cases():
     g = full.groupby(["unit_id", "week"])
     out = pd.DataFrame({"cases_sum": g.cases.sum(min_count=1), "n_reporting": g.cases.count(), "n_members": g.cases.size()})
     out["cases"] = out.cases_sum.where(out.n_reporting == out.n_members)
+    record("dengue_unit_week", True, f"{out.cases.isna().sum()} NaN unit-weeks of {len(out)}")
     return out.drop(columns="cases_sum").reset_index()
 
 

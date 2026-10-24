@@ -13,7 +13,7 @@ import geopandas as gpd
 from shapely.geometry import Point, LineString
 from shapely.ops import unary_union
 
-from .config import RAW, STORMS, CRS_M, week_ending, missing
+from .config import RAW, STORMS, CRS_M, week_ending, missing, record
 
 NM_KM = 1.852
 IBTRACS = RAW / "ibtracs" / "ibtracs.WP.list.v04r01.csv"
@@ -30,6 +30,7 @@ def load_ibtracs(seasons=(2016, 2020), bbox=(105, -5, 140, 30)):
     ib = ib[ib.TRACK_TYPE == "main"]
     ib["time"] = pd.to_datetime(ib.ISO_TIME)
     ib["wind_kt"] = ib.USA_WIND.fillna(ib.WMO_WIND).fillna(ib.TOKYO_WIND)
+    record("ibtracs", True, f"{ib.SID.nunique()} storms {seasons[0]}-{seasons[1]}")
     return ib.drop(columns=["ISO_TIME"]).reset_index(drop=True)
 
 
@@ -133,18 +134,30 @@ def unit_week_exposure(units, ib=None, fixed_km=150.0, near_km=300.0):
     return out
 
 
-def scenario_exposure(units, tr, fixed_km=150.0, near_km=300.0):
-    """Exposure of each unit to one (possibly shifted) track: min distance, gale hit, max nearby wind."""
-    tr = gale_radius(tr, fixed_km)
-    it = interpolate(tr)
-    u = units.to_crs(CRS_M)[["unit_id", "geometry"]]
-    pts = gpd.GeoSeries(gpd.points_from_xy(it.LON, it.LAT), crs=4326).to_crs(CRS_M)
-    sw = swath(tr, fixed_km)
-    out = []
-    for uid, geom in zip(u.unit_id, u.geometry):
-        d = pts.distance(geom).to_numpy() / 1000
-        near = d <= near_km
-        out.append(dict(unit_id=uid, storm_min_dist_km=float(d.min()),
-                        storm_gale_hit=int(sw is not None and sw.intersects(geom)),
-                        storm_max_wind_near_kt=float(np.nanmax(it.wind_kt.to_numpy()[near])) if near.any() else 0.0))
-    return pd.DataFrame(out)
+def origin_exposure(units, ib, origin, fixed_km=150.0, near_km=300.0, weeks=4):
+    """The forecast's storm features at `origin` (storm_gale_4w, storm_wind_4w, storm_dist_4w), computed exactly as the
+    panel and forecast.base_features compute them: unit_week_exposure over every fix in `ib` whose DOH week is one of
+    the `weeks` weeks ending at `origin`. Pass an `ib` with one storm's fixes moved to score a shifted track: the other
+    storms' fixes and every rule stay as in training, and fixes after the origin week are never used."""
+    origin = pd.Timestamp(origin)
+    wk = week_ending(ib.time)
+    sub = ib[(wk > origin - pd.Timedelta(weeks=weeks)) & (wk <= origin)]
+    out = units[["unit_id"]].reset_index(drop=True).copy()
+    ex = unit_week_exposure(units, sub, fixed_km, near_km) if len(sub) else None
+    if ex is None or ex.empty:
+        return out.assign(storm_gale_4w=0.0, storm_wind_4w=0.0, storm_dist_4w=2000.0)
+    g = ex.groupby("unit_id")
+    out["storm_gale_4w"] = out.unit_id.map(g.storm_gale_hit.max()).fillna(0).astype(float)
+    out["storm_wind_4w"] = out.unit_id.map(g.storm_max_wind_near_kt.max()).fillna(0).astype(float)
+    out["storm_dist_4w"] = out.unit_id.map(g.storm_min_dist_km.min()).fillna(2000.0)  # panel: weeks with no fix = 2000
+    return out
+
+
+def shift_storm(ib, key, dlat=0.0, dlon=0.0):
+    """IBTrACS fixes with one backtest storm (key in config.STORMS) displaced; every other storm unchanged."""
+    s = STORMS[key]
+    m = (ib.NAME == s["name"]) & (ib.SEASON == s["season"])
+    out = ib.copy()
+    out.loc[m, "LAT"] = out.loc[m, "LAT"] + dlat
+    out.loc[m, "LON"] = out.loc[m, "LON"] + dlon
+    return out

@@ -67,17 +67,17 @@ learned with PCMCI+, and a road-plus-ferry access graph that a typhoon cuts. A q
 hospital; priority is <b>P = R &times; A</b>. Every number below was computed by <span class='mono'>build.bat</span> from the raw files;
 nothing is synthetic.</p>
 <div class='kpis'>
-<div class='kpi'><b>0.55</b><span>relative WIS vs seasonal-naive, 1-4 weeks (target below 1)</span></div>
+<div class='kpi'><b>0.54</b><span>relative WIS vs seasonal-naive, 1-4 weeks (target below 1)</span></div>
 <div class='kpi'><b>85%</b><span>90% interval coverage (target 80-95%)</span></div>
 <div class='kpi warn'><b>8</b><span>PCMCI+ lead-lag links among 84 provinces (cross-correlation: 4,265)</span></div>
 <div class='kpi'><b>60</b><span>pre-computed scenarios (4 typhoons x 15 tracks)</span></div></div>
 <h2>Findings</h2>
 <ul>
 <li><b>The forecast beats the bar.</b> Pooled multi-quantile XGBoost reaches relative WIS 0.42 at one week and
-0.66 at four weeks over 34,170 rolling-origin forecasts in 2018-2019; 90% intervals cover 85%.</li>
+0.66 at four weeks over 34,050 rolling-origin forecasts in 2018-2019; 90% intervals cover 85%.</li>
 <li><b>Two honest null results.</b> Lead-lag graph features do not improve the forecast (relative WIS graph / no-graph = 0.999),
-and adding rain, river and flood-hazard features moved relative WIS only from 0.547 to 0.545. At 1-4 weeks, recent cases and the
-season carry the skill.</li>
+and adding rain, river, storm and flood features moves relative WIS from 0.542 to 0.544
+(ratio 1.003). At 1-4 weeks, recent cases and the season carry the skill.</li>
 <li><b>Surge probability is informative but under-confident.</b> Brier 0.089 vs 0.216 for the base rate; forecasts of
 0.1-0.7 come true 10-20 points more often. It needs recalibration before the tier thresholds are trusted.</li>
 <li><b>The ranking points at the right places.</b> Spearman(R, observed next-4-week incidence) = 0.69 for Ompong and
@@ -159,24 +159,24 @@ its gale swath and cuts roads in observed flood (Sentinel-1, observed tracks) or
 A cell is cut off if it loses its route, or its trip at least doubles and grows by more than an hour (after Petricola et al., 2022).</p><div class='foot'><span>Bantay-Baha / evaluation report</span><span>PJDSC 2026</span><span>5 / 16</span></div></section><section class='page'><div class='rail'><div class='no'>06</div><div class='lbl'>Forecast</div></div><h1>Forecast skill</h1>
 <table><tr><th>horizon</th><th class='n'>n</th><th class='n'>WIS xgb</th><th class='n'>WIS no-graph</th><th class='n'>WIS naive</th>
 <th class='n'>rel WIS</th><th class='n'>graph / no-graph</th><th class='n'>cov 50</th><th class='n'>cov 90</th><th class='n'>cov 90 conformal</th></tr>
-<tr><td>1 wk</td><td class='n'>8,670</td><td class='n'>14.8</td><td class='n'>14.8</td><td class='n'>35.1</td><td class='n'><b>0.42</b></td><td class='n'>1.000</td><td class='n'>0.46</td><td class='n'>0.89</td><td class='n'>0.88</td></tr>
-<tr><td>2 wk</td><td class='n'>8,585</td><td class='n'>18.0</td><td class='n'>18.1</td><td class='n'>35.4</td><td class='n'><b>0.51</b></td><td class='n'>0.999</td><td class='n'>0.44</td><td class='n'>0.86</td><td class='n'>0.87</td></tr>
-<tr><td>3 wk</td><td class='n'>8,500</td><td class='n'>21.1</td><td class='n'>21.1</td><td class='n'>35.6</td><td class='n'><b>0.59</b></td><td class='n'>0.999</td><td class='n'>0.42</td><td class='n'>0.84</td><td class='n'>0.86</td></tr>
-<tr><td>4 wk</td><td class='n'>8,415</td><td class='n'>23.7</td><td class='n'>23.7</td><td class='n'>35.9</td><td class='n'><b>0.66</b></td><td class='n'>0.999</td><td class='n'>0.40</td><td class='n'>0.82</td><td class='n'>0.85</td></tr>
-<tr class="tot"><td>all</td><td class='n'>34,170</td><td class='n'>19.4</td><td class='n'>19.4</td><td class='n'>35.5</td><td class='n'><b>0.55</b></td><td class='n'>0.999</td><td class='n'>0.43</td><td class='n'>0.85</td><td class='n'>0.86</td></tr></table>
+<tr><td>1 wk</td><td class='n'>8,640</td><td class='n'>14.7</td><td class='n'>14.7</td><td class='n'>35.1</td><td class='n'><b>0.42</b></td><td class='n'>0.998</td><td class='n'>0.47</td><td class='n'>0.89</td><td class='n'>0.88</td></tr>
+<tr><td>2 wk</td><td class='n'>8,555</td><td class='n'>18.1</td><td class='n'>18.0</td><td class='n'>35.4</td><td class='n'><b>0.51</b></td><td class='n'>1.002</td><td class='n'>0.44</td><td class='n'>0.86</td><td class='n'>0.87</td></tr>
+<tr><td>3 wk</td><td class='n'>8,470</td><td class='n'>21.0</td><td class='n'>21.1</td><td class='n'>35.6</td><td class='n'><b>0.59</b></td><td class='n'>0.998</td><td class='n'>0.42</td><td class='n'>0.84</td><td class='n'>0.86</td></tr>
+<tr><td>4 wk</td><td class='n'>8,385</td><td class='n'>23.6</td><td class='n'>23.6</td><td class='n'>35.9</td><td class='n'><b>0.66</b></td><td class='n'>0.999</td><td class='n'>0.40</td><td class='n'>0.82</td><td class='n'>0.85</td></tr>
+<tr class="tot"><td>all</td><td class='n'>34,050</td><td class='n'>19.3</td><td class='n'>19.3</td><td class='n'>35.5</td><td class='n'><b>0.54</b></td><td class='n'>0.999</td><td class='n'>0.43</td><td class='n'>0.85</td><td class='n'>0.87</td></tr></table>
 <figure><img src='../figures/f03_wis.png'><figcaption>Figure 3. Left: mean WIS by horizon (labels: relative WIS vs seasonal-naive). Right: coverage against the
 nominal 50% and 90% lines and the proposal's 80-95% band.</figcaption></figure>
 <p><b>Targets met.</b> Relative WIS is below 1 at every horizon (0.42 to 0.66) and 90%
 coverage is inside 80-95% at every horizon (four weeks is close to the floor at 0.82). The 50% intervals are a little narrow
-(0.40-0.46). The online conformal band reaches similar coverage, a sign the quantiles are not badly
+(0.40-0.47). The online conformal band reaches similar coverage, a sign the quantiles are not badly
 miscalibrated.</p>
 <figure><img src='../figures/f05_fan.png'><figcaption>Figure 4. Rolling-origin forecasts for Cagayan (Ompong's landfall province, dashed line), one and four weeks
 ahead.</figcaption></figure><div class='foot'><span>Bantay-Baha / evaluation report</span><span>PJDSC 2026</span><span>6 / 16</span></div></section><section class='page'><div class='rail'><div class='no'>07</div><div class='lbl'>Ablation</div></div><h1>Ablations and calibration</h1>
 <h2>What carries the skill</h2>
 <table><tr><th>comparison</th><th class='n'>relative WIS</th><th>reading</th></tr>
-<tr><td>XGBoost vs seasonal-naive</td><td class='n'>0.545</td><td>45% lower WIS than "same week last year"</td></tr>
+<tr><td>XGBoost vs seasonal-naive</td><td class='n'>0.544</td><td>46% lower WIS than "same week last year"</td></tr>
 <tr><td>with vs without graph leader features</td><td class='n'>0.999</td><td>no gain: the graph has 0 links in every 2018 window and 2-6 in 2019</td></tr>
-<tr><td>with vs without rain / river / hazard (two builds)</td><td class='n'>0.545 vs 0.547</td><td>no meaningful gain at 1-4 weeks</td></tr></table>
+<tr><td>with vs without rain / river / storm / flood features</td><td class='n'>1.003</td><td>0.544 vs 0.542 against seasonal-naive, same rows</td></tr></table>
 <p>The graph ablation follows from the graph itself: with so few significant links, leader signals are empty for most provinces. The rain
 result has two likely reasons, not yet tested: rain moves with the season in a four-year panel, so the season features already carry it, and
 any effect of rain at lags longer than four weeks is outside this forecast horizon. Both are reported as findings rather than tuned away.</p>
@@ -208,7 +208,7 @@ Sentinel-1 VH backscatter before and after landfall, in 100 m tiles near the tra
 days 0 to +10, <b>both from the same relative orbit</b>, so the viewing geometry matches. A pixel is new flood when VH drops by at least 3 dB and ends
 water-dark (at most -18 dB); permanent water (JRC), slopes over 5&deg; and specks under 8 pixels are removed (after UN-SPIDER, n.d.).</p>
 <figure><img src='../figures/f11_s1_flood.png'><figcaption>Figure 7. New-flood share of the land Sentinel-1 saw, per unit, in the landfall week, with each track.</figcaption></figure>
-<table><tr><th>typhoon</th><th class='n'>people in new flood</th><th class='n'>units &gt;1% flooded</th><th class='n'>max unit share</th><th>most people flooded</th></tr><tr><td>Ompong</td><td class='n'>0.5 M</td><td class='n'>5</td><td class='n'>8.0%</td><td>Pampanga</td></tr><tr><td>Tisoy</td><td class='n'>1.1 M</td><td class='n'>14</td><td class='n'>9.6%</td><td>Isabela</td></tr><tr><td>Rolly</td><td class='n'>0.6 M</td><td class='n'>10</td><td class='n'>4.7%</td><td>Camarines Sur</td></tr><tr><td>Ulysses</td><td class='n'>1.5 M</td><td class='n'>15</td><td class='n'>10.2%</td><td>Cagayan</td></tr></table>
+<table><tr><th>typhoon</th><th class='n'>people in new flood</th><th class='n'>units &gt;1% flooded</th><th class='n'>max unit share</th><th>most people flooded</th></tr><tr><td>Ompong</td><td class='n'>0.5 M</td><td class='n'>5</td><td class='n'>8.0%</td><td>Pampanga</td></tr><tr><td>Tisoy</td><td class='n'>1.1 M</td><td class='n'>14</td><td class='n'>9.6%</td><td>Isabela</td></tr><tr><td>Rolly</td><td class='n'>0.6 M</td><td class='n'>10</td><td class='n'>4.7%</td><td>Camarines Sur</td></tr><tr><td>Ulysses</td><td class='n'>1.4 M</td><td class='n'>14</td><td class='n'>10.2%</td><td>Cagayan</td></tr></table>
 <div class='two'><figure><img src='../figures/f12_s1_ems.png'><figcaption>Figure 8. Ompong around Tuguegarao: Sentinel-1 new flood (teal) and Copernicus EMS
 observed flood (red outlines).</figcaption></figure>
 <div><h2>Checked against Copernicus EMS</h2><p>Inside the EMS areas of interest, EMS mapped 108 km&sup2; of observed flood and Sentinel-1 flagged 46 km&sup2;; 26 km&sup2; overlap. So <b>55%</b> of Sentinel-1 flood there is confirmed by EMS, and Sentinel-1 recovers <b>24%</b> of the EMS area.</p>
@@ -219,8 +219,8 @@ here only on 16 and 22 September.</p></div></div><div class='foot'><span>Bantay-
 <p><b>Baseline.</b> 109.4 M people in 1 km cells; 97.3% have a road or ferry route to one of 2,199 hospitals, with a
 population-weighted mean trip of 0.24 h. Results are also written for 1,641 municipalities.</p>
 <table><tr><th>typhoon</th><th class='n'>ferry routes cut</th><th class='n'>people cut off</th><th class='n'>mean A</th><th class='n'>mean R</th>
-<th class='n'>deploy / pre-position</th><th>top priority</th></tr><tr><td>Ompong <span class='mono' style='color:var(--grey)'>Mangkhut 2018</span></td><td class='n'>42</td><td class='n'>0.3 M</td><td class='n'>0.2%</td><td class='n'>0.23</td><td class='n'>0 / 21</td><td>Pampanga</td></tr>
-<tr><td>Tisoy <span class='mono' style='color:var(--grey)'>Kammuri 2019</span></td><td class='n'>100</td><td class='n'>0.7 M</td><td class='n'>0.6%</td><td class='n'>0.08</td><td class='n'>0 / 6</td><td>Camarines Norte</td></tr>
+<th class='n'>deploy / pre-position</th><th>top priority</th></tr><tr><td>Ompong <span class='mono' style='color:var(--grey)'>Mangkhut 2018</span></td><td class='n'>42</td><td class='n'>0.3 M</td><td class='n'>0.2%</td><td class='n'>0.22</td><td class='n'>0 / 21</td><td>Pampanga</td></tr>
+<tr><td>Tisoy <span class='mono' style='color:var(--grey)'>Kammuri 2019</span></td><td class='n'>100</td><td class='n'>0.7 M</td><td class='n'>0.6%</td><td class='n'>0.08</td><td class='n'>0 / 5</td><td>Camarines Norte</td></tr>
 <tr><td>Rolly <span class='mono' style='color:var(--grey)'>Goni 2020</span></td><td class='n'>42</td><td class='n'>0.4 M</td><td class='n'>0.3%</td><td class='n'>0.02</td><td class='n'>0 / 0</td><td>Oriental Mindoro</td></tr>
 <tr><td>Ulysses <span class='mono' style='color:var(--grey)'>Vamco 2020</span></td><td class='n'>54</td><td class='n'>1.0 M</td><td class='n'>0.8%</td><td class='n'>0.04</td><td class='n'>0 / 2</td><td>Cagayan</td></tr></table>
 <figure><img src='../figures/f08_access.png'><figcaption>Figure 9. Access loss A per unit for the observed tracks. Roads are cut by Sentinel-1 observed flood; ferries crossing
@@ -238,9 +238,9 @@ observed flood alone did not produce for this storm (the hazard-map upper bound 
 health officer can ask "what if it comes in further south?" and get an answer in seconds.</p><div class='foot'><span>Bantay-Baha / evaluation report</span><span>PJDSC 2026</span><span>11 / 16</span></div></section><section class='page'><div class='rail'><div class='no'>12</div><div class='lbl'>Validation</div></div><h1>Backtest, sensitivity, benchmark</h1>
 <h2>Did high-priority provinces see more cases?</h2>
 <table><tr><th>typhoon</th><th>origin</th><th class='n'>units</th><th class='n'>surged</th><th class='n'>&rho;(R, obs)</th><th class='n'>&rho;(P, obs)</th>
-<th class='n'>top-10 surged</th><th class='n'>Brier R</th><th>note</th></tr><tr><td>Ompong</td><td class='mono'>2018-09-16</td><td class='n'>85</td><td class='n'>40%</td><td class='n'>0.69</td><td class='n'>0.21</td><td class='n'>70%</td><td class='n'>0.173</td><td></td></tr>
-<tr><td>Tisoy</td><td class='mono'>2019-12-08</td><td class='n'>85</td><td class='n'>5%</td><td class='n'>0.74</td><td class='n'>-0.05</td><td class='n'>0%</td><td class='n'>0.040</td><td></td></tr>
-<tr><td>Rolly</td><td class='mono'>2020-11-01</td><td class='n'>61</td><td class='n'>0%</td><td class='n'>0.50</td><td class='n'>0.05</td><td class='n'>0%</td><td class='n'>0.001</td><td>2020: COVID-depressed reporting, indicative only</td></tr>
+<th class='n'>top-10 surged</th><th class='n'>Brier R</th><th>note</th></tr><tr><td>Ompong</td><td class='mono'>2018-09-16</td><td class='n'>85</td><td class='n'>40%</td><td class='n'>0.69</td><td class='n'>0.21</td><td class='n'>70%</td><td class='n'>0.177</td><td></td></tr>
+<tr><td>Tisoy</td><td class='mono'>2019-12-08</td><td class='n'>85</td><td class='n'>5%</td><td class='n'>0.74</td><td class='n'>-0.05</td><td class='n'>0%</td><td class='n'>0.041</td><td></td></tr>
+<tr><td>Rolly</td><td class='mono'>2020-11-01</td><td class='n'>61</td><td class='n'>0%</td><td class='n'>0.48</td><td class='n'>0.05</td><td class='n'>0%</td><td class='n'>0.001</td><td>2020: COVID-depressed reporting, indicative only</td></tr>
 <tr><td>Ulysses</td><td class='mono'>2020-11-15</td><td class='n'>85</td><td class='n'>1%</td><td class='n'>0.35</td><td class='n'>0.12</td><td class='n'>0%</td><td class='n'>0.016</td><td>2020: COVID-depressed reporting, indicative only</td></tr></table>
 <div class='two'><figure><img src='../figures/f10_validation.png'><figcaption>Figure 12. Spearman correlation of each ranking with observed incidence over the next
 four weeks (relative to each unit's threshold).</figcaption></figure>
@@ -249,13 +249,13 @@ Ompong, 7 of the 10 highest-priority provinces surged against a 40% base rate. A
 Tisoy almost nothing surged (the 2019 season was over), so the top-10 rate is 0 and the Brier score is low for the right reason.</p></div></div>
 <h2>Sensitivity: Kendall's &tau; of P against the base settings</h2>
 <table><tr><th>variant</th><th class='n'>Ompong &tau;</th><th class='n'>Tisoy &tau;</th><th class='n'>Rolly &tau;</th><th class='n'>Ulysses &tau;</th><th class='n'>mean A (Ompong)</th></tr><tr><td>cut-off ratio 1.5</td><td class='n'>1.000</td><td class='n'>0.997</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>0.23%</td></tr>
-<tr><td>cut-off ratio 3</td><td class='n'>1.000</td><td class='n'>0.997</td><td class='n'>0.999</td><td class='n'>0.999</td><td class='n'>0.23%</td></tr>
+<tr><td>cut-off ratio 3</td><td class='n'>1.000</td><td class='n'>0.997</td><td class='n'>0.999</td><td class='n'>1.000</td><td class='n'>0.23%</td></tr>
 <tr><td>ferry rule: port in swath</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>0.23%</td></tr>
 <tr><td>gale fallback 100 km</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>0.23%</td></tr>
 <tr><td>gale fallback 200 km</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>0.23%</td></tr>
 <tr><td>medium hazard slow x0.25</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>0.23%</td></tr>
 <tr><td>medium hazard slow x0.75</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>1.000</td><td class='n'>0.23%</td></tr>
-<tr><td>speed x0.8</td><td class='n'>1.000</td><td class='n'>0.998</td><td class='n'>0.987</td><td class='n'>0.998</td><td class='n'>0.23%</td></tr>
+<tr><td>speed x0.8</td><td class='n'>1.000</td><td class='n'>0.998</td><td class='n'>0.987</td><td class='n'>0.997</td><td class='n'>0.23%</td></tr>
 <tr><td>speed x1.2</td><td class='n'>1.000</td><td class='n'>0.996</td><td class='n'>0.986</td><td class='n'>0.998</td><td class='n'>0.23%</td></tr></table>
 <p>Every variant changes A (speed &plusmn;20% moves mean A by about 4%) but none reorders the ranking: P's spread is dominated by R, which ranges
 0.02-0.93 across provinces. The gale fallback never triggers for these storms.</p>
@@ -265,8 +265,8 @@ Tariverdi et al. (2023) report about 22% losing access to higher-level care at a
 order-of-magnitude check, not a replication.</p><div class='foot'><span>Bantay-Baha / evaluation report</span><span>PJDSC 2026</span><span>12 / 16</span></div></section><section class='page'><div class='rail'><div class='no'>13</div><div class='lbl'>Scorecard</div></div><h1>Proposal objectives: scorecard</h1>
 <table><tr><th>objective (proposal)</th><th>result</th><th>status</th><th>note</th></tr><tr><td>Province-week panel, 2016-2020, joined on PSGC</td><td>85 harmonised units x 262 weeks; dengue, rain, river, storms, NOAH, Sentinel-1</td><td class='ok'>met</td><td></td></tr>
 <tr><td>Lead-lag graph, sentinels, communities; test sentinel features out of sample</td><td>PCMCI+ with FDR: 8 links; ablation run</td><td class='ok'>met</td><td>result is null (graph / no-graph 0.999)</td></tr>
-<tr><td>Relative WIS below 1.0 vs seasonal-naive, 2018-2019</td><td>0.545 overall, 0.66 at 4 weeks</td><td class='ok'>met</td><td></td></tr>
-<tr><td>90% interval coverage of 80-95%</td><td>0.851 overall; 0.82-0.89 by horizon</td><td class='ok'>met</td><td></td></tr>
+<tr><td>Relative WIS below 1.0 vs seasonal-naive, 2018-2019</td><td>0.544 overall, 0.66 at 4 weeks</td><td class='ok'>met</td><td></td></tr>
+<tr><td>90% interval coverage of 80-95%</td><td>0.852 overall; 0.82-0.89 by horizon</td><td class='ok'>met</td><td></td></tr>
 <tr><td>Access loss per municipality, two methods, four typhoons</td><td>network method, 1,641 municipalities, 4 storms</td><td class='part'>partly</td><td>raster (friction) method not wired in yet</td></tr>
 <tr><td>Sensitivity bounds; Metro Manila benchmark</td><td>9 variants, &tau; &ge; 0.99; NCR 30% vs ~22%</td><td class='ok'>met</td><td></td></tr>
 <tr><td>Dashboard for any historical or shifted track in under a minute</td><td>60 pre-computed scenarios; loads in about 6 s</td><td class='ok'>met</td><td></td></tr>

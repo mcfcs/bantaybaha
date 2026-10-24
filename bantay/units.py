@@ -44,6 +44,7 @@ def norm(s):
 def read_adm(level, geometry=True):
     if not COD_ZIP.exists():
         return missing("cod_ab", f"{COD_ZIP.name} not found")
+    record("cod_ab", True, COD_ZIP.name)
     return gpd.read_file(f"zip://{COD_ZIP.as_posix()}", layer=f"phl_admin{level}", read_geometry=geometry)
 
 
@@ -115,6 +116,8 @@ def build_crosswalks(force=False):
     from .dengue import load_dengue  # local import: dengue imports this module
 
     dg = load_dengue()
+    if dg is None:  # recorded as missing by load_dengue; no crosswalk can be written without the reporting units
+        return None, None
     xw2 = build_adm2_crosswalk(adm2)
     xwd = build_dengue_crosswalk(dg["loc"].unique(), adm2, adm3, xw2)
     src = f"COD-AB {adm2.version.iloc[0] if 'version' in adm2 else ''} ({COD_ZIP.name})"

@@ -32,6 +32,7 @@ from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
 from shapely import wkt  # noqa: E402
 
 from bantay.config import APP_DATA, PROCESSED, RAW, STORMS  # noqa: E402
+from bantay.scenarios import TIERS  # noqa: E402
 
 OUT = ROOT / "docs" / "results"
 FIG = OUT / "figures"
@@ -47,6 +48,8 @@ SEQ = LinearSegmentedColormap.from_list("tide", ["#E6F2F7", "#7FC3DC", TEAL, "#0
 def load():
     d = dict(
         panel=pd.read_parquet(PROCESSED / "panel.parquet"),
+        s1_storm=(pd.read_parquet(PROCESSED / "s1_unit_storm.parquet") if (PROCESSED / "s1_unit_storm.parquet").exists()
+                  else pd.DataFrame(columns=["unit_id", "s1_flood_frac", "s1_flood_pop", "storm"])),
         scen=pd.read_parquet(APP_DATA / "scenarios.parquet"),
         adm3=pd.read_parquet(APP_DATA / "scenarios_adm3.parquet"),
         tracks=pd.read_parquet(APP_DATA / "tracks.parquet"),
@@ -90,6 +93,7 @@ def stats(d):
     k["ev"] = e
     k["relwis"], k["cov90"], k["cov50"] = e.loc["all", "relWIS xgb/naive"], e.loc["all", "cov90 xgb"], e.loc["all", "cov50 xgb"]
     k["relwis_graph"] = e.loc["all", "relWIS xgb/nograph"]
+    k["relwis_noenv"], k["relwis_env"] = e.loc["all", "relWIS noenv/naive"], e.loc["all", "relWIS xgb/noenv"]
     k["n_scored"] = int(e.loc["all", "n"])
     c = d["cal"]["xgb"]
     k["brier"], k["brier_clim"], k["base_rate"] = c["brier"], c["brier_climatology"], c["base_rate"]
@@ -117,8 +121,8 @@ def stats(d):
     s1 = p.dropna(subset=["s1_flood_frac"])
     k["s1_ok"] = len(s1) > 0
     if k["s1_ok"]:
-        w = {key: pd.Timestamp(v["landfall"]) for key, v in STORMS.items()}
-        lw = {key: s1[s1.week == s1[s1.week >= t].week.min()] for key, t in w.items()}
+        by = d["s1_storm"]  # per storm: panel weeks hold the max of overlapping storms (Rolly / Ulysses)
+        lw = {key: by[by.storm == key] for key in STORMS}
         k["s1_tab"] = {key: dict(pop=float(g.s1_flood_pop.sum()), units=int((g.s1_flood_frac > 0.01).sum()),
                                  frac_max=float(g.s1_flood_frac.max()), top=d["names"][g.loc[g.s1_flood_pop.idxmax(), "unit_id"]])
                        for key, g in lw.items() if len(g)}
@@ -386,8 +390,8 @@ def fig_scatter(d, storm="ompong"):
     for t, (m, c, lab) in mk.items():
         g = s[s.tier == t]
         ax.scatter(g.R, g.A, s=np.sqrt(g["pop"]) / 18, marker=m, color=c, edgecolor="#FFFFFF", lw=0.6, label=f"{lab} ({len(g)})", zorder=3)
-    ax.axvline(0.3, color=GREY, lw=0.8, ls=(0, (2, 2)))
-    ax.axhline(0.10, color=GREY, lw=0.8, ls=(0, (2, 2)))
+    ax.axvline(TIERS["preposition_R"], color=GREY, lw=0.8, ls=(0, (2, 2)))
+    ax.axhline(TIERS["deploy"][1], color=GREY, lw=0.8, ls=(0, (2, 2)))
     for _, r in s.nlargest(5, "P").iterrows():
         ax.annotate(r["name"], (r.R, r.A), textcoords="offset points", xytext=(5, 4), fontsize=7.2)
     ax.set_xlim(0, 1)
@@ -420,15 +424,14 @@ def fig_validation(d):
 
 
 def fig_s1(d):
-    """Observed new flood share per unit, landfall week, one map per typhoon (Sentinel-1)."""
+    """Observed new flood share per unit, one map per typhoon (Sentinel-1; per-storm values, not the merged panel)."""
     p = d["panel"].dropna(subset=["s1_flood_frac"])
     if p.empty:
         return None
     fig, axs = plt.subplots(1, 4, figsize=(9.6, 3.0))
     vmax = p.s1_flood_frac.quantile(0.99)
     for ax, (k, st) in zip(axs, STORMS.items()):
-        t = pd.Timestamp(st["landfall"])
-        g = p[p.week == p[p.week >= t].week.min()]
+        g = d["s1_storm"][d["s1_storm"].storm == k]
         u = d["units"].merge(g[["unit_id", "s1_flood_frac"]], on="unit_id", how="left")
         u[u.s1_flood_frac.isna()].plot(ax=ax, color="#EEF1F3", edgecolor="#FFFFFF", linewidth=0.3)
         u[u.s1_flood_frac.notna()].plot(ax=ax, column="s1_flood_frac", cmap=SEQ, vmin=0, vmax=vmax, edgecolor="#FFFFFF", linewidth=0.3)
