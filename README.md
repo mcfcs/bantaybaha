@@ -82,6 +82,7 @@ These sites block scripted downloads, so save the files by hand:
 
 ```
 docs/                       concept proposal, team explainer, submitted proposal (PDF)
+docs/CODE_GUIDE.md          walkthrough of every file and code block (start here to read the code)
 scripts/download_data.py    open-source downloads (idempotent, writes MANIFEST.csv)
 scripts/download_gee.py     Earth Engine downloads (needs --project)
 setup.bat                   one-click team setup: venv, kernel, sign-in, pull data from the bucket
