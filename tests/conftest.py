@@ -19,10 +19,10 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "app" / "streamlit_app.py"
-APP_DATA = ROOT / "data" / "processed" / "app"
+PROCESSED = ROOT / "data" / "processed"
+APP_DATA = PROCESSED / "app"
 ARTIFACTS = ROOT / "tests" / "artifacts"
 sys.path.insert(0, str(ROOT / "app"))
-PROCESSED = ROOT / "data" / "processed"
 sys.path.insert(0, str(ROOT))  # `bantay` without an install
 sys.path.append(str(ROOT / "scripts"))  # download_data, sync_data, check_code_guide, make_results
 
