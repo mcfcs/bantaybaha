@@ -645,7 +645,9 @@ def _sig_lags(tab, variant, exposure="rain_7d"):
 def _span(lags):
     if not lags:
         return "no single lag clearly above 1"
-    return f"{lags[0]} weeks later" if lags[0] == lags[-1] else f"{lags[0]}-{lags[-1]} weeks later"
+    if lags[0] == lags[-1]:
+        return f"{lags[0]} week{'' if lags[0] == 1 else 's'} later"
+    return f"{lags[0]}-{lags[-1]} weeks later"
 
 
 def _findings(nat, city, did):
@@ -657,9 +659,10 @@ def _findings(nat, city, did):
         pks, _ = _peak(city, "city-specific seasonality")
         hv, hcum = _peak(city, "12 cities", "heavy")
         gap = int(pk.lag) - 2  # Matsushita et al. (2018): risk peaks ~2 weeks after rain
-        vs = (f"{gap} week{'s' if abs(gap) != 1 else ''} {'later' if gap > 0 else 'earlier'} than" if gap else "the same as")
-        out.append(f"- **Cities (12, 2016-2020): rain is followed by leptospirosis ({_span(_sig_lags(city, '12 cities'))}, 95% CI "
-                   f"above 1).** Joint distributed-lag peak at lag {int(pk.lag)}: IRR {_fmt(pk)} per +50 mm/week; cumulative lags 0-6 "
+        vs = (f"{abs(gap)} week{'s' if abs(gap) != 1 else ''} {'later' if gap > 0 else 'earlier'} than" if gap else "the same as")
+        sig = _sig_lags(city, "12 cities")
+        when = f"{_span(sig)}, 95% CI above 1" if sig else "no lag has its 95% CI above 1"
+        out.append(f"- **Cities (12, 2016-2020): rain is followed by leptospirosis ({when}).** Joint distributed-lag peak at lag {int(pk.lag)}: IRR {_fmt(pk)} per +50 mm/week; cumulative lags 0-6 "
                    f"{_fmt(cum)}. Peak with city-specific seasonality: lag {int(pks.lag)}, {_fmt(pks)}; with the literal CCHAIN week "
                    f"label: lag {int(pk6.lag)} ({_fmt(pk6)}). A heavy-rain week (>= city p90) peaks at lag {int(hv.lag)}: {_fmt(hv)}. "
                    f"The peak is {vs} the ~2-week peak of Matsushita et al. (2018); the week-label uncertainty (above) and any "

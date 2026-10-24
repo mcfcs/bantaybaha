@@ -158,11 +158,12 @@ def unit_hazard_shares(units, min_cover=0.5):
 
 # ---------------------------------------------------------------- Copernicus EMS (observed, Ompong only)
 
-def ems_observed_flood(activation="EMSR312"):
-    """Observed-flood polygons (EPSG:4326) from the EMS delineation packages; None if absent."""
+def ems_observed_flood(activation="EMSR312", record_status=True):
+    """Observed-flood polygons (EPSG:4326) from the EMS delineation packages; None if absent. record_status=False for
+    readers outside the build (the documents), so reading never rewrites data/processed/status.json."""
     zs = sorted((EMS / activation).glob("*DELINEATION*.zip"))
     if not zs:
-        return missing(f"ems_{activation}", f"no {activation} delineation zips in {EMS / activation}")
+        return missing(f"ems_{activation}", f"no {activation} delineation zips in {EMS / activation}") if record_status else None
     out = []
     for z in zs:
         for n in zipfile.ZipFile(z).namelist():
@@ -172,8 +173,9 @@ def ems_observed_flood(activation="EMSR312"):
                 g["product"] = "MONIT01" if "MONIT" in z.name else "MAP"
                 out.append(g[["product", "geometry"]])
     if not out:
-        return missing(f"ems_{activation}", "no observedEvent layer in the delineation packages")
-    record(f"ems_{activation}", True, f"{len(zs)} packages")
+        return missing(f"ems_{activation}", "no observedEvent layer in the delineation packages") if record_status else None
+    if record_status:
+        record(f"ems_{activation}", True, f"{len(zs)} packages")
     return gpd.GeoDataFrame(pd.concat(out, ignore_index=True), crs=4326)
 
 

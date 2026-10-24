@@ -394,6 +394,8 @@ class FrictionGrid:
                 cur = cost[idx]
                 cost[idx] = np.where(cur > 0, np.minimum(cur, c / speed_factor), c / speed_factor)
         starts = self.h_idx[cost[self.h_idx] > 0]  # a hospital in a flooded cell is not a start
+        if not len(starts):  # every hospital flooded: nobody has a route
+            return np.full(len(self.c_idx), np.inf)
         acc, _ = MCP_Geometric(cost.reshape(self.shape)).find_costs(np.c_[np.divmod(starts, self.shape[1])])
         t = acc.ravel()[self.c_idx]
         return np.where(self.c_ok & np.isfinite(t), t, np.inf)

@@ -17,3 +17,22 @@ __pycache__/
 .env
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+
+# LaTeX build artifacts. latexmk and LaTeX Workshop write everything to docs/spec/build/ (aux files and main.pdf);
+# the PDF that is shared is copied to docs/results/Bantay-Baha_Technical_Spec.pdf by scripts/make_spec.py.
+# The patterns below catch a stray build run without the output directory.
+docs/spec/build/
+docs/spec/**/*.aux
+docs/spec/**/*.bbl
+docs/spec/**/*.bcf
+docs/spec/**/*.blg
+docs/spec/**/*.fdb_latexmk
+docs/spec/**/*.fls
+docs/spec/**/*.log
+docs/spec/**/*.out
+docs/spec/**/*.run.xml
+docs/spec/**/*.synctex.gz
+docs/spec/**/*.synctex(busy)
+docs/spec/**/*.toc
+docs/spec/**/*.xdv
+docs/spec/main.pdf
