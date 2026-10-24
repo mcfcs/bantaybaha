@@ -29,3 +29,4 @@ scikit-image
 tigramite
 streamlit>=1.66
 plotly
+markdown

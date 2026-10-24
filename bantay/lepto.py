@@ -636,35 +636,69 @@ def _peak(tab, variant, exposure="rain_7d"):
     return lag, t[t.term == "cum_0_6"].iloc[0]
 
 
+def _sig_lags(tab, variant, exposure="rain_7d"):
+    """Lags of the joint rain model whose 95% CI lies above 1."""
+    t = tab[(tab.variant == variant) & (tab.exposure == exposure) & (tab.model == "joint") & (tab.term != "cum_0_6")]
+    return sorted(int(x) for x in t[t.ci_lo > 1].lag)
+
+
+def _span(lags):
+    if not lags:
+        return "no single lag clearly above 1"
+    return f"{lags[0]} weeks later" if lags[0] == lags[-1] else f"{lags[0]}-{lags[-1]} weeks later"
+
+
 def _findings(nat, city, did):
+    """Key findings for the summary; every qualitative word (later, same direction, fails, ...) follows the numbers."""
     out = []
     if city is not None:
         pk, cum = _peak(city, "12 cities")
         pk6, _ = _peak(city, "literal CCHAIN week (date+6)")
         pks, _ = _peak(city, "city-specific seasonality")
         hv, hcum = _peak(city, "12 cities", "heavy")
-        out.append(f"- **Cities (12, 2016-2020): rain is followed by leptospirosis 2-5 weeks later.** Joint distributed-lag peak at "
-                   f"lag {int(pk.lag)}: IRR {_fmt(pk)} per +50 mm/week; cumulative lags 0-6 {_fmt(cum)}. Same peak with city-specific "
-                   f"seasonality (lag {int(pks.lag)}, {_fmt(pks)}); with the literal CCHAIN week label the peak is lag {int(pk6.lag)} "
-                   f"({_fmt(pk6)}). A heavy-rain week (>= city p90) peaks at lag {int(hv.lag)}: {_fmt(hv)}. That is 1-2 weeks later than the "
-                   "~2-week peak of Matsushita et al. (2018); part of the gap is the week-label uncertainty (above), and any "
-                   "onset-to-report delay in PIDSR (not checked here) would add to it.")
+        gap = int(pk.lag) - 2  # Matsushita et al. (2018): risk peaks ~2 weeks after rain
+        vs = (f"{gap} week{'s' if abs(gap) != 1 else ''} {'later' if gap > 0 else 'earlier'} than" if gap else "the same as")
+        out.append(f"- **Cities (12, 2016-2020): rain is followed by leptospirosis ({_span(_sig_lags(city, '12 cities'))}, 95% CI "
+                   f"above 1).** Joint distributed-lag peak at lag {int(pk.lag)}: IRR {_fmt(pk)} per +50 mm/week; cumulative lags 0-6 "
+                   f"{_fmt(cum)}. Peak with city-specific seasonality: lag {int(pks.lag)}, {_fmt(pks)}; with the literal CCHAIN week "
+                   f"label: lag {int(pk6.lag)} ({_fmt(pk6)}). A heavy-rain week (>= city p90) peaks at lag {int(hv.lag)}: {_fmt(hv)}. "
+                   f"The peak is {vs} the ~2-week peak of Matsushita et al. (2018); the week-label uncertainty (above) and any "
+                   "onset-to-report delay in PIDSR (not checked here) bear on that comparison.")
     if nat is not None:
         pk, cum = _peak(nat, "2019-2020")
         p19, c19 = _peak(nat, "2019 only")
-        out.append(f"- **National (2019-2020, 80 weeks): same direction, later and weaker evidence.** Joint peak at lag {int(pk.lag)}: "
-                   f"{_fmt(pk)} per +50 mm/week, cumulative {_fmt(cum)}; with 2019 alone (52 weeks) the cumulative effect is "
-                   f"{_fmt(c19)} (peak lag {int(p19.lag)}: {_fmt(p19)}). Much of the national signal comes from 2020 "
-                   "(the Dec 2020 surge after Rolly/Ulysses, under COVID reporting), so treat it as indicative.")
+        both = cum.ci_lo > 1
+        out.append(f"- **National (2019-2020, 80 weeks): {'same direction' if both else 'inconclusive'}.** Joint peak at lag "
+                   f"{int(pk.lag)}: {_fmt(pk)} per +50 mm/week, cumulative {_fmt(cum)}; with 2019 alone (52 weeks) the cumulative "
+                   f"effect is {_fmt(c19)} (peak lag {int(p19.lag)}: {_fmt(p19)})"
+                   + (", so much of the national signal comes from 2020 (COVID-era reporting): treat it as indicative."
+                      if c19.ci_lo <= 1 < cum.ci_lo else "."))
     if did is not None and len(did):
         g = did.set_index(["storms", "term"])
-        def cell(st, t):
-            return _fmt(g.loc[(st, t)]) if (st, t) in g.index else "n/a"
-        out.append(f"- **Typhoon event study: mixed.** Rolly + Ulysses (2020): inside-swath cities had {cell('rolly+ulysses', 'inside_x_post1_4')} "
-                   f"times the outside cities' obs/exp in weeks +1..+4 (pre-landfall placebo {cell('rolly+ulysses', 'inside_x_pre')}). "
-                   f"Ompong + Tisoy: {cell('ompong+tisoy', 'inside_x_post1_4')}, but the placebo fails ({cell('ompong+tisoy', 'inside_x_pre')}: "
-                   "weeks of heavy monsoon rain from late July 2018 had already raised Luzon/NCR cases). Four storms and 12 cities: "
-                   "no general storm effect can be claimed.")
+
+        def row(st, t):
+            return g.loc[(st, t)] if (st, t) in g.index else None
+
+        def cell(r):
+            return _fmt(r) if r is not None else "n/a"
+
+        parts, verdicts = [], []
+        for st, label in (("rolly+ulysses", "Rolly + Ulysses (2020)"), ("ompong+tisoy", "Ompong + Tisoy")):
+            post, pre = row(st, "inside_x_post1_4"), row(st, "inside_x_pre")
+            if post is None:
+                continue
+            placebo_ok = pre is not None and pre.ci_lo <= 1 <= pre.ci_hi
+            effect = post.ci_lo > 1 and placebo_ok
+            verdicts.append(effect)
+            parts.append(f"{label}: inside-swath cities had {cell(post)} times the outside cities' obs/exp in weeks +1..+4 "
+                         f"(pre-landfall placebo {cell(pre)}, {'passes' if placebo_ok else 'fails'})")
+            if st == "ompong+tisoy" and not placebo_ok:
+                parts[-1] += "; weeks of heavy monsoon rain from late July 2018 had already raised Luzon/NCR cases"
+        pooled = row("ompong+rolly+tisoy+ulysses", "inside_x_post1_4")
+        head = "mixed" if any(verdicts) and not all(verdicts) else ("consistent effect" if verdicts and all(verdicts) else "no clear effect")
+        tail = ("" if pooled is None else f" All four pooled: {cell(pooled)}"
+                + ("; no general storm effect can be claimed." if pooled.ci_lo <= 1 else "."))
+        out.append(f"- **Typhoon event study: {head}.** " + ". ".join(parts) + "." + tail)
     out.append("- **Sentinel-1 flood vs cases: not estimable.** Few city-storm pairs show any observed flood (see section 3), "
                "so the flood-mediation step stays a literature assumption here.")
     return out

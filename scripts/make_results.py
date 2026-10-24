@@ -131,6 +131,12 @@ def stats(d):
     k["n_adm3"] = a0.adm3_pcode.nunique()
     k["n_scen"] = len(d["scen"][["storm", "dlat", "dlon"]].drop_duplicates())
     s = d["scen"]
+    # columns from optional build parts (raster method, HRSL, calibration): NaN when that part did not run, so the
+    # guarded sections below say "not available" instead of failing
+    for c in ("A_lo", "A_hi", "A_raster", "R_raw", "pop_cut_raster", "pop_cut_u5", "pop_cut_60", "pop_cells"):
+        if c not in s:
+            s = s.assign(**{c: np.nan})
+    d["scen"] = s
     b = s[(s.dlat == 0) & (s.dlon == 0)]
     b = b.assign(cut_lo=b.pop_cells * b.A_lo, cut_hi=b.pop_cells * b.A_hi)
     k["storm_tab"] = b.groupby("storm").agg(cut=("pop_cut", "sum"), A=("A", "mean"), ferries=("ferries_cancelled", "first"),
@@ -1199,6 +1205,54 @@ def demo_script_html():
             f"<table class='script'><tr><th>time</th><th>on screen</th><th>narration</th></tr>{''.join(rows)}</table>{''.join(extra)}</body></html>")
 
 
+GUIDE_CSS = """
+@page { size: A4; margin: 16mm 15mm 16mm 15mm;
+        @bottom-left { content: "Bantay-Baha / code guide"; font-family: "Space Mono"; font-size: 7pt; color: #6B7A88; }
+        @bottom-right { content: counter(page) " / " counter(pages); font-family: "Space Mono"; font-size: 7pt; color: #6B7A88; } }
+body { font-size: 9.6pt; line-height: 1.42; }
+h1 { font-family: "Big Shoulders Display"; font-weight: 800; text-transform: uppercase; font-size: 34pt; line-height: .95; margin: 0 0 3mm;
+     border-bottom: 3px solid var(--signal); padding-bottom: 2mm; }
+h2 { font-family: "Big Shoulders Display"; font-weight: 800; text-transform: uppercase; font-size: 20pt; margin: 7mm 0 2mm; color: var(--ink);
+     break-after: avoid; }
+h3 { font-family: "Big Shoulders Display"; font-weight: 700; text-transform: uppercase; font-size: 14pt; margin: 5mm 0 1.5mm; color: var(--teal);
+     break-after: avoid; }
+h2 code, h3 code { font-family: inherit; font-size: inherit; background: none; padding: 0; text-transform: none; }
+p, li { margin: 0 0 2mm; }
+ul, ol { padding-left: 5mm; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 4mm 0; }
+code { font-family: "Space Mono"; font-size: 7.8pt; background: var(--mist); padding: 0 1mm; }
+pre { background: var(--deep); color: #DCE8EE; padding: 3mm 3mm; font-size: 6.6pt; line-height: 1.35; overflow: hidden; break-inside: avoid; }
+pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+table { font-size: 8.6pt; margin: 2mm 0 4mm; }
+th { font-size: 6.8pt; color: var(--grey); border-bottom: 1.5px solid var(--ink); }
+td { border-bottom: 1px solid var(--rule); vertical-align: top; padding: 1.6mm 2mm; }
+tr { break-inside: avoid; }
+table.blocks td:first-child { width: 26%; }
+table.blocks td:nth-child(2) { width: 9%; white-space: nowrap; font-family: "Space Mono"; font-size: 7.6pt; color: var(--amber); }
+table.files td:first-child { width: 22%; }
+a { color: inherit; text-decoration: none; }
+a.toc { color: var(--teal); }
+"""
+
+
+def code_guide_html():
+    """docs/CODE_GUIDE.md -> styled HTML. File links become plain text (they point into the repo, which a PDF can't
+    open); the contents links stay as in-document links."""
+    import re
+
+    import markdown
+
+    md = (ROOT / "docs" / "CODE_GUIDE.md").read_text(encoding="utf-8")
+    body = markdown.markdown(md, extensions=["tables", "fenced_code", "toc"])
+    body = re.sub(r'<a href="\.\./[^"]*">(.*?)</a>', r"\1", body)  # repo file links -> text
+    body = re.sub(r'<a href="(#[^"]*)">', r'<a class="toc" href="\1">', body)
+    # block tables (Block | Lines | Explanation) get the line-number column style; other tables a plain first column
+    body = re.sub(r"<table>(\s*<thead>\s*<tr>\s*<th>[^<]*</th>\s*<th>Lines</th>)", r"<table class='blocks'>\1", body)
+    body = body.replace("<table>", "<table class='files'>")
+    return (f"<!doctype html><html><head><meta charset='utf-8'><title>Bantay-Baha code guide</title>"
+            f"<style>{FONT_CSS}{GUIDE_CSS}</style></head><body>{body}</body></html>")
+
+
 OVERFLOW_JS = """<script>
 window.addEventListener("load", () => setTimeout(() => {
   const bad = [];
@@ -1261,6 +1315,11 @@ def main(pdf=True):
     if pdf:
         to_pdf(report, OUT / "Bantay-Baha_Evaluation_Report.pdf")
         to_pdf(slides, OUT / "Bantay-Baha_Slides.pdf")
+    if (ROOT / "docs" / "CODE_GUIDE.md").exists():
+        guide = SRC / "code_guide.html"
+        guide.write_text(code_guide_html(), encoding="utf-8")
+        if pdf:
+            to_pdf(guide, OUT / "Bantay-Baha_Code_Guide.pdf")
     if (OUT / "Bantay-Baha_Demo_Script.md").exists():
         demo = SRC / "demo_script.html"
         demo.write_text(demo_script_html(), encoding="utf-8")

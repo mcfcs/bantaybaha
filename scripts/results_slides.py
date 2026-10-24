@@ -304,7 +304,10 @@ with calibrated forecasts, rank the provinces that need help first, early enough
 <div class='grid3' style='margin-top:.2in'>
 <div class='stat'><div class='num' style='font-size:38pt'>{len(a)}</div><p>storms scored: {k['n_cat']} more beyond the four backtests, each with the model of its own week</p></div>
 <div class='stat'><div class='num' style='font-size:38pt'>{fmt_m(big.cut)}</div><p>most people cut off: {big.label}, flood from hazard maps (an upper bound)</p></div>
-<div class='stat'><div class='num' style='font-size:38pt'>{hiR.R:.2f}</div><p>highest mean surge risk: {hiR.label}, in the 2019 epidemic season</p></div></div>"""))
+<div class='stat'><div class='num' style='font-size:38pt'>{hiR.R:.2f}</div><p>highest mean surge risk: {hiR.label}{', in the 2019 epidemic season' if pd.Timestamp(hiR.origin).year == 2019 else ''}</p></div></div>"""))
+    else:  # keep 20 slides when the catalogue stage has not run
+        S.append(_slide(15, "Signal 06 / Result 7", "Real-world application: scale", "<h1>Every storm, <em>not just four</em></h1>"
+                        "<p>The storm catalogue is not in this build: run <code>build.bat catalog</code> and regenerate.</p>"))
 
     S.append(_slide(16, "Signal 06 / Result 8", "Technical rigor: validity", f"""<h1>It points at the <em>right places</em></h1>
 <div class='grid2'><div>{_img(F['valid'], 2.9)}
