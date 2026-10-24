@@ -50,6 +50,7 @@ build.bat                 :: everything: crosswalk panel leadlag forecast ensemb
 build.bat panel forecast  :: selected stages
 run_app.bat               :: opens the dashboard in the browser
 python scripts\make_results.py   :: regenerates the report and slides in docs\results\
+python scripts\make_spec.py      :: regenerates the LaTeX technical specification (needs MiKTeX or TeX Live)
 ```
 
 `build.bat` runs `scripts/build.py`. Inputs that are not on disk yet (Sentinel-1 flood masks, PSGC, NHFR, or anything still
@@ -70,6 +71,28 @@ build.bat ensemble                                                          :: r
 
 Only `chronos2`, `tabpfn_ts` and `mpnn_lstm` (`bantay/forecast.py: BENCH_MODELS`) join the median ensemble; other
 `bench_*` files are variants.
+
+### Technical specification (LaTeX)
+
+`docs/spec/` is the evaluation report as a LaTeX document the team edits in VS Code; its PDF is
+`docs/results/Bantay-Baha_Technical_Spec.pdf`. The prose (`docs/spec/sections/*.tex`) never types a result: every number
+is a macro in `docs/spec/generated/numbers.tex`, and the tables are `docs/spec/generated/tab_*.tex`, both written by
+`scripts/make_spec.py` from `data/processed/` (it reuses `make_results.stats()`, so the numbers are the report's).
+Figures are the PNGs in `docs/results/figures/`. Writing conventions and details: [docs/spec/GUIDE.md](docs/spec/GUIDE.md).
+
+You need MiKTeX or TeX Live (`pdflatex`, `biber`, `latexmk`) on PATH. In **VS Code**, install the recommended
+**LaTeX Workshop** extension (`.vscode/extensions.json`) and open any file in `docs/spec/`: saving builds the PDF
+(`.vscode/settings.json`: latexmk recipe, build on save, PDF in a tab, SyncTeX; output in `docs/spec/build/`, git-ignored).
+On the **command line**:
+
+```bat
+cd docs\spec && latexmk                  :: docs\spec\build\main.pdf (reads docs\spec\latexmkrc: pdflatex + biber)
+python scripts\make_spec.py              :: after a new build: regenerate generated\*.tex, compile, copy the PDF to docs\results\
+python scripts\make_spec.py --no-pdf     :: regenerate generated\*.tex only
+```
+
+`docs/spec/generated/` is committed, so the document compiles without the data; after `build.bat` and
+`make_results.py`, re-run `make_spec.py` (the tests fail while it is stale).
 
 ### Testing
 
@@ -102,10 +125,16 @@ python tests\capture.py                           :: refresh docs\results\figure
 | `test_scenarios.py`, `test_leadlag.py`, `test_lepto.py` | tiers from `TIERS`, the access-method range, priority P; an empty graph below `MIN_T`, a planted lead; the leptospirosis findings wording |
 | `test_scripts.py` | downloads skip existing files and write through `.part` (no network), manifest merge and sha256, the bucket manifest, `check_code_guide.py` (and that the real guide is current) |
 | `test_build_outputs.py`, `test_make_results.py` (`data`) | 85 units x 262 weeks, S1 timing, scenario ranges, catalogue `train_end` <= origin, every model on the same rows, `status.json`; the report and 20 slides on the full build and with each optional part removed |
+| `test_flood.py`, `test_spec_flags.py` | the EMS reader leaves `status.json` alone for the documents; the spec's wording flags: registry, recomputed from the outputs (`data`), and a compile with every flag inverted (`slow`) |
 | `test_sus.py`, `test_app.py`, `test_e2e.py` (`e2e`) | SUS scoring and storage; every dashboard tab, control and optional output; the browser walk-through (every tab, storm and shift, dark mode, SUS submission; fails on any app exception or browser console error) |
 
 A test marked `xfail(strict=True)` documents a known bug that is not fixed yet; its reason says what is wrong, and the
 suite fails as soon as the bug is fixed (then remove the mark).
+
+`tests/test_spec.py` checks the technical specification: every macro the sections use is defined, the generated numbers
+and tables match the build outputs and are up to date, no result is typed into the prose, every citation, figure and
+table exists, and (marked `slow`, skipped without latexmk) that it compiles with no errors, undefined references or
+overfull boxes; `python -m pytest tests -m "not slow"` skips the compile.
 
 User-test answers from the dashboard's *Usability test* tab go to `data/processed/sus/sus_responses.csv` (set
 `BANTAY_SUS_PATH` to write elsewhere); no names or identifiers are collected.
@@ -133,7 +162,11 @@ These sites block scripted downloads, so save the files by hand:
 
 ```
 docs/                       concept proposal, team explainer, submitted proposal (PDF); docs/proposal/ revised v3; docs/results/ report + deck
-docs/CODE_GUIDE.md          walkthrough of every file and code block (start here to read the code)
+docs/CODE_GUIDE.md          walkthrough of every file and code block (start here to read the code); after moving code run
+                            python scripts/check_code_guide.py --fix (re-syncs its line links), then check it
+docs/spec/                  technical specification in LaTeX: main.tex, sections/, refs.bib, latexmkrc, GUIDE.md;
+                            generated/ (numbers and tables from scripts/make_spec.py); build/ (git-ignored)
+.vscode/                    LaTeX Workshop settings (recipes, build on save) and the recommended extension
 scripts/download_data.py    open-source downloads (idempotent, writes MANIFEST.csv)
 scripts/download_gee.py     Earth Engine downloads (needs --project)
 setup.bat                   one-click team setup: venv, kernel, sign-in, pull data from the bucket
@@ -141,12 +174,13 @@ scripts/sync_data.py        push/pull data/raw to/from the team's private Cloud 
 download_data.bat           one-click setup + download for Windows
 scripts/build.py            one-command rebuild of everything the dashboard reads (build.bat)
 scripts/make_results.py     regenerates docs/results/ (evaluation report + 20-slide deck, PDF)
+scripts/make_spec.py        regenerates docs/spec/generated/ and the technical specification PDF (latexmk)
 scripts/benchmark_*.py      optional benchmarks: Chronos-2, TabPFN-TS, MPNN-LSTM + scorer (requirements-bench.txt)
 scripts/make_proposal.py    revised anonymous proposal v3 (docs/proposal/, PDF via headless Chrome)
 bantay/                     library: units, dengue, storms, rain, rivers, flood, grids, panel, leadlag, forecast, access,
                             scenarios, lepto
 app/                        the dashboard (streamlit_app.py + ui, sus, lepto_tab; run_app.bat)
-tests/                      pytest: pipeline unit tests, build-output checks, AppTest + Playwright (requirements-dev.txt)
+tests/                      pytest: pipeline unit tests, build-output checks, AppTest + Playwright, test_spec.py (LaTeX spec)
 notebooks/00_data_eda.ipynb one notebook: a short EDA of every dataset + proposal checks
 data/raw/                   downloaded data (git-ignored, read-only; only MANIFEST.csv is tracked)
 data/crosswalks/            reviewed crosswalks into the harmonised 2016-2020 province units (tracked)

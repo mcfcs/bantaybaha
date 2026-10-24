@@ -25,7 +25,7 @@ benchmark models. Each entry is one function or one top-level block.
 6. [The dashboard: `app/streamlit_app.py`](#6-the-dashboard-appstreamlit_apppy)
     - [6.1 ui](#61-appuipy) · [6.2 sus](#62-appsuspy) · [6.3 lepto_tab](#63-applepto_tabpy) ·
       [6.4 theme](#64-streamlitconfigtoml) · [6.5 tests](#65-tests-tests)
-7. [Documents: `make_results.py`, `results_pages.py`, `results_slides.py`, `make_proposal.py`, `check_code_guide.py`](#7-documents)
+7. [Documents: `make_results.py`, `results_pages.py`, `results_slides.py`, `make_spec.py`, `make_proposal.py`, `check_code_guide.py`](#7-documents)
 8. [Benchmark models: `scripts/benchmark_*.py`](#8-benchmark-models)
 9. [The EDA notebook](#9-the-eda-notebook)
 10. [Every file the pipeline writes](#10-every-file-the-pipeline-writes)
@@ -292,13 +292,13 @@ Flood exposure: UP NOAH hazard maps (static), Copernicus EMS and Sentinel-1 (obs
 | `_hazard_col()` | [71-72](../bantay/flood.py#L71-L72) | Finds the hazard-class column (usually `Var`). |
 | `build_hazard_raster()` | [75-123](../bantay/flood.py#L75-L123) | One national raster per return period on the WorldPop grid: **255 = no map, 0 = mapped and safe, 1-3 = low/medium/high hazard**. Starts all-255, then for each province file marks its units as mapped and burns in the hazard polygons (highest class wins). Rebuilt only when a NOAH file or the unit polygons are newer. *Why 255:* "no map" must stay missing, never become "no hazard". |
 | `unit_hazard_shares()` | [126-156](../bantay/flood.py#L126-L156) | Share of each unit's people in any hazard class and in the high class; NaN when less than half the unit's people are on a mapped area (11 units have no 25-yr map). |
-| `ems_observed_flood()` | [161-177](../bantay/flood.py#L161-L177) | Reads the observed-flood polygons from the Copernicus EMSR312 packages (Ompong; first map and later monitoring map). |
-| `s1_tiles()` | [182-184](../bantay/flood.py#L182-L184) | Lists a storm's Sentinel-1 flood tiles. |
-| `_tile_cell()` | [187-190](../bantay/flood.py#L187-L190) | The nominal 1-degree cell of a tile, read from its name (`s1flood_121E_17N.tif`). |
-| `_s1_zone_sums()` | [193-218](../bantay/flood.py#L193-L218) | The shared counter: resamples each tile of a storm onto the WorldPop grid and adds up, per zone code (unit or municipality), the pixels the radar saw, the flooded pixels and the people in them. With `crop`, each tile is read only over its 1-degree cell, so the ~2-pixel overlap between neighbouring tiles is counted once. |
-| `s1_unit_flood()` | [221-235](../bantay/flood.py#L221-L235) | Per unit: share of the land Sentinel-1 saw that newly flooded, and people in that flood (WorldPop). Uncropped, as the panel was built. |
-| `s1_adm3_flood()` | [238-276](../bantay/flood.py#L238-L276) | The same per municipality for every storm with tiles (flood share, people in flood, and `seen_frac`, the share of the municipality the radar saw), on the municipality raster with cropped tiles. Written to `s1_adm3.parquet` by the scenarios stage. |
-| `s1_flood_lookup()` | [279-301](../bantay/flood.py#L279-L301) | Loads a storm's tiles into memory once and returns a function that answers "flooded or not" for millions of points at once with array indexing (road midpoints, friction cells). |
+| `ems_observed_flood()` | [161-179](../bantay/flood.py#L161-L179) | Reads the observed-flood polygons from the Copernicus EMSR312 packages (Ompong; first map and later monitoring map). |
+| `s1_tiles()` | [184-186](../bantay/flood.py#L184-L186) | Lists a storm's Sentinel-1 flood tiles. |
+| `_tile_cell()` | [189-192](../bantay/flood.py#L189-L192) | The nominal 1-degree cell of a tile, read from its name (`s1flood_121E_17N.tif`). |
+| `_s1_zone_sums()` | [195-220](../bantay/flood.py#L195-L220) | The shared counter: resamples each tile of a storm onto the WorldPop grid and adds up, per zone code (unit or municipality), the pixels the radar saw, the flooded pixels and the people in them. With `crop`, each tile is read only over its 1-degree cell, so the ~2-pixel overlap between neighbouring tiles is counted once. |
+| `s1_unit_flood()` | [223-237](../bantay/flood.py#L223-L237) | Per unit: share of the land Sentinel-1 saw that newly flooded, and people in that flood (WorldPop). Uncropped, as the panel was built. |
+| `s1_adm3_flood()` | [240-278](../bantay/flood.py#L240-L278) | The same per municipality for every storm with tiles (flood share, people in flood, and `seen_frac`, the share of the municipality the radar saw), on the municipality raster with cropped tiles. Written to `s1_adm3.parquet` by the scenarios stage. |
+| `s1_flood_lookup()` | [281-303](../bantay/flood.py#L281-L303) | Loads a storm's tiles into memory once and returns a function that answers "flooded or not" for millions of points at once with array indexing (road midpoints, friction cells). |
 
 ### 4.9 `bantay/panel.py`
 
@@ -646,14 +646,14 @@ bug is fixed, so the marker is removed together with the fix.
 |---|---|---|
 | Paths | [20-27](../tests/conftest.py#L20-L27) | Repo root, the app, the build outputs, the artifacts folder; puts `app/`, the repo root (for `bantay`) and `scripts/` on the path. |
 | `needs_data` | [29-30](../tests/conftest.py#L29-L30) | Skip marker for dashboard tests that need a finished build. |
-| `pytest_configure()` | [33-35](../tests/conftest.py#L33-L35) | Registers the `e2e` and `data` markers, so `-m "not e2e"` / `-m "not data"` deselect them without warnings. |
-| `free_port()` | [38-41](../tests/conftest.py#L38-L41) | A free local port for the test server. |
-| `sus_csv()` | [44-48](../tests/conftest.py#L44-L48) | A throw-away responses file, set through `BANTAY_SUS_PATH`. |
-| `server()` | [51-80](../tests/conftest.py#L51-L80) | Starts `streamlit run` on a free port for the whole session, waits for its health check and stops it at the end. |
-| `shots()` | [83-87](../tests/conftest.py#L83-L87) | The screenshot folder. |
-| `isolated_status()` | [90-97](../tests/conftest.py#L90-L97) | Points `bantay.config`'s status registry (`record`, `missing`, `have`) at a temporary `status.json`; the pipeline tests use it. |
-| `need()` | [100-104](../tests/conftest.py#L100-L104) | Skips the calling test unless the named build outputs exist. |
-| `_snapshot()`, `data_untouched()` | [107-120](../tests/conftest.py#L107-L120) | Session check (autouse): size and mtime of every file under `data/processed`, `data/interim`, `data/crosswalks` and of `data/raw/MANIFEST.csv`, before and after; any change fails the run. |
+| `pytest_configure()` | [33-36](../tests/conftest.py#L33-L36) | Registers the `e2e`, `data` and `slow` markers, so `-m "not e2e"` / `-m "not data"` / `-m "not slow"` deselect them without warnings. |
+| `free_port()` | [39-42](../tests/conftest.py#L39-L42) | A free local port for the test server. |
+| `sus_csv()` | [45-49](../tests/conftest.py#L45-L49) | A throw-away responses file, set through `BANTAY_SUS_PATH`. |
+| `server()` | [52-81](../tests/conftest.py#L52-L81) | Starts `streamlit run` on a free port for the whole session, waits for its health check and stops it at the end. |
+| `shots()` | [84-88](../tests/conftest.py#L84-L88) | The screenshot folder. |
+| `isolated_status()` | [91-98](../tests/conftest.py#L91-L98) | Points `bantay.config`'s status registry (`record`, `missing`, `have`) at a temporary `status.json`; the pipeline tests use it. |
+| `need()` | [101-105](../tests/conftest.py#L101-L105) | Skips the calling test unless the named build outputs exist. |
+| `_snapshot()`, `data_untouched()` | [108-121](../tests/conftest.py#L108-L121) | Session check (autouse): size and mtime of every file under `data/processed`, `data/interim`, `data/crosswalks` and of `data/raw/MANIFEST.csv`, before and after; any change fails the run. |
 
 #### Pipeline and build-output tests
 
@@ -674,6 +674,8 @@ One file per module; each test name states the rule it checks. Counts are collec
 | `tests/test_scripts.py` (14) | [1-230](../tests/test_scripts.py#L1-L230) | `download_data.fetch` skips existing files and writes through `.part` (no network); `write_manifest` merge and sha256; the bucket manifest round trip; `check_code_guide` catches a wrong range, a missing function and bad links, and the real guide passes. |
 | `tests/test_build_outputs.py` (16) | [1-231](../tests/test_build_outputs.py#L1-L231) | Marker `data`. Crosswalk 126 -> 85 with nothing unmatched; panel 85 x 262; no Sentinel-1 at a storm's own origin week; scenarios: R, A in [0, 1], A_lo <= A <= A_hi, P = R x A, tiers, train_end <= origin; catalogue leak-free; every model scored on the same rows, ensemble members = xgb + `BENCH_MODELS`, built-in rows equal `eval_summary.csv`; calibration and lead-lag edges; `status.json` well formed. |
 | `tests/test_make_results.py` (16) | [1-109](../tests/test_make_results.py#L1-L109) | Marker `data`. `stats()` and the report / 20-slide builders on the full build, on a minimal build and without each optional output in turn (in memory; nothing is written). |
+| `tests/test_flood.py` (2) | [1-20](../tests/test_flood.py#L1-L20) | Reading the Copernicus EMS layer records status by default, and leaves `status.json` alone with `record_status=False` (how the documents read it). |
+| `tests/test_spec_flags.py` (3) | [1-118](../tests/test_spec_flags.py#L1-L118) | The spec's `\if<Name>` wording flags: every flag the prose uses is generated and every generated flag is used; marker `data`: 21 flags recomputed straight from the CSV / JSON outputs; marker `slow`: the spec compiles with every flag inverted, so both wordings of every claim build. |
 
 #### `tests/test_sus.py`
 
@@ -726,6 +728,30 @@ Drives the running dashboard in Chromium (pytest-playwright) and fails on any ap
 | `test_storm_and_shift()` | [71-104](../tests/test_e2e.py#L71-L104) | Moves the track with the keyboard, checks title, ferries and the upper-bound note, resets, switches to Tisoy and searches for a catalogue storm. |
 | `test_dark_mode()` | [107-114](../tests/test_e2e.py#L107-L114) | In dark mode the map uses the dark "no data" colour. |
 | `test_sus_submit()` | [117-133](../tests/test_e2e.py#L117-L133) | Fills and submits the usability form and checks the saved row. |
+
+#### `tests/test_spec.py`
+
+Checks the LaTeX technical specification (`docs/spec/`) and its generator `scripts/make_spec.py`. The static tests need no
+build; the ones that read `data/processed/` skip without it; the compile test is `slow` and skips without latexmk.
+
+| Block | Lines | Explanation |
+|---|---|---|
+| Paths, `needs_build` | [18-28](../tests/test_spec.py#L18-L28) | The spec folders, the figures, the build outputs; skip marker for tests that need a finished build. |
+| `STANDARD` | [31-41](../tests/test_spec.py#L31-L41) | LaTeX and package commands the sections may use; any other macro must be defined in `main.tex` or `generated/numbers.tex`. |
+| `TYPED`, `NOMINAL`, `VERSION`, `ARGS` | [44-57](../tests/test_spec.py#L44-L57) | The typed-result heuristic (a decimal, a percentage, a thousands separator, a number in M or k, a count of units, storms, links ...) and what it leaves alone (nominal 50/90/95% levels, version numbers, years, labels, keys and file names). |
+| `strip_comments()`, `prose()` | [60-71](../tests/test_spec.py#L60-L71) | Section text without comments, command arguments, environment options and the allowed numbers. |
+| `defined()`, `numbers()`, `macro_values()`, `bib_keys()` | [74-98](../tests/test_spec.py#L74-L98) | Macro names a source defines (`\newcommand`, `\newif` with its switches), the generated macros and their values, the bibliography keys. |
+| `test_main_inputs_every_section()`, `test_sections_have_root_magic_comment()`, `test_build_settings()` | [104-127](../tests/test_spec.py#L104-L127) | `main.tex` inputs every section file and the numbers; each section has the LaTeX Workshop root comment; latexmkrc, `.vscode` and `.gitignore` hold the build setup. |
+| `test_every_macro_used_is_defined()` | [133-140](../tests/test_spec.py#L133-L140) | No section uses a macro that nothing defines. |
+| `test_generated_macros_are_letters_only_and_unique()`, `test_no_generated_value_is_missing()`, `test_generated_tables_exist()` | [143-161](../tests/test_spec.py#L143-L161) | Generated names are letters only and unique, none printed as n/a, every `\tablerows{}` file exists and holds table rows. |
+| `test_no_typed_results_in_prose()`, `test_typed_result_heuristic_catches_examples()` | [167-184](../tests/test_spec.py#L167-L184) | No typed result in the sections, and the heuristic itself flags typed examples and passes macros, nominal levels, versions and years. |
+| `test_one_paragraph_per_source_line()`, `test_no_space_swallowed_after_conditionals()`, `test_no_hyphenation_preamble()`, `test_anonymous_sources()` | [187-228](../tests/test_spec.py#L187-L228) | The writing conventions of `docs/spec/GUIDE.md`: no hard-wrapped prose, no word glued to a `\fi`, the no-hyphenation penalties and no local `\sloppy`, no e-mail address, no PDF author and no local path in the committed PDF. |
+| `test_every_citation_is_in_refs_bib()`, `test_refs_bib_has_no_duplicate_keys_or_stray_at_signs()` | [234-246](../tests/test_spec.py#L234-L246) | Every cited key is in `refs.bib`; no duplicate keys or at-signs in comments (both silently break biber). |
+| `test_every_figure_exists()`, `test_every_float_is_referenced()` | [249-261](../tests/test_spec.py#L249-L261) | Every `\includegraphics` resolves through the `\graphicspath` (`docs/results/figures/`); every table and figure label is referenced from the text. |
+| `test_formatting_helpers()`, `test_html_rows_to_latex()`, `test_macros_registry()` | [267-302](../tests/test_spec.py#L267-L302) | The generator's pure logic: number formats, the HTML-rows-to-LaTeX converter (ranges, minus signs, bold total row), the macro registry (n/a on a missing output, no duplicates, letters only). |
+| `test_macro_values_match_build_outputs()`, `test_generated_tables_match_build_outputs()` | [308-345](../tests/test_spec.py#L308-L345) | Macro values (relative WIS, coverage, forecasts scored, ensemble, Brier, links, hospitals, NCR benchmark, people cut off, units) and table rows equal what the output files say. |
+| `test_generated_files_are_up_to_date()` | [348-363](../tests/test_spec.py#L348-L363) | Re-runs the generator into `docs/spec/build/` and compares: fails when `docs/spec/generated/` is stale. |
+| `test_spec_compiles_cleanly()` | [369-383](../tests/test_spec.py#L369-L383) | `slow`: latexmk into a temporary folder; no errors, no undefined references or citations, no overfull box over 1 pt, no biber error. |
 
 #### `tests/capture.py`
 
@@ -822,6 +848,32 @@ computed from the outputs.
 | `_img()` | [100-101](../scripts/results_slides.py#L100-L101) | A figure on a white card at a set height. |
 | `slides_html()` | [104-366](../scripts/results_slides.py#L104-L366) | The 20 slides: title with headline results; the problem (typhoons and disease, the cascade, access in an archipelago); design; data; data challenges; method; nine result slides (forecast skill and the models, calibrated surge risk, outbreak links, Sentinel-1 flood, access loss by two methods, the Ompong case, the storm catalogue, validation, leptospirosis); the demo; deployment in the loop; sources. No names or internal file names (anonymous judging). |
 
+### `scripts/make_spec.py`
+
+Writes the numbers and tables of the LaTeX technical specification (`docs/spec/`, see `docs/spec/GUIDE.md`) from the build
+outputs, compiles it with latexmk and copies the PDF to `docs/results/Bantay-Baha_Technical_Spec.pdf`. It reuses
+`make_results.load()` and `stats()`, so the spec quotes exactly the report's numbers, and the report's HTML row builders
+for its tables. `--no-pdf` writes `docs/spec/generated/` only.
+
+| Block | Lines | Explanation |
+|---|---|---|
+| Paths and thresholds | [37-48](../scripts/make_spec.py#L37-L48) | Output folders, the n/a marker, the macro-name rule (letters only), the storm suffixes, and the named thresholds behind the qualitative flags (middle reliability bins, the proposal's coverage band, "helps", "the same", "alike", "stable"). |
+| `f()`, `pct()`, `thou()`, `mil()`, `kilo()`, `rng()`, `lst()`, `ci()`, `date()` | [53-96](../scripts/make_spec.py#L53-L96) | Number formats in TeX: fixed decimals (NaN raises, so the value prints n/a; a minus sign is `$-$`), percentages, `{,}` thousands, millions, ranges with an en dash, "a, b and c", an IRR with its interval, a date. |
+| `TEX_ESC`, `UNICODE`, `esc()` | [99-111](../scripts/make_spec.py#L99-L111) | Escapes TeX specials and maps the few Unicode symbols the row builders use. |
+| `cell()`, `html_rows()` | [114-138](../scripts/make_spec.py#L114-L138) | Turn the HTML table rows of `make_results` (`eval_rows()`, `model_rows()`, ...) into LaTeX rows: tags dropped, bold kept, numeric ranges with en dashes, minus signs, a rule above a total row. |
+| `Macros` | [143-182](../scripts/make_spec.py#L143-L182) | The registry: `put()` adds a `\newcommand` (a missing output gives n/a and a warning, never a crash), `flag()` a `\newif` condition for a qualitative claim, `tex()` writes `numbers.tex` with each source as a comment. |
+| `defaults()` | [185-187](../scripts/make_spec.py#L185-L187) | A function's default argument values, so method settings (PCMCI+ lags and alpha, the cut-off rule, the gale fallback) are read from the code. |
+| `put_data()`, `put_methods()` | [190-243](../scripts/make_spec.py#L190-L243) | Data facts (files, units, weeks, census, hazard coverage, IBTrACS) and method settings (quantiles, horizons, refits, tiers, track shifts, leptospirosis lags). |
+| `put_forecast()`, `put_models()`, `put_calibration()` | [246-318](../scripts/make_spec.py#L246-L318) | Forecast skill by horizon and the ablations, the model comparison (ensemble, median WIS, the epidemic-week split, benchmark variants), the calibration (Brier, middle-bin gaps, ties). |
+| `put_graph()`, `put_flood()`, `put_access()` | [321-370](../scripts/make_spec.py#L321-L370) | Lead-lag graph size, Sentinel-1 against EMS, both access methods, the proxy tracks, sensitivity, vulnerable groups, the NCR benchmark. |
+| `put_priority()`, `put_catalog()`, `put_validation()`, `put_lepto()` | [373-439](../scripts/make_spec.py#L373-L439) | Per-storm tiers and top priority, the storm catalogue, the backtest correlations, the leptospirosis IRRs and event study. |
+| `put_status()`, `put_verdicts()` | [442-548](../scripts/make_spec.py#L442-L548) | The scorecard status words, and every qualitative claim as a flag (forecast beats the bar, best model on mean and median, ablations help, coverage inside the band, methods agree, ranking stable, leptospirosis effects significant, ...). |
+| `macros()` | [551-560](../scripts/make_spec.py#L551-L560) | Runs all of the above into one registry. |
+| `tables()` | [565-595](../scripts/make_spec.py#L565-L595) | Table bodies (`tab_*.tex`): sources, evaluation, models, calibration, links, Sentinel-1 per storm and per municipality, methods, storms, catalogue, backtest, sensitivity. |
+| `write()` | [598-609](../scripts/make_spec.py#L598-L609) | Writes `numbers.tex` and the tables and lists any n/a value. |
+| `compile_pdf()` | [612-625](../scripts/make_spec.py#L612-L625) | Runs latexmk in `docs/spec/` (reads its `latexmkrc`), copies `build/main.pdf` to `docs/results/`; warns and skips when latexmk is missing. |
+| `main()` and entry | [628-641](../scripts/make_spec.py#L628-L641) | Loads the outputs, computes `stats()`, writes, compiles unless `--no-pdf`. |
+
 ### `scripts/make_proposal.py`
 
 Renders the revised concept proposal (`docs/proposal/Bantay-Baha_Proposal_v3.html`, the editable source) to PDF, with
@@ -852,11 +904,11 @@ line links first (against `HEAD`, or a revision given after `--fix`). Three rule
 | Block | Lines | Explanation |
 |---|---|---|
 | `ROOT` ... `NAME` | [23-27](../scripts/check_code_guide.py#L23-L27) | The guide's path and the three patterns: a line link, a section heading, a function-name cell. |
-| `spans()` | [30-46](../scripts/check_code_guide.py#L30-L46) | Every function, method and class of a file with its first line (decorators included) and last line, from Python's `ast`, plus the set of top-level names. |
-| `main()` | [49-93](../scripts/check_code_guide.py#L49-L93) | Reads the guide line by line, tracking the current section and the names it mentions; checks each link and each function row; then lists the top-level names a section never mentions and sections for files that don't exist. |
-| `_line_map()` | [96-105](../scripts/check_code_guide.py#L96-L105) | Maps each line of an old version of a file to where it now sits, from a `difflib` diff (a deleted line maps to its neighbourhood). |
-| `_git_old()` | [108-112](../scripts/check_code_guide.py#L108-L112) | Reads a file as it was at a git revision (default `HEAD`), the "old" side for `fix()`. |
-| `fix()` | [115-156](../scripts/check_code_guide.py#L115-L156) | `--fix`: re-syncs every link after code moved. Function rows take their range from the AST; a link to a whole file follows its new length; other ranges are mapped through `_line_map()` against `HEAD`. Run it before committing a code change, then re-read any row whose code changed meaning. |
+| `spans()` | [32-48](../scripts/check_code_guide.py#L32-L48) | Every function, method and class of a file with its first line (decorators included) and last line, from Python's `ast`, plus the set of top-level names. |
+| `main()` | [51-95](../scripts/check_code_guide.py#L51-L95) | Reads the guide line by line, tracking the current section and the names it mentions; checks each link and each function row; then lists the top-level names a section never mentions and sections for files that don't exist. |
+| `_line_map()` | [98-107](../scripts/check_code_guide.py#L98-L107) | Maps each line of an old version of a file to where it now sits, from a `difflib` diff (a deleted line maps to its neighbourhood). |
+| `_git_old()` | [110-114](../scripts/check_code_guide.py#L110-L114) | Reads a file as it was at a git revision (default `HEAD`), the "old" side for `fix()`. |
+| `fix()` | [117-158](../scripts/check_code_guide.py#L117-L158) | `--fix`: re-syncs every link after code moved. Function rows take their range from the AST; a link to a whole file follows its new length; other ranges are mapped through `_line_map()` against `HEAD`. Run it before committing a code change, then re-read any row whose code changed meaning. |
 | entry | [159-163](../scripts/check_code_guide.py#L159-L163) | `--fix [REV]` re-syncs first; exit code 1 when problems remain. |
 
 ---
@@ -1012,6 +1064,7 @@ All build outputs under `data/` stay out of git (only `data/raw/MANIFEST.csv` an
 | `data/processed/lepto_summary.md`, `data/interim/lepto_city_chirps_week.parquet` | `lepto` stage | people; `lepto` (cache) |
 | `data/processed/sus/sus_responses.csv` | dashboard *Usability test* tab (`sus.save`) | dashboard, results |
 | `docs/results/*.pdf`, `docs/results/figures/f*.png`, `docs/results/src/*.html` | `make_results.py` | people |
+| `docs/spec/generated/numbers.tex`, `docs/spec/generated/tab_*.tex` (committed), `docs/spec/build/` (git-ignored), `docs/results/Bantay-Baha_Technical_Spec.pdf` | `make_spec.py` (latexmk) | the technical specification; people |
 | `docs/results/figures/dashboard.png`, `tests/artifacts/` | `tests/capture.py`, the tests | report and slides; people |
 | `docs/proposal/Bantay-Baha_Proposal_v3.pdf` | `make_proposal.py` | people |
 

@@ -1,0 +1,75 @@
+{
+  // --- LaTeX: the technical specification in docs/spec/ (see docs/spec/GUIDE.md) ----------------
+  // Needs MiKTeX or TeX Live on PATH (pdflatex, biber, latexmk) and the LaTeX Workshop extension.
+  // Root file: docs/spec/main.tex. Every file in docs/spec/sections/ starts with "% !TEX root = ../main.tex",
+  // so saving a section builds the whole document. Output (aux files and main.pdf) goes to docs/spec/build/.
+  "latex-workshop.latex.outDir": "%DIR%/build",
+
+  "latex-workshop.latex.tools": [
+    {
+      // Reads docs/spec/latexmkrc (pdflatex + biber, as many passes as needed); same as `latexmk` in a terminal.
+      "name": "latexmk",
+      "command": "latexmk",
+      "args": ["-synctex=1", "-interaction=nonstopmode", "-file-line-error", "-pdf", "-outdir=%OUTDIR%", "%DOC%"],
+      "env": {}
+    },
+    {
+      "name": "pdflatex",
+      "command": "pdflatex",
+      "args": ["-synctex=1", "-interaction=nonstopmode", "-file-line-error", "-output-directory=%OUTDIR%", "%DOC%"],
+      "env": {}
+    },
+    {
+      "name": "biber",
+      "command": "biber",
+      "args": ["--input-directory=%OUTDIR%", "--output-directory=%OUTDIR%", "%DOCFILE%"],
+      "env": {}
+    }
+  ],
+
+  "latex-workshop.latex.recipes": [
+    {
+      // Default. Resolves citations, \ref and the contents.
+      "name": "Spec (latexmk)",
+      "tools": ["latexmk"]
+    },
+    {
+      // The same chain spelled out, for when latexmk is not available.
+      "name": "Spec (full: pdflatex > biber > pdflatex x2)",
+      "tools": ["pdflatex", "biber", "pdflatex", "pdflatex"]
+    },
+    {
+      // Fast save-loop for prose edits; new citations and references show as [?] until a full run.
+      "name": "Quick (pdflatex only)",
+      "tools": ["pdflatex"]
+    }
+  ],
+
+  "latex-workshop.latex.recipe.default": "first",
+
+  // --- Overleaf-like behaviour --------------------------------------------------------------------
+  "latex-workshop.latex.autoBuild.run": "onSave",
+  "latex-workshop.view.pdf.viewer": "tab",
+  "latex-workshop.synctex.afterBuild.enabled": true,
+
+  // Keep .aux/.bbl between runs; deleting them forces full rebuilds.
+  "latex-workshop.latex.autoClean.run": "never",
+  "latex-workshop.latex.clean.subfolder.enabled": true,
+
+  // --- Noise control -------------------------------------------------------------------------------
+  "latex-workshop.message.badbox.show": false,
+  "latex-workshop.message.update.show": false,
+
+  "[latex]": {
+    "editor.wordWrap": "on",
+    "editor.formatOnSave": false,
+    "editor.quickSuggestions": { "other": true, "comments": false, "strings": true }
+  },
+
+  "files.exclude": {
+    "**/*.aux": true,
+    "**/*.fdb_latexmk": true,
+    "**/*.fls": true,
+    "**/*.synctex.gz": true
+  }
+}

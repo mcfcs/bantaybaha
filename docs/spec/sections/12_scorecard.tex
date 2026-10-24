@@ -1,0 +1,42 @@
+% !TEX root = ../main.tex
+\section{Scorecard against the proposal}
+\label{sec:scorecard}
+
+Table~\ref{tab:scorecard} sets each objective of the proposal against the result of this build. The status words are decided from the outputs present when the specification is generated.
+
+\begin{table}[htbp]
+\centering
+\caption{Proposal objectives and the result in this build.}
+\label{tab:scorecard}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.27\linewidth} L l >{\raggedright\arraybackslash}p{0.24\linewidth}@{}}
+\toprule
+objective (proposal) & result in this build & status & note \\
+\midrule
+Province-week panel 2016--2020 on PSGC: dengue, rain, Sentinel-1, hazard, storms & \nUnits{} harmonised units $\times$ \nWeeks{} weeks; every listed layer plus river routing & \statusPanel & \nUnits{} harmonised 2016--2020 units, not \proposalProvinces{} provinces (\dgUnits{} reporting units); Sentinel-1 only in the four storm windows \\
+Lead-lag graph (PCMCI+), sentinels (PageRank), communities (Louvain); test sentinel features out of sample & \llEdges{} links at $q < \fdrQ$; sentinels and communities on the dashboard; ablation run & \stOk & tested\ifGraphHelps{} and helpful\else{} and null\fi: graph against no graph, relative WIS \relWISGraph{} \\
+Relative WIS below 1 against seasonal naive, 2018--2019 & XGBoost \relWIS{}; median ensemble \ensRelWIS{} & \statusRelWIS & \\
+90\% interval coverage of \targetCov{} & \covNinety{} overall; \covNinetyRange{} by horizon & \statusCov & \ifCovFourNearFloor four-week horizon close to the floor\fi \\
+Benchmarks: Chronos-2, TabPFN-TS, MPNN-LSTM; median ensemble; conformal check & all three and the ensemble scored on the same rows; online conformal check & \statusBench & the ensemble is evaluated, but storm scenarios use XGBoost (the zero-shot models take no storm-track input) \\
+Access loss per municipality, friction-surface and network methods, four typhoons & both methods, \nAdmThree{} municipalities, four storms $\times$ \nTracks{} tracks & \statusAccess & method disagreement reported as the $A_{\text{lo}}$--$A_{\text{hi}}$ range \\
+Sensitivity bounds (Kendall's $\tau$); Metro Manila benchmark & two methods, $\tau \geq \tauMinAll$; NCR \benchNCR{} against \litNCRShare{} & \stOk & order-of-magnitude check \\
+Dashboard: ranked provinces, calibrated risk, access, sentinels, drivers, tier, any historical or shifted track & \nScen{} backtest scenarios and \nCat{} catalogue storms, pre-computed; $R$ recalibrated & \stOk & tiers are provisional rules \\
+Backtest: did high-priority provinces see more cases? & $\rho(R)$ \rhoRRange{} over four storms & \stOk & 2020 storms indicative only (COVID-19 reporting) \\
+System Usability Scale from three target users & test form and task built into the dashboard; \susN{} responses so far & \statusSUS & needs sessions with health and disaster-office users \\
+Leptospirosis (stretch): national lag analysis; region-week series if digitised & national lag analysis, an open \leptoNCities{}-city series and a typhoon event study & \statusLepto & association only, not in the forecast; no province-level series \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Proposal corrections found in the data}
+
+\begin{itemize}
+\item \dgUnits{} dengue reporting units, not \proposalProvinces{} provinces (harmonised to \nUnits{}); deaths are unreliable; 2020 collapsed under COVID-19.
+\item An open subnational leptospirosis series exists (Project CCHAIN, \leptoNCities{} cities).
+\item The EMS activation for Rolly has damage grading only, no flood delineation; the Global Flood Database has no Philippine event after 2017 \parencite{tellman2021}.
+\item The flood hazard maps come from the NOAH archive at 5 and 25 years, not the national lidar portal; \nHazNoMap{} units have no 25-year map.
+\item HydroRIVERS places the Philippines in the Australasia file, not the Asia file.
+\item The ferry routes describe 2024--2026 operations with partly coarse port coordinates; the official facility registry blocks scripted download (the OSM and NOAH fallback is used).
+\ifHRSLUnderOld\item HRSL under-counts people aged 60 or over against the 2020 census (\oSixtyShare{} against \censusSixty{}).\fi
+\item The proposal's final forecast was the median ensemble; storm scenarios use XGBoost, the only storm-conditioned model.
+\end{itemize}
