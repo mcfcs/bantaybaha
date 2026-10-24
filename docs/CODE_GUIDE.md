@@ -175,7 +175,8 @@ Shared paths, constants and the missing-input registry.
 | `status()` | [71-72](../bantay/config.py#L71-L72) | Returns the whole status dict (the build prints it at the end; the dashboard shows it on *Data & caveats*). |
 | `missing()` | [75-78](../bantay/config.py#L75-L78) | Prints a warning and records the input as missing; returns `None` so callers can write `return missing(...)`. |
 | `have()` | [81-90](../bantay/config.py#L81-L90) | Checks that paths exist (and, for a folder, that it holds a matching file), records the result, returns True/False. |
-| `ensure_dirs()` | [93-95](../bantay/config.py#L93-L95) | Creates the output folders. |
+| `_rel()` | [93-95](../bantay/config.py#L93-L95) | A path relative to the repo when it lies inside it, else as given, so `have()` can record inputs that live outside the repo (e.g. tests' temporary files) instead of failing. |
+| `ensure_dirs()` | [98-100](../bantay/config.py#L98-L100) | Creates the output folders. |
 
 ### 4.2 `bantay/units.py`
 
@@ -358,22 +359,22 @@ The forecaster, its baselines, the scores, the rolling-origin test, the calibrat
 | `score_rows()` | [285-297](../bantay/forecast.py#L285-L297) | WIS, absolute error and 50%/90% coverage on case counts for any set of models' quantiles; a row with a missing quantile scores NaN, so models can be compared on the same rows. |
 | `score()` | [300-321](../bantay/forecast.py#L300-L321) | Scores every forecast of the built-in models, plus an online conformal 90% band (built only from errors of forecasts already past) as a check. |
 | `summarise()` | [324-345](../bantay/forecast.py#L324-L345) | Averages by horizon and overall, every model on the same rows: WIS, relative WIS vs seasonal naive, graph vs no-graph, with vs without environment, coverage. |
-| `SurgeCalibrator` | [348-361](../bantay/forecast.py#L348-L361) | An isotonic map from raw R to the observed surge frequency, fitted on past forecasts only; keeps how many outcomes it used and the last target week it saw. |
+| `SurgeCalibrator` | [348-362](../bantay/forecast.py#L348-L362) | An isotonic map from raw R to the observed surge frequency, fitted on past forecasts only; keeps how many outcomes it used and the last target week it saw. |
 | `SurgeCalibrator.__init__()` | [352-354](../bantay/forecast.py#L352-L354) | Fits the isotonic regression (increasing, clipped to 0-1). |
-| `SurgeCalibrator.__call__()` | [356-361](../bantay/forecast.py#L356-L361) | Maps raw R to calibrated R (NaN stays NaN, result clipped to `R_CLIP`). |
-| `fit_calibrator()` | [364-372](../bantay/forecast.py#L364-L372) | Builds a calibrator from rows whose outcome is known at a given date (target week on or before it, the same rule as model training); None with fewer than `CAL_MIN_ROWS` outcomes or only one class. |
-| `cum4_eval()` | [375-400](../bantay/forecast.py#L375-L400) | The evaluation version: for every forecast origin t, calibrates that origin's R with a calibrator fitted on forecasts whose 4-week window ended by t (expanding window), so calibrated R never uses a later outcome; rows before 850 past outcomes keep the raw R. Asserts there is no leakage. |
-| `RELIABILITY_BINS`, `_reliability()` | [403-408](../bantay/forecast.py#L403-L408) | Reliability table: in bins of R, the mean R and how often a surge happened. |
-| `_brier()` | [411-412](../bantay/forecast.py#L411-L412) | Brier score of a probability column. |
-| `surge_calibration()` | [415-443](../bantay/forecast.py#L415-L443) | Brier score of raw and calibrated R, the base rate, the climatology Brier, which origins stayed uncalibrated, and the reliability table before and after calibration. |
-| `surge_calibrator()` | [446-461](../bantay/forecast.py#L446-L461) | The production version for the scenarios: a calibrator fitted on every saved rolling-origin surge forecast (`eval_cum4.parquet`) whose outcome is known by the model's training end. None (R stays raw, recorded) if the file is missing or there are too few outcomes. |
-| `calibrate_R()` | [464-472](../bantay/forecast.py#L464-L472) | Scenario hook: keeps the model probability as `R_raw`, sets `R` to the calibrated value (raw if there is no calibrator) and flags `R_calibrated`. |
-| `eval_quantiles()` | [477-484](../bantay/forecast.py#L477-L484) | The rolling-origin horizon 1-4 rows with every built-in model's 23 quantiles, saved so benchmarks can be scored and ensembled later without refitting XGBoost. |
-| `_key()` | [487-490](../bantay/forecast.py#L487-L490) | The join key (unit, origin week, horizon) in one fixed set of types. |
-| `load_bench()` | [493-539](../bantay/forecast.py#L493-L539) | Reads each `bench_<model>.parquet` in `BENCH_MODELS` (and its `.json` metadata), checks the schema, drops invalid or duplicate rows and aligns it to the evaluation rows. Other names are recorded as ignored variants; a bad file is skipped with a warning, never fatal. |
-| `evaluate_models()` | [542-583](../bantay/forecast.py#L542-L583) | Scores xgb, its ablations, the naive baseline, every benchmark and the **median ensemble** (element-wise median of the 23 quantiles over xgb and the benchmarks, only where all exist) on the same rows. Returns the model x horizon table, fan-chart bands for the benchmarks and the ensemble, and metadata. |
-| `fit_at()` | [588-603](../bantay/forecast.py#L588-L603) | For the scenarios: learns the graph and the surge thresholds and trains the graph model for every horizon and the 4-week model on data up to a storm's forecast origin (never past 2019). |
-| `predict_at()` | [606-631](../bantay/forecast.py#L606-L631) | Forecasts every province from that week; optional overrides replace the storm features (one row per unit); computes raw R and the per-driver SHAP contributions shown on the dashboard. |
+| `SurgeCalibrator.__call__()` | [356-362](../bantay/forecast.py#L356-L362) | Maps raw R to calibrated R (NaN stays NaN, result clipped to `R_CLIP`). |
+| `fit_calibrator()` | [365-373](../bantay/forecast.py#L365-L373) | Builds a calibrator from rows whose outcome is known at a given date (target week on or before it, the same rule as model training); None with fewer than `CAL_MIN_ROWS` outcomes or only one class. |
+| `cum4_eval()` | [376-401](../bantay/forecast.py#L376-L401) | The evaluation version: for every forecast origin t, calibrates that origin's R with a calibrator fitted on forecasts whose 4-week window ended by t (expanding window), so calibrated R never uses a later outcome; rows before 850 past outcomes keep the raw R. Asserts there is no leakage. |
+| `RELIABILITY_BINS`, `_reliability()` | [404-409](../bantay/forecast.py#L404-L409) | Reliability table: in bins of R, the mean R and how often a surge happened. |
+| `_brier()` | [412-413](../bantay/forecast.py#L412-L413) | Brier score of a probability column. |
+| `surge_calibration()` | [416-444](../bantay/forecast.py#L416-L444) | Brier score of raw and calibrated R, the base rate, the climatology Brier, which origins stayed uncalibrated, and the reliability table before and after calibration. |
+| `surge_calibrator()` | [447-462](../bantay/forecast.py#L447-L462) | The production version for the scenarios: a calibrator fitted on every saved rolling-origin surge forecast (`eval_cum4.parquet`) whose outcome is known by the model's training end. None (R stays raw, recorded) if the file is missing or there are too few outcomes. |
+| `calibrate_R()` | [465-473](../bantay/forecast.py#L465-L473) | Scenario hook: keeps the model probability as `R_raw`, sets `R` to the calibrated value (raw if there is no calibrator) and flags `R_calibrated`. |
+| `eval_quantiles()` | [478-485](../bantay/forecast.py#L478-L485) | The rolling-origin horizon 1-4 rows with every built-in model's 23 quantiles, saved so benchmarks can be scored and ensembled later without refitting XGBoost. |
+| `_key()` | [488-491](../bantay/forecast.py#L488-L491) | The join key (unit, origin week, horizon) in one fixed set of types. |
+| `load_bench()` | [494-540](../bantay/forecast.py#L494-L540) | Reads each `bench_<model>.parquet` in `BENCH_MODELS` (and its `.json` metadata), checks the schema, drops invalid or duplicate rows and aligns it to the evaluation rows. Other names are recorded as ignored variants; a bad file is skipped with a warning, never fatal. |
+| `evaluate_models()` | [543-584](../bantay/forecast.py#L543-L584) | Scores xgb, its ablations, the naive baseline, every benchmark and the **median ensemble** (element-wise median of the 23 quantiles over xgb and the benchmarks, only where all exist) on the same rows. Returns the model x horizon table, fan-chart bands for the benchmarks and the ensemble, and metadata. |
+| `fit_at()` | [589-604](../bantay/forecast.py#L589-L604) | For the scenarios: learns the graph and the surge thresholds and trains the graph model for every horizon and the 4-week model on data up to a storm's forecast origin (never past 2019). |
+| `predict_at()` | [607-632](../bantay/forecast.py#L607-L632) | Forecasts every province from that week; optional overrides replace the storm features (one row per unit); computes raw R and the per-driver SHAP contributions shown on the dashboard. |
 
 ### 4.12 `bantay/access.py`
 
@@ -400,13 +401,13 @@ them is reported as uncertainty.
 | `hazard_at()` | [257-276](../bantay/access.py#L257-L276) | NOAH hazard class at each segment midpoint, read in bands to save memory. |
 | `road_multiplier()` | [279-289](../bantay/access.py#L279-L289) | Speed multiplier per segment: observed flood closes roads; otherwise (shifted tracks, catalogue storms) high hazard inside the swath closes and medium hazard slows. Returns which rule was used. |
 | `FRICTION`, `SEA_MIN_PER_M`, `RASTER_SNAP_KM` | [294-299](../bantay/access.py#L294-L299) | The MAP motorised friction GeoTIFF; the constant MAP uses for open sea (3.16 min/km, not nodata), which is treated as impassable outside the unit polygons; how far a population cell on a sea cell may snap to land (3 km). |
-| `FrictionGrid` | [302-399](../bantay/access.py#L302-L399) | **The raster access method**: cost-distance from the same hospitals over the ~1 km friction grid, with the same ferries, storm rules and cut-off rule as the network, evaluated at cell centres. There is no walking leg. |
+| `FrictionGrid` | [302-401](../bantay/access.py#L302-L401) | **The raster access method**: cost-distance from the same hospitals over the ~1 km friction grid, with the same ferries, storm rules and cut-off rule as the network, evaluated at cell centres. There is no walking leg. |
 | `FrictionGrid.__init__()` | [316-371](../bantay/access.py#L316-L371) | Turns friction (minutes per metre) into hours per cell, marks sea impassable, draws each RoRo route as a line of sea cells whose cost adds up to the network's crossing time, and places hospitals and population cells on the grid (a cell on sea snaps to the nearest land cell within 3 km, else it has no route). |
 | `FrictionGrid.hazard()` | [373-377](../bantay/access.py#L373-L377) | NOAH hazard class at the centre of every passable land cell (computed once). |
 | `FrictionGrid.in_swath()` | [379-380](../bantay/access.py#L379-L380) | Which land cells lie inside the swath (reuses `edges_in()`). |
-| `FrictionGrid.solve()` | [382-399](../bantay/access.py#L382-L399) | Applies the storm multipliers (flooded cells impassable, slowed cells costlier) and the ferries that still sail, then runs scikit-image's `MCP_Geometric` from all hospital cells: hours to the nearest hospital per population cell. A hospital in a flooded cell is not a start. |
-| `friction_grid()` | [402-406](../bantay/access.py#L402-L406) | Builds the `FrictionGrid`, or records the friction raster as missing and returns None. |
-| `summarise()` | [411-423](../bantay/access.py#L411-L423) | Per unit (or municipality): population, people cut off, people with no route even normally, average normal trip time, and A = share cut off. |
+| `FrictionGrid.solve()` | [382-401](../bantay/access.py#L382-L401) | Applies the storm multipliers (flooded cells impassable, slowed cells costlier) and the ferries that still sail, then runs scikit-image's `MCP_Geometric` from all hospital cells: hours to the nearest hospital per population cell. A hospital in a flooded cell is not a start. |
+| `friction_grid()` | [404-408](../bantay/access.py#L404-L408) | Builds the `FrictionGrid`, or records the friction raster as missing and returns None. |
+| `summarise()` | [413-425](../bantay/access.py#L413-L425) | Per unit (or municipality): population, people cut off, people with no route even normally, average normal trip time, and A = share cut off. |
 
 ### 4.13 `bantay/scenarios.py`
 
@@ -484,8 +485,8 @@ are never read as provincial or national numbers.
 | `event_summary()` | [545-564](../bantay/lepto.py#L545-L564) | Per storm and period: observed and expected cases inside and outside, and their ratio with a simple Poisson CI. |
 | `_fmt()` | [569-570](../bantay/lepto.py#L569-L570) | "IRR (lo-hi)" text. |
 | `run()` | [573-615](../bantay/lepto.py#L573-L615) | The whole stage: writes the `lepto_*` tables and series to `data/processed/app/` and the summary. |
-| `_lag_md()`, `_peak()`, `_sig_lags()`, `_span()`, `_findings()` | [618-704](../bantay/lepto.py#L618-L704) | Markdown lag tables, the peak lag of a joint profile, the lags whose 95% CI lies above 1, and the key-findings bullets for the summary. Every qualitative word in the findings (the lag window, "same direction", a placebo that "passes" or "fails", "no general storm effect") is decided from the numbers, so the summary stays right if the data change. |
-| `write_summary()` | [707-825](../bantay/lepto.py#L707-L825) | Writes `data/processed/lepto_summary.md`: key findings, data and week labels, the national and city tables, the event study and the caveats; every number from the output tables. |
+| `_lag_md()`, `_peak()`, `_sig_lags()`, `_span()`, `_findings()` | [618-707](../bantay/lepto.py#L618-L707) | Markdown lag tables, the peak lag of a joint profile, the lags whose 95% CI lies above 1, and the key-findings bullets for the summary. Every qualitative word in the findings (the lag window, "same direction", a placebo that "passes" or "fails", "no general storm effect") is decided from the numbers, so the summary stays right if the data change. |
+| `write_summary()` | [710-828](../bantay/lepto.py#L710-L828) | Writes `data/processed/lepto_summary.md`: key findings, data and week labels, the national and city tables, the event study and the caveats; every number from the output tables. |
 
 ---
 
@@ -660,19 +661,19 @@ One file per module; each test name states the rule it checks. Counts are collec
 
 | File | Lines | What it checks |
 |---|---|---|
-| `tests/test_config.py` (14) | [1-95](../tests/test_config.py#L1-L95) | `week_ending` (Mon-Sun, a Sunday maps to itself, scalar and Series, the 262-week grid), the 23 FluSight quantiles, the `record` / `missing` / `have` round trip (a later success clears a gap). |
+| `tests/test_config.py` (14) | [1-92](../tests/test_config.py#L1-L92) | `week_ending` (Mon-Sun, a Sunday maps to itself, scalar and Series, the 262-week grid), the 23 FluSight quantiles, the `record` / `missing` / `have` round trip (a later success clears a gap). |
 | `tests/test_units.py` (26) | [1-115](../tests/test_units.py#L1-L115) | `norm` (Las Piñas, "City of X", parentheses); ADM2 merges and the synthetic Maguindanao id on a mini COD-AB; dengue names city-first (Quezon City is not Quezon), the Isabela collision, Naga by region, misspellings, unmatched names; crosswalk header comments skipped. |
 | `tests/test_dengue.py` (7) | [1-90](../tests/test_dengue.py#L1-L90) | HXL row skipped, `loc` stripped, Sunday weeks enforced, deaths never loaded or used; a unit-week is NaN unless every member reported (a reported 0 stays 0); a missing file is recorded, not fatal. |
 | `tests/test_storms.py` (10) | [1-137](../tests/test_storms.py#L1-L137) | Gale radius USA R34 -> TOKYO R30 -> fixed (below 34 kt = 0); `shift_track`; `shift_storm` moves one storm only; `origin_exposure` uses the 4 weeks to the origin only (later fixes ignored; no fixes -> distance 2000, gale 0). |
 | `tests/test_panel.py` (13) | [1-165](../tests/test_panel.py#L1-L165) | Sentinel-1 weeks start at the week of landfall + `S1_AFTER_DAYS`, never at a storm's own origin week; overlapping storms take the max; the constant equals the GEE window; the interim cache rule; rain week sums, river routing, grid helpers. |
-| `tests/test_forecast.py` (37) | [1-526](../tests/test_forecast.py#L1-L526) | WIS (0 for a perfect forecast, the absolute error for a point forecast, a hand-computed case, the pinball identity), coverage, `prob_exceed`, seasonal naive; features and targets never use t+h; surge thresholds use weeks <= end only; calibration ignores outcomes after the cutoff and stays raw below `CAL_MIN_ROWS`; `load_bench` (bad schema skipped, variants ignored, re-sorted) and the median ensemble on common rows; rolling-origin and `fit_at` training windows (stand-in model); one small real fit and prediction. |
-| `tests/test_access.py` (14) | [1-243](../tests/test_access.py#L1-L243) | The cut-off rule, `summarise` (A = pop_cut / pop), `road_multiplier`; the network solver on a 4-node road with a parallel road and a ferry; ferry cancellation and edges in a swath; the MAP friction method on a 5 x 5 GeoTIFF (cost distance, flood detours, ferry line, missing raster). |
+| `tests/test_forecast.py` (37) | [1-523](../tests/test_forecast.py#L1-L523) | WIS (0 for a perfect forecast, the absolute error for a point forecast, a hand-computed case, the pinball identity), coverage, `prob_exceed`, seasonal naive; features and targets never use t+h; surge thresholds use weeks <= end only; calibration ignores outcomes after the cutoff and stays raw below `CAL_MIN_ROWS`; `load_bench` (bad schema skipped, variants ignored, re-sorted) and the median ensemble on common rows; rolling-origin and `fit_at` training windows (stand-in model); one small real fit and prediction. |
+| `tests/test_access.py` (14) | [1-240](../tests/test_access.py#L1-L240) | The cut-off rule, `summarise` (A = pop_cut / pop), `road_multiplier`; the network solver on a 4-node road with a parallel road and a ferry; ferry cancellation and edges in a swath; the MAP friction method on a 5 x 5 GeoTIFF (cost distance, flood detours, ferry line, missing raster). |
 | `tests/test_scenarios.py` (9) | [1-113](../tests/test_scenarios.py#L1-L113) | Tier boundaries read from `TIERS` (inclusive; NaN A never deploys); case columns; network / raster access tables and the A_lo-A_hi range; P = R x A; catalogue training ends; rank-change helpers. |
 | `tests/test_leadlag.py` (6) | [1-77](../tests/test_leadlag.py#L1-L77) | `prepare` uses the window only and standardises; an empty graph below `MIN_T`; the cross-correlation baseline finds a planted 2-week lead; sentinels and communities. |
-| `tests/test_lepto.py` (19) | [1-189](../tests/test_lepto.py#L1-L189) | Week labels, lags never cross a gap, the seasonal expectation, event ratios; the key-findings text follows the numbers (lag spans, the ~2-week comparison, a placebo whose CI contains 1 "passes"). |
-| `tests/test_scripts.py` (14) | [1-214](../tests/test_scripts.py#L1-L214) | `download_data.fetch` skips existing files and writes through `.part` (no network); `write_manifest` merge and sha256; the bucket manifest round trip; `check_code_guide` catches a wrong range, a missing function and bad links, and the real guide passes. |
+| `tests/test_lepto.py` (19) | [1-184](../tests/test_lepto.py#L1-L184) | Week labels, lags never cross a gap, the seasonal expectation, event ratios; the key-findings text follows the numbers (lag spans, the ~2-week comparison, a placebo whose CI contains 1 "passes"). |
+| `tests/test_scripts.py` (14) | [1-230](../tests/test_scripts.py#L1-L230) | `download_data.fetch` skips existing files and writes through `.part` (no network); `write_manifest` merge and sha256; the bucket manifest round trip; `check_code_guide` catches a wrong range, a missing function and bad links, and the real guide passes. |
 | `tests/test_build_outputs.py` (16) | [1-231](../tests/test_build_outputs.py#L1-L231) | Marker `data`. Crosswalk 126 -> 85 with nothing unmatched; panel 85 x 262; no Sentinel-1 at a storm's own origin week; scenarios: R, A in [0, 1], A_lo <= A <= A_hi, P = R x A, tiers, train_end <= origin; catalogue leak-free; every model scored on the same rows, ensemble members = xgb + `BENCH_MODELS`, built-in rows equal `eval_summary.csv`; calibration and lead-lag edges; `status.json` well formed. |
-| `tests/test_make_results.py` (16) | [1-116](../tests/test_make_results.py#L1-L116) | Marker `data`. `stats()` and the report / 20-slide builders on the full build, on a minimal build and without each optional output in turn (in memory; nothing is written). |
+| `tests/test_make_results.py` (16) | [1-109](../tests/test_make_results.py#L1-L109) | Marker `data`. `stats()` and the report / 20-slide builders on the full build, on a minimal build and without each optional output in turn (in memory; nothing is written). |
 
 #### `tests/test_sus.py`
 
@@ -761,44 +762,44 @@ computed from the outputs.
 | `census_age()` | [234-241](../scripts/make_results.py#L234-L241) | Under-5 and 60+ shares of the 2020 census, to compare with HRSL. |
 | `stats_calibration()` | [244-254](../scripts/make_results.py#L244-L254) | The calibration summary and how many provinces tie on Ompong's top calibrated R (isotonic maps make ties). |
 | `BENCH_LABEL`, `MODEL_LABEL` | [257-260](../scripts/make_results.py#L257-L260) | Display names of the models. |
-| `stats_models()` | [263-286](../scripts/make_results.py#L263-L286) | The model comparison from `eval_models.csv`: which benchmarks are present or missing, the best model, median WIS, the variants' scores. |
-| `median_wis_split()` | [289-308](../scripts/make_results.py#L289-L308) | Re-scores the saved quantiles and benchmark files exactly like `forecast.evaluate_models()`: median WIS per model and the mean-WIS ratio to XGBoost below and above the 90th percentile of weekly cases. |
-| `stats_catalog()` | [311-341](../scripts/make_results.py#L311-L341) | One row per scored storm (catalogue + backtests): mean R, calibrated or not, people cut off by both methods, ferries, tiers; the skipped storms; rank agreement of the methods. |
-| `_irr()` | [344-348](../scripts/make_results.py#L344-L348) | The joint lag rows and the cumulative row of one leptospirosis analysis. |
-| `stats_lepto()` | [351-380](../scripts/make_results.py#L351-L380) | Leptospirosis numbers: city and national peaks, heavy-rain peak, the event-study rows, flooded city-storm pairs. |
-| `stats_data()` | [383-413](../scripts/make_results.py#L383-L413) | Data-finding numbers read from raw files (dengue units, 2016 case fatality, cases per year, how often the US gale radius is missing) and the usability responses, if any. |
-| `s1_ems_agreement()` | [416-446](../scripts/make_results.py#L416-L446) | Compares Sentinel-1 with Copernicus EMS inside each EMS area: area each mapped, overlap, precision and recall. |
-| `style()`, `mono()`, `save()` | [451-473](../scripts/make_results.py#L451-L473) | Registers the bundled fonts with matplotlib, sets a clean chart style, monospace tick labels, and saves PNGs at 220 dpi (fonts baked in). |
-| `fig_timeline()` | [478-494](../scripts/make_results.py#L478-L494) | National weekly dengue with the four typhoons and the 2020 collapse marked. |
-| `fig_coverage()` | [497-516](../scripts/make_results.py#L497-L516) | Share of panel cells with a value, per input. |
-| `KIND_COLOR`, `fig_wis()` | [519-569](../scripts/make_results.py#L519-L569) | Relative WIS of every model in the comparison (bars, with 1- and 4-week marks) and coverage by horizon against the 80-95% target. |
-| `fig_reliability()` | [572-589](../scripts/make_results.py#L572-L589) | R's reliability curve, raw and recalibrated. |
-| `fig_methods()` | [592-630](../scripts/make_results.py#L592-L630) | People cut off by the network and the raster: the observed tracks, then every proxy-flood track. |
-| `fig_catalog()` | [633-664](../scripts/make_results.py#L633-L664) | Mean R against people cut off for every scored storm, with the range between the two methods. |
-| `fig_lepto()` | [667-686](../scripts/make_results.py#L667-L686) | Leptospirosis IRR by lag, cities and national. |
-| `fig_fan()` | [689-708](../scripts/make_results.py#L689-L708) | Rolling-origin forecasts for Cagayan, 1 and 4 weeks ahead. |
-| `_basemap()` | [711-715](../scripts/make_results.py#L711-L715) | Grey province outlines and the Philippine extent for maps. |
-| `fig_leadlag()` | [718-739](../scripts/make_results.py#L718-L739) | The PCMCI+ links as arrows on the map (NCR districts share one label). |
-| `fig_priority()` | [742-762](../scripts/make_results.py#L742-L762) | Ompong's P map with track, swath and top-5 labels. |
-| `fig_access_multiples()` | [765-781](../scripts/make_results.py#L765-L781) | A per province for the four typhoons on one colour scale. |
-| `fig_scatter()` | [784-804](../scripts/make_results.py#L784-L804) | Ompong's risk vs access, marker shape = tier. |
-| `fig_validation()` | [807-823](../scripts/make_results.py#L807-L823) | Backtest correlations per storm. |
-| `fig_s1()` | [826-846](../scripts/make_results.py#L826-L846) | Sentinel-1 new-flood share per province for each storm (per-storm values, not the merged panel). |
-| `fig_s1_ems()` | [849-869](../scripts/make_results.py#L849-L869) | Sentinel-1 flood vs EMS outlines around Tuguegarao. |
-| `fig_network()` | [872-884](../scripts/make_results.py#L872-L884) | Ferry routes and hospitals over the islands (the access problem slide). |
-| `fig_rolling()` | [887-905](../scripts/make_results.py#L887-L905) | Diagram of the 8 rolling-origin refits (train on the past, score the next block). |
-| `make_figures()` | [908-913](../scripts/make_results.py#L908-L913) | Draws them all (a figure whose input is missing is None). |
-| `FONT_CSS` | [918-934](../scripts/make_results.py#L918-L934) | The bundled fonts (Big Shoulders Display, Barlow, Space Mono) and colour variables shared by all documents. |
-| `REFERENCES` | [936-972](../scripts/make_results.py#L936-L972) | The APA 7 reference list used by the report and slides. |
-| `fmt_m()`, `storm_rows()`, `method_rows()`, `model_rows()` | [975-1021](../scripts/make_results.py#L975-L1021) | Millions text, and HTML table rows for the storm table, the two access methods and the model comparison. |
-| `bench_missing_text()` | [1024-1026](../scripts/make_results.py#L1024-L1026) | Names the expected benchmarks that are not in the build. |
-| `catalog_rows()`, `s1_muni_rows()` | [1029-1054](../scripts/make_results.py#L1029-L1054) | Rows for the storm catalogue (split over side-by-side tables) and for Sentinel-1 per municipality. |
-| `eval_rows()`, `edge_rows()`, `sens_rows()`, `valid_rows()`, `source_rows()` | [1057-1129](../scripts/make_results.py#L1057-L1129) | Rows for the evaluation, the graph links, the sensitivity, the backtest and the data sources. |
-| `browser()`, `to_pdf()` | [1134-1149](../scripts/make_results.py#L1134-L1149) | Finds Chrome or Edge and prints an HTML file to PDF headlessly. |
-| `SCRIPT_CSS`, `_md_inline()`, `demo_script_html()` | [1152-1205](../scripts/make_results.py#L1152-L1205) | Turns the demo-script Markdown (the editable source) into a styled landscape PDF. |
-| `GUIDE_CSS`, `code_guide_html()` | [1208-1253](../scripts/make_results.py#L1208-L1253) | Turns this guide (`docs/CODE_GUIDE.md`) into a styled A4 PDF: repo file links become plain text, the contents links stay, and the Block / Lines tables get a line-number column style. |
-| `OVERFLOW_JS`, `check_overflow()` | [1256-1298](../scripts/make_results.py#L1256-L1298) | Lays each page out in headless Chrome and lists any element that runs into the footer band or off the edge, so overflow is caught automatically. |
-| `main()` and entry | [1301-1333](../scripts/make_results.py#L1301-L1333) | Loads, computes, draws, writes the HTML, checks the report and slides for overflow, prints the PDFs (report, slides, code guide, demo script). `--no-pdf` skips printing. |
+| `stats_models()` | [263-287](../scripts/make_results.py#L263-L287) | The model comparison from `eval_models.csv`: which benchmarks are present or missing, the best model, median WIS, the variants' scores. |
+| `median_wis_split()` | [290-309](../scripts/make_results.py#L290-L309) | Re-scores the saved quantiles and benchmark files exactly like `forecast.evaluate_models()`: median WIS per model and the mean-WIS ratio to XGBoost below and above the 90th percentile of weekly cases. |
+| `stats_catalog()` | [312-343](../scripts/make_results.py#L312-L343) | One row per scored storm (catalogue + backtests): mean R, calibrated or not, people cut off by both methods, ferries, tiers; the skipped storms; rank agreement of the methods. |
+| `_irr()` | [346-350](../scripts/make_results.py#L346-L350) | The joint lag rows and the cumulative row of one leptospirosis analysis. |
+| `stats_lepto()` | [353-382](../scripts/make_results.py#L353-L382) | Leptospirosis numbers: city and national peaks, heavy-rain peak, the event-study rows, flooded city-storm pairs. |
+| `stats_data()` | [385-415](../scripts/make_results.py#L385-L415) | Data-finding numbers read from raw files (dengue units, 2016 case fatality, cases per year, how often the US gale radius is missing) and the usability responses, if any. |
+| `s1_ems_agreement()` | [418-448](../scripts/make_results.py#L418-L448) | Compares Sentinel-1 with Copernicus EMS inside each EMS area: area each mapped, overlap, precision and recall. |
+| `style()`, `mono()`, `save()` | [453-475](../scripts/make_results.py#L453-L475) | Registers the bundled fonts with matplotlib, sets a clean chart style, monospace tick labels, and saves PNGs at 220 dpi (fonts baked in). |
+| `fig_timeline()` | [480-496](../scripts/make_results.py#L480-L496) | National weekly dengue with the four typhoons and the 2020 collapse marked. |
+| `fig_coverage()` | [499-518](../scripts/make_results.py#L499-L518) | Share of panel cells with a value, per input. |
+| `KIND_COLOR`, `fig_wis()` | [521-571](../scripts/make_results.py#L521-L571) | Relative WIS of every model in the comparison (bars, with 1- and 4-week marks) and coverage by horizon against the 80-95% target. |
+| `fig_reliability()` | [574-591](../scripts/make_results.py#L574-L591) | R's reliability curve, raw and recalibrated. |
+| `fig_methods()` | [594-632](../scripts/make_results.py#L594-L632) | People cut off by the network and the raster: the observed tracks, then every proxy-flood track. |
+| `fig_catalog()` | [635-666](../scripts/make_results.py#L635-L666) | Mean R against people cut off for every scored storm, with the range between the two methods. |
+| `fig_lepto()` | [669-688](../scripts/make_results.py#L669-L688) | Leptospirosis IRR by lag, cities and national. |
+| `fig_fan()` | [691-710](../scripts/make_results.py#L691-L710) | Rolling-origin forecasts for Cagayan, 1 and 4 weeks ahead. |
+| `_basemap()` | [713-717](../scripts/make_results.py#L713-L717) | Grey province outlines and the Philippine extent for maps. |
+| `fig_leadlag()` | [720-741](../scripts/make_results.py#L720-L741) | The PCMCI+ links as arrows on the map (NCR districts share one label). |
+| `fig_priority()` | [744-764](../scripts/make_results.py#L744-L764) | Ompong's P map with track, swath and top-5 labels. |
+| `fig_access_multiples()` | [767-783](../scripts/make_results.py#L767-L783) | A per province for the four typhoons on one colour scale. |
+| `fig_scatter()` | [786-806](../scripts/make_results.py#L786-L806) | Ompong's risk vs access, marker shape = tier. |
+| `fig_validation()` | [809-825](../scripts/make_results.py#L809-L825) | Backtest correlations per storm. |
+| `fig_s1()` | [828-848](../scripts/make_results.py#L828-L848) | Sentinel-1 new-flood share per province for each storm (per-storm values, not the merged panel). |
+| `fig_s1_ems()` | [851-871](../scripts/make_results.py#L851-L871) | Sentinel-1 flood vs EMS outlines around Tuguegarao. |
+| `fig_network()` | [874-886](../scripts/make_results.py#L874-L886) | Ferry routes and hospitals over the islands (the access problem slide). |
+| `fig_rolling()` | [889-907](../scripts/make_results.py#L889-L907) | Diagram of the 8 rolling-origin refits (train on the past, score the next block). |
+| `make_figures()` | [910-915](../scripts/make_results.py#L910-L915) | Draws them all (a figure whose input is missing is None). |
+| `FONT_CSS` | [920-936](../scripts/make_results.py#L920-L936) | The bundled fonts (Big Shoulders Display, Barlow, Space Mono) and colour variables shared by all documents. |
+| `REFERENCES` | [938-974](../scripts/make_results.py#L938-L974) | The APA 7 reference list used by the report and slides. |
+| `fmt_m()`, `storm_rows()`, `method_rows()`, `model_rows()` | [977-1023](../scripts/make_results.py#L977-L1023) | Millions text, and HTML table rows for the storm table, the two access methods and the model comparison. |
+| `bench_missing_text()` | [1026-1028](../scripts/make_results.py#L1026-L1028) | Names the expected benchmarks that are not in the build. |
+| `catalog_rows()`, `s1_muni_rows()` | [1031-1056](../scripts/make_results.py#L1031-L1056) | Rows for the storm catalogue (split over side-by-side tables) and for Sentinel-1 per municipality. |
+| `eval_rows()`, `edge_rows()`, `sens_rows()`, `valid_rows()`, `source_rows()` | [1059-1131](../scripts/make_results.py#L1059-L1131) | Rows for the evaluation, the graph links, the sensitivity, the backtest and the data sources. |
+| `browser()`, `to_pdf()` | [1136-1151](../scripts/make_results.py#L1136-L1151) | Finds Chrome or Edge and prints an HTML file to PDF headlessly. |
+| `SCRIPT_CSS`, `_md_inline()`, `demo_script_html()` | [1154-1207](../scripts/make_results.py#L1154-L1207) | Turns the demo-script Markdown (the editable source) into a styled landscape PDF. |
+| `GUIDE_CSS`, `code_guide_html()` | [1210-1255](../scripts/make_results.py#L1210-L1255) | Turns this guide (`docs/CODE_GUIDE.md`) into a styled A4 PDF: repo file links become plain text, the contents links stay, and the Block / Lines tables get a line-number column style. |
+| `OVERFLOW_JS`, `check_overflow()` | [1258-1300](../scripts/make_results.py#L1258-L1300) | Lays each page out in headless Chrome and lists any element that runs into the footer band or off the edge, so overflow is caught automatically. |
+| `main()` and entry | [1303-1335](../scripts/make_results.py#L1303-L1335) | Loads, computes, draws, writes the HTML, checks the report and slides for overflow, prints the PDFs (report, slides, code guide, demo script). `--no-pdf` skips printing. |
 
 ### `scripts/results_pages.py` (evaluation report, A4)
 
@@ -809,7 +810,7 @@ computed from the outputs.
 | `_lst()` | [72-74](../scripts/results_pages.py#L72-L74) | "a, b and c" text. |
 | `_targets()` | [77-115](../scripts/results_pages.py#L77-L115) | The scorecard rows: each proposal objective, the result and met / partly / not yet, decided by which outputs are present. |
 | `d_min()`, `d_max()` | [118-123](../scripts/results_pages.py#L118-L123) | Smallest and largest value of a validation column. |
-| `report_html()` | [126-543](../scripts/results_pages.py#L126-L543) | All pages in order: cover, summary, data, panel, methods, forecast, model comparison, calibration, graph, Sentinel-1, access, the two methods, Ompong priority, the catalogue, validation, leptospirosis, scorecard, limitations, references. Pages whose outputs are missing are left out and the text switches; page cross-references are filled in from the page labels, and figures are numbered in page order at the end. |
+| `report_html()` | [126-545](../scripts/results_pages.py#L126-L545) | All pages in order: cover, summary, data, panel, methods, forecast, model comparison, calibration, graph, Sentinel-1, access, the two methods, Ompong priority, the catalogue, validation, leptospirosis, scorecard, limitations, references. Pages whose outputs are missing are left out and the text switches; page cross-references are filled in from the page labels, and figures are numbered in page order at the end. |
 
 ### `scripts/results_slides.py` (20 slides, 16:9)
 
@@ -838,7 +839,8 @@ automatic word counts. `--no-pdf` prints the counts only.
 ### `scripts/check_code_guide.py`
 
 Keeps this guide honest: `python scripts/check_code_guide.py` prints every link or block that no longer matches the code
-and exits 1, or prints "all links and blocks match the code". Three rules follow from it when you edit the guide:
+and exits 1, or prints "all links and blocks match the code". After moving code, `python scripts/check_code_guide.py --fix` re-syncs the
+line links first (against `HEAD`, or a revision given after `--fix`). Three rules follow from it when you edit the guide:
 
 - every line link `[a-b](../path#La-Lb)` must point inside an existing file;
 - in a Block | Lines | Explanation table, a first cell that names exactly one function, method or class (`` `fetch()` ``,
@@ -849,10 +851,13 @@ and exits 1, or prints "all links and blocks match the code". Three rules follow
 
 | Block | Lines | Explanation |
 |---|---|---|
-| `ROOT` ... `NAME` | [19-23](../scripts/check_code_guide.py#L19-L23) | The guide's path and the three patterns: a line link, a section heading, a function-name cell. |
-| `spans()` | [26-42](../scripts/check_code_guide.py#L26-L42) | Every function, method and class of a file with its first line (decorators included) and last line, from Python's `ast`, plus the set of top-level names. |
-| `main()` | [45-89](../scripts/check_code_guide.py#L45-L89) | Reads the guide line by line, tracking the current section and the names it mentions; checks each link and each function row; then lists the top-level names a section never mentions and sections for files that don't exist. |
-| entry | [92-93](../scripts/check_code_guide.py#L92-L93) | Exit code 1 when there are problems. |
+| `ROOT` ... `NAME` | [23-27](../scripts/check_code_guide.py#L23-L27) | The guide's path and the three patterns: a line link, a section heading, a function-name cell. |
+| `spans()` | [30-46](../scripts/check_code_guide.py#L30-L46) | Every function, method and class of a file with its first line (decorators included) and last line, from Python's `ast`, plus the set of top-level names. |
+| `main()` | [49-93](../scripts/check_code_guide.py#L49-L93) | Reads the guide line by line, tracking the current section and the names it mentions; checks each link and each function row; then lists the top-level names a section never mentions and sections for files that don't exist. |
+| `_line_map()` | [96-105](../scripts/check_code_guide.py#L96-L105) | Maps each line of an old version of a file to where it now sits, from a `difflib` diff (a deleted line maps to its neighbourhood). |
+| `_git_old()` | [108-112](../scripts/check_code_guide.py#L108-L112) | Reads a file as it was at a git revision (default `HEAD`), the "old" side for `fix()`. |
+| `fix()` | [115-156](../scripts/check_code_guide.py#L115-L156) | `--fix`: re-syncs every link after code moved. Function rows take their range from the AST; a link to a whole file follows its new length; other ranges are mapped through `_line_map()` against `HEAD`. Run it before committing a code change, then re-read any row whose code changed meaning. |
+| entry | [159-163](../scripts/check_code_guide.py#L159-L163) | `--fix [REV]` re-syncs first; exit code 1 when problems remain. |
 
 ---
 

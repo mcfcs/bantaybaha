@@ -357,7 +357,8 @@ class SurgeCalibrator:
         r = np.asarray(r, float)
         out = np.full(len(r), np.nan)
         ok = np.isfinite(r)
-        out[ok] = np.clip(self.iso.predict(r[ok]), *R_CLIP)
+        if ok.any():  # sklearn rejects an empty array (every R NaN, e.g. no surge threshold at an origin)
+            out[ok] = np.clip(self.iso.predict(r[ok]), *R_CLIP)
         return out
 
 

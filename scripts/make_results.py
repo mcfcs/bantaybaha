@@ -264,6 +264,7 @@ def stats_models(d, k):
     """Model comparison from eval_models.csv: whatever models are present; names the expected benchmarks that are not."""
     m = d["models"]
     k["models_ok"] = m is not None
+    k["bench_only"] = []
     if m is None:
         k["bench_present"], k["bench_missing"] = [], list(BENCH_LABEL)
         return
@@ -336,6 +337,7 @@ def stats_catalog(d, k, b):
         k["cat_skipped"] = sk
         k["cat_n_land"] = int(cs.swath_hits_land.sum())
     mc = d["methods_cat"]
+    k["cat_rho"] = None  # set below only when the catalogue method table exists
     if mc is not None:
         r = mc.spearman_A_units.dropna()
         k["cat_rho"] = (r.min(), r.median(), len(r))

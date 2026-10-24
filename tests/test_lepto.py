@@ -120,18 +120,13 @@ def test_sig_lags_and_span():
     assert L._span([2, 3, 4]) == "2-4 weeks later"
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="bug (wording): lepto._span([1]) says '1 weeks later'")
 def test_span_singular_week():
     assert L._span([1]) == "1 week later"
 
 
-EARLIER_BUG = pytest.mark.xfail(strict=True, raises=AssertionError, reason="bug: lepto._findings writes a negative gap with 'earlier' "
-                                                    "('-1 week earlier than'), i.e. a peak before 2 weeks reads as later")
-
-
 @pytest.mark.parametrize("peak_lag, phrase", [(4, "2 weeks later than"), (3, "1 week later than"), (2, "the same as"),
-                                              pytest.param(1, "1 week earlier than", marks=EARLIER_BUG),
-                                              pytest.param(0, "2 weeks earlier than", marks=EARLIER_BUG)])
+                                              (1, "1 week earlier than"),
+                                              (0, "2 weeks earlier than")])
 def test_city_finding_compares_the_peak_with_two_weeks(peak_lag, phrase):
     out = L._findings(None, city_tab(peak_lag, sig=(peak_lag,)), None)
     city = out[0]
@@ -142,7 +137,7 @@ def test_city_finding_compares_the_peak_with_two_weeks(peak_lag, phrase):
 
 
 def test_city_finding_without_significant_lags():
-    assert "(no single lag clearly above 1, 95% CI above 1)" in L._findings(None, city_tab(sig=()), None)[0]
+    assert "(no lag has its 95% CI above 1)" in L._findings(None, city_tab(sig=()), None)[0]
 
 
 def test_national_finding_follows_the_intervals():

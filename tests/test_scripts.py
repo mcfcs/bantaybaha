@@ -210,5 +210,21 @@ def test_check_code_guide_catches_bad_links(tmp_path, monkeypatch, capsys):
     assert "pkg/nope.py does not exist" in out
 
 
+def test_check_code_guide_fix_resyncs_moved_code(tmp_path, monkeypatch, capsys):
+    extra = "\n| Whole file | [1-11](../pkg/mod.py#L1-L11) | x |\n| Class body | [9-11](../pkg/mod.py#L9-L11) | x |"
+    guide_repo(tmp_path, monkeypatch, GOOD + extra)
+    old = MODULE.splitlines()
+    moved = "import os\n\n\n" + MODULE.replace("    return 2\n", "    x = 2\n    return x\n")  # +3 lines on top, bar() +1
+    (tmp_path / "pkg" / "mod.py").write_text(moved, encoding="utf-8")
+    assert CG.main() == 1  # stale
+    assert CG.fix(lambda rel: old) > 0
+    capsys.readouterr()
+    assert CG.main() == 0
+    g = CG.GUIDE.read_text(encoding="utf-8")
+    assert "[4-5](../pkg/mod.py#L4-L5)" in g and "[8-10](../pkg/mod.py#L8-L10)" in g  # foo, bar from the AST
+    assert "[1-15](../pkg/mod.py#L1-L15)" in g  # the whole-file link follows the new length
+    assert "[13-15](../pkg/mod.py#L13-L15)" in g  # a non-function block mapped through the diff
+
+
 def test_real_code_guide_matches_the_code():
     assert CG.main() == 0, "docs/CODE_GUIDE.md is stale: run python scripts/check_code_guide.py"

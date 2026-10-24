@@ -98,16 +98,9 @@ def test_minimal_build_still_produces_20_slides(built):
     assert "Not run in this build" in s  # the leptospirosis slide says so instead of failing
 
 
-REPORT_BUGS = {
-    "models": "bug: results_pages.report_html reads k['bench_only'], which stats_models sets only when eval_models.csv "
-              "exists (KeyError without benchmarks / ensemble scoring)",
-    "methods_cat": "bug: results_pages.report_html reads k['cat_rho'], which stats_catalog sets only when "
-                   "access_methods_catalog.csv exists (KeyError with a catalogue but no catalogue method table)",
-}
 
 
-@pytest.mark.parametrize("part", [pytest.param(p, marks=pytest.mark.xfail(strict=True, raises=KeyError, reason=REPORT_BUGS[p]))
-                                  if p in REPORT_BUGS else p for p in OPTIONAL_FILES + ["models_meta", "columns", "calibration"]])
+@pytest.mark.parametrize("part", OPTIONAL_FILES + ["models_meta", "columns", "calibration"])
 def test_documents_without_one_optional_part(built, part):
     M, full = built
     d = without(full, cols=part == "columns", cal=part == "calibration") if part in ("columns", "calibration") else without(full, part)

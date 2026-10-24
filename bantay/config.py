@@ -84,10 +84,15 @@ def have(key, *paths, pattern=None):
         p = Path(p)
         ok = p.exists() and (p.is_file() or (any(p.glob(pattern)) if pattern else any(p.iterdir())))
         if not ok:
-            missing(key, f"{p.relative_to(ROOT) if p.is_relative_to(ROOT) else p} not found")
+            missing(key, f"{_rel(p)} not found")
             return False
-    record(key, True, ", ".join(str(Path(p).relative_to(ROOT)) for p in paths))
+    record(key, True, ", ".join(str(_rel(Path(p))) for p in paths))
     return True
+
+
+def _rel(p):
+    """Path relative to the repo root when it is inside it, else as given (inputs may live elsewhere)."""
+    return p.relative_to(ROOT) if p.is_relative_to(ROOT) else p
 
 
 def ensure_dirs():

@@ -86,9 +86,6 @@ def test_have_empty_directory_is_missing(tmp_path):
     assert config.have("empty", tmp_path / "empty") is False
 
 
-@pytest.mark.xfail(strict=True, raises=ValueError,
-                   reason="bug: config.have() success branch calls Path.relative_to(ROOT) unguarded, so an existing "
-                          "input outside the repo raises ValueError (the missing branch guards it)")
 def test_have_accepts_an_existing_path_outside_the_repo(tmp_path):
     f = tmp_path / "input.csv"
     f.write_text("x\n1\n")

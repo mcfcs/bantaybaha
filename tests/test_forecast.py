@@ -327,9 +327,6 @@ def test_fit_calibrator_ignores_outcomes_after_the_cutoff():
     assert np.isnan(mixed[0]) and np.isfinite(mixed[1])
 
 
-@pytest.mark.xfail(strict=True, raises=ValueError,
-                   reason="bug: SurgeCalibrator.__call__ passes an empty array to IsotonicRegression.predict when every "
-                          "R is NaN (e.g. no surge threshold at an origin), which raises instead of returning NaN")
 def test_calibrator_on_all_nan_input_returns_nan():
     r, y, tw, end = cal_rows()
     cal = F.fit_calibrator(r, y, tw, end)

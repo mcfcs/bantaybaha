@@ -213,9 +213,6 @@ def test_friction_grid_flooded_hospital_is_not_a_start(grid):
     assert t[0] == pytest.approx(2 * np.sqrt(2) * c, rel=1e-3)  # people go to the other one, two diagonals away
 
 
-@pytest.mark.xfail(strict=True, raises=ValueError,
-                   reason="bug: FrictionGrid.solve passes an empty start list to skimage MCP when every hospital cell is "
-                          "flooded, which raises 'no valid start points' instead of returning inf (everyone cut off)")
 def test_friction_grid_every_hospital_flooded(grid):
     g = AC.friction_grid(*grid)
     rr, cc = np.divmod(g.land_idx, 5)
