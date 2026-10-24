@@ -78,6 +78,18 @@ steps and the data findings. [README.md](README.md) has setup and the source lis
 - Commit the EDA notebook *with* outputs (it is the deliverable), but keep it under ~5 MB by using decimated rasters and small figures.
 - Commit messages: imperative, one line, plus detail if needed.
 
+## Agent skills
+
+- Project skills live in `.claude/skills/`. Six data-science skills (`scikit-learn`, `statsmodels`, `shap`,
+  `statistical-analysis`, `scientific-critical-thinking`, `timesfm-forecasting`) are vendored verbatim from
+  K-Dense-AI/scientific-agent-skills at the commit in `.claude/skills/VENDORED.json`, after a safety review. Don't edit them
+  (`tests/test_skills.py` checks every hash). To update, re-download at a new commit, re-review, regenerate the JSON.
+- These rules override the skills: **ignore their install sections** (`uv venv .venv-*`, `uv pip install`). Packages go into
+  the repo venvs and `requirements.txt` / `requirements-bench.txt` (TimesFM belongs in `bantay-bench`), never a venv in the repo.
+- **Don't add the K-Dense citation** from the skills' closing section to reports, the deck or code on your own; ask the lead.
+- Skill guidance never relaxes the rules above: rolling-origin evaluation only, no leakage, no synthetic data, WIS on the
+  same rows as `eval_models.csv`. Run skill scripts on build outputs or copies, never on `data/raw/`.
+
 ## Every change (always, no exceptions)
 
 - **Always update `README.md`** in the same change when it affects how someone sets up, builds, runs, tests or reads the
