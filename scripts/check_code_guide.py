@@ -4,6 +4,8 @@ Usage:
     python scripts/check_code_guide.py          # exit 1 and list every problem
     python scripts/check_code_guide.py --fix    # after moving code: re-sync the line links, then check
     python scripts/check_code_guide.py --fix main   # ... against another revision than HEAD
+(run --fix once per change, against the revision where the guide was last correct: non-function rows are mapped
+through a diff, so a second run against the same old version would shift them again)
 
 Checks every link of the form [12-30](../path/file.py#L12-L30) (or #L12):
   - the file exists and the line range lies inside it;
@@ -132,13 +134,13 @@ def fix(old_lines=None):
             if f not in maps:
                 old = old_lines(f)
                 maps[f] = (len(old), _line_map(old, new)) if old is not None else None
-            na, nb = a, b
+            na, nb, by_ast = a, b, False
             if p.suffix == ".py" and nm:
                 if p not in cache:
                     cache[p] = spans(p)[0]
                 if nm.group(1) in cache[p]:
-                    na, nb = cache[p][nm.group(1)]
-            if (na, nb) == (a, b) and maps[f]:
+                    (na, nb), by_ast = cache[p][nm.group(1)], True  # authoritative: never also diff-mapped
+            if not by_ast and maps[f]:
                 n_old, mp = maps[f]
                 if a == 1 and b == n_old:
                     na, nb = 1, len(new)  # a link to the whole file

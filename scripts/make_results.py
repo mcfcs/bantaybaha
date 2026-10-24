@@ -421,7 +421,7 @@ def s1_ems_agreement():
     from rasterio import features
     from bantay import flood
 
-    ems = flood.ems_observed_flood("EMSR312")
+    ems = flood.ems_observed_flood("EMSR312", record_status=False)
     tiles = flood.s1_tiles("ompong")
     if ems is None or not tiles:
         return None
@@ -854,7 +854,7 @@ def fig_s1_ems(d):
     from bantay import flood
 
     t = [x for x in flood.s1_tiles("ompong") if x.name == "s1flood_121E_17N.tif"]
-    ems = flood.ems_observed_flood("EMSR312")
+    ems = flood.ems_observed_flood("EMSR312", record_status=False)
     if not t or ems is None:
         return None
     with rasterio.open(t[0]) as r:

@@ -472,17 +472,14 @@ def put_verdicts(M, k, d):
     al, bo = k.get("mall"), k.get("bench_only", [])
     M.put("nBench", lambda: len(bo), "benchmarks in eval_models.csv")
     M.put("nBenchBeatXGB", lambda: int((al.loc[bo, "relWIS_vs_xgb"] < 1).sum()), "benchmarks with mean WIS below XGBoost")
-    M.flag("AllBenchBeatXGB", lambda: len(bo) > 0 and (al.loc[bo, "relWIS_vs_xgb"] < 1).all(), "every benchmark below XGBoost on mean WIS")
     M.flag("AnyBenchBeatsXGB", lambda: (al.loc[bo, "relWIS_vs_xgb"] < 1).any(), "some benchmark below XGBoost on mean WIS")
     M.put("bestMeanLabel", lambda: esc(MR.MODEL_LABEL.get(k["best_mean"], k["best_mean"])), "eval_models.csv: lowest relWIS_vs_naive")
     M.put("bestMeanRelWIS", lambda: f(al.loc[k["best_mean"], "relWIS_vs_naive"], 3), "eval_models.csv")
     M.put("bestMeanCov", lambda: pct(al.loc[k["best_mean"], "cov90"]), "eval_models.csv")
-    M.flag("EnsBestMean", lambda: k["best_mean"] == "ens_median", "the median ensemble has the best mean WIS")
     mw = k.get("mw", {})
     best_md = (lambda: min(mw, key=mw.get))
     M.put("bestMedianLabel", lambda: esc(MR.MODEL_LABEL.get(best_md(), best_md())), "lowest median WIS")
     M.put("bestMedianWIS", lambda: f(mw[best_md()], 2), "lowest median WIS")
-    M.flag("XGBBestMedian", lambda: best_md() == "xgb", "XGBoost has the best median WIS")
     M.flag("MeanMedianDiffer", lambda: best_md() != k["best_mean"], "the best model on mean WIS is not the best on median WIS")
     sp = k.get("split", {})
     M.flag("BenchWinHigh", lambda: all(sp["hi"][x] < 1 for x in bo) and all(sp["lo"][x] > 1 for x in bo),
@@ -525,7 +522,6 @@ def put_verdicts(M, k, d):
     pre = v.loc[["Ompong", "Tisoy"]]
     M.flag("RRanksWell", lambda: (pre.spearman_R_obs >= 0.5).all(), "rho(R, observed) >= 0.5 for both 2018-2019 storms")
     M.flag("PLessThanR", lambda: (pre.spearman_P_obs < pre.spearman_R_obs).all(), "rho(P) < rho(R) for both 2018-2019 storms")
-    M.flag("TopTenAboveBase", lambda: v.loc["Ompong", "top10_surge_rate"] > v.loc["Ompong", "surge_rate"], "Ompong: top-10 surge rate above the base rate")
     M.put("surgeRateTisoy", lambda: pct(v.loc["Tisoy", "surge_rate"]), "validation.csv surge_rate")
     M.put("topTenSurgedTisoy", lambda: f(v.loc["Tisoy", "top10_surge_rate"] * 10, 0), "validation.csv top10_surge_rate x 10")
     # catalogue

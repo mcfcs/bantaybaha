@@ -228,10 +228,7 @@
 \newif\ifConformalSimilar\ConformalSimilartrue % conformal and model 90% coverage within 0.03
 \newif\ifGraphHelps\GraphHelpsfalse % relWIS xgb/nograph < 0.98
 \newif\ifEnvHelps\EnvHelpsfalse % relWIS xgb/noenv < 0.98
-\newif\ifAllBenchBeatXGB\AllBenchBeatXGBtrue % every benchmark below XGBoost on mean WIS
 \newif\ifAnyBenchBeatsXGB\AnyBenchBeatsXGBtrue % some benchmark below XGBoost on mean WIS
-\newif\ifEnsBestMean\EnsBestMeantrue % the median ensemble has the best mean WIS
-\newif\ifXGBBestMedian\XGBBestMediantrue % XGBoost has the best median WIS
 \newif\ifMeanMedianDiffer\MeanMedianDiffertrue % the best model on mean WIS is not the best on median WIS
 \newif\ifBenchWinHigh\BenchWinHightrue % benchmarks beat XGBoost above the 90th percentile of cases and lose below it
 \newif\ifEnsGainsBoth\EnsGainsBothtrue % ensemble below XGBoost in both halves
@@ -257,7 +254,6 @@
 \newif\ifHRSLOverYoung\HRSLOverYoungtrue % HRSL under-5 share above the census
 \newif\ifRRanksWell\RRanksWelltrue % rho(R, observed) >= 0.5 for both 2018-2019 storms
 \newif\ifPLessThanR\PLessThanRtrue % rho(P) < rho(R) for both 2018-2019 storms
-\newif\ifTopTenAboveBase\TopTenAboveBasetrue % Ompong: top-10 surge rate above the base rate
 \newif\ifCatLargestLowR\CatLargestLowRfalse % the 3 largest cut-offs all have R below the catalogue median
 \newif\ifCatHighRNineteen\CatHighRNineteentrue % the 3 highest-R storms are all 2019
 \newif\ifCitySig\CitySigtrue % some city lag has a 95% CI above 1

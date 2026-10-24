@@ -224,6 +224,8 @@ def test_check_code_guide_fix_resyncs_moved_code(tmp_path, monkeypatch, capsys):
     assert "[4-5](../pkg/mod.py#L4-L5)" in g and "[8-10](../pkg/mod.py#L8-L10)" in g  # foo, bar from the AST
     assert "[1-15](../pkg/mod.py#L1-L15)" in g  # the whole-file link follows the new length
     assert "[13-15](../pkg/mod.py#L13-L15)" in g  # a non-function block mapped through the diff
+    CG.fix(lambda rel: old)  # a second run against the same old version must not shift anything again
+    assert CG.GUIDE.read_text(encoding="utf-8").count("[4-5](../pkg/mod.py#L4-L5)") == 1 and CG.main() == 0
 
 
 def test_real_code_guide_matches_the_code():
