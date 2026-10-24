@@ -33,7 +33,8 @@ def known_week(key):
 def test_s1_weeks_start_when_the_map_is_known(fake_s1):
     s1 = panel.s1_layers(None, None)
     a = s1[s1.unit_id == "A"]
-    assert list(a.week) == list(pd.to_datetime(["2018-09-30", "2018-10-07", "2018-10-14", "2018-10-21"]))
+    assert list(a.week) == [known_week("ompong") + pd.Timedelta(weeks=k) for k in range(4)]
+    assert a.week.min() > week_ending(STORMS["ompong"]["landfall"])  # never the origin (landfall) week
     assert (a.s1_flood_frac == 0.1).all()
     for key in STORMS:
         origin = week_ending(STORMS[key]["landfall"])
@@ -56,19 +57,18 @@ def test_s1_absent_at_every_origin_week_of_its_own_storm(fake_s1):
 def test_s1_overlapping_storms_take_the_max(fake_s1):
     s1 = panel.s1_layers(None, None)
     c = s1[s1.unit_id == "C"].set_index("week").s1_flood_frac
-    # Rolly is known from 2020-11-15 (= Ulysses' origin week: Rolly's images end 11-11, known by then);
-    # Ulysses from 2020-11-22
-    assert known_week("rolly") == pd.Timestamp("2020-11-15") and known_week("ulysses") == pd.Timestamp("2020-11-22")
-    assert c[pd.Timestamp("2020-11-15")] == 0.3
-    assert c[pd.Timestamp("2020-11-22")] == 0.5 and c[pd.Timestamp("2020-12-06")] == 0.5
-    assert c[pd.Timestamp("2020-12-13")] == 0.5  # Ulysses' 4th week, after Rolly's 4 weeks ended
+    r0, u0 = known_week("rolly"), known_week("ulysses")  # Rolly (0.3) and Ulysses (0.5) both flood unit C
+    rolly, uly = {r0 + pd.Timedelta(weeks=k) for k in range(4)}, {u0 + pd.Timedelta(weeks=k) for k in range(4)}
+    assert set(c.index) == rolly | uly
+    for w, v in c.items():
+        assert v == (0.5 if w in uly else 0.3)  # the larger observed flood where the windows overlap
     assert not s1.duplicated(["unit_id", "week"]).any()
 
 
 def test_s1_follows_the_after_window_constant(fake_s1, monkeypatch):
     monkeypatch.setattr(panel, "S1_AFTER_DAYS", 0)
     s1 = panel.s1_layers(None, None)
-    assert s1[s1.unit_id == "A"].week.min() == pd.Timestamp("2018-09-16")
+    assert s1[s1.unit_id == "A"].week.min() == week_ending(STORMS["ompong"]["landfall"])
 
 
 def test_s1_none_without_maps(tmp_path, monkeypatch):

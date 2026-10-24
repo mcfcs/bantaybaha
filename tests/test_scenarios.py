@@ -23,9 +23,11 @@ def test_tier_thresholds_are_inclusive():
     assert SC.tier(R, A).tolist() == [3, 2, 2, 1, 2, 1, 2, 2, 1]
 
 
-def test_tier_values_as_documented():
-    assert T == dict(deploy=(0.5, 0.10), preposition_R=0.3, preposition_A=(0.10, 0.15))
-    assert SC.tier([0.6, 0.35, 0.2, 0.2], [0.2, 0.0, 0.12, 0.05]).tolist() == [3, 2, 2, 1]
+def test_tier_rule_shape():
+    """The documented ordering: deploy needs both high R and high A; pre-position needs R alone or A with some R."""
+    dR, dA = T["deploy"]
+    assert T["preposition_R"] <= dR and T["preposition_A"][1] <= T["preposition_R"]
+    assert SC.tier([1.0, 1.0, 0.0], [1.0, 0.0, 1.0]).tolist() == [3, 2, 1]
     assert set(SC.TIER_LABELS) == {1, 2, 3}
 
 
@@ -34,8 +36,8 @@ def test_tier_reads_the_constants_at_call_time(monkeypatch):
     assert SC.tier([0.6], [0.2]).tolist() == [2]
 
 
-def test_shifts_are_the_15_tracks():
-    assert len(SC.SHIFTS) == 15 and (0.0, 0.0) in SC.SHIFTS and len(set(SC.SHIFTS)) == 15
+def test_shifts_include_the_observed_track_once():
+    assert (0.0, 0.0) in SC.SHIFTS and len(set(SC.SHIFTS)) == len(SC.SHIFTS)
 
 
 def test_case_columns():

@@ -144,7 +144,8 @@ def test_base_features_use_no_future_values():
     a, b = F.base_features(p), F.base_features(perturb_after(p, T0))
     k = a.week <= T0
     pd.testing.assert_frame_equal(a[k], b[k])
-    assert not a[~k].drop(columns=["unit", "week", "unit_id", "pop", "log_pop"]).equals(b[~k].drop(columns=["unit", "week", "unit_id", "pop", "log_pop"]))
+    static = ["unit", "week", "unit_id", "pop", "log_pop"]
+    assert not a[~k].drop(columns=static).equals(b[~k].drop(columns=static))  # the perturbation did reach later rows
 
 
 @pytest.mark.parametrize("h", [1, 2, 3, 4])
@@ -240,7 +241,7 @@ def test_feature_columns_ablations():
 def test_refit_dates():
     r = F.refit_dates()
     assert r[0] == pd.Timestamp("2018-01-07") and r[-1] <= pd.Timestamp(MODEL_END)
-    assert len(r) == 8 and all(d.weekday() == 6 for d in r)
+    assert len(r) == len(pd.date_range("2018-01-07", MODEL_END, freq="13W-SUN")) and all(d.weekday() == 6 for d in r)
     assert set(np.diff(r)) == {pd.Timedelta(weeks=13)}
 
 
@@ -384,6 +385,9 @@ def cum4_fc(n_units=100, n_weeks=30, seed=0):
     return fc
 
 
+FIRST_CAL = -(-F.CAL_MIN_ROWS // 100) + 3  # 100 units in cum4_fc
+
+
 def test_cum4_eval_expanding_window_is_leak_free():
     fc = cum4_fc()
     c = F.cum4_eval(fc)
@@ -393,8 +397,8 @@ def test_cum4_eval_expanding_window_is_leak_free():
     off = c[~c.R_cal_applied]
     assert (off.R_xgb_cal == off.R_xgb).all() and (off.cal_n < F.CAL_MIN_ROWS).all()
     assert (on.cal_n >= F.CAL_MIN_ROWS).all()
-    # origin k (0-based) has 100 units x (k - 3) known 4-week windows; >= 850 first at k = 12
-    assert on.week.min() == sorted(fc.week.unique())[12]
+    # origin k (0-based) has 100 units x (k - 3) known 4-week windows: calibrated from the first k reaching CAL_MIN_ROWS
+    assert on.week.min() == sorted(fc.week.unique())[FIRST_CAL]
     # changing outcomes whose window ends after t leaves R at t unchanged
     t = pd.Timestamp(sorted(fc.week.unique())[20])
     fb = fc.copy()
@@ -409,7 +413,7 @@ def test_cum4_eval_expanding_window_is_leak_free():
 def test_surge_calibration_summary():
     out, rel, c = F.surge_calibration(cum4_fc())
     assert out["calibrated"]["min_rows"] == F.CAL_MIN_ROWS
-    assert out["calibrated"]["n_uncalibrated"] == 12 * 100
+    assert out["calibrated"]["n_uncalibrated"] == FIRST_CAL * 100
     assert 0 <= out["xgb"]["brier"] <= 1 and set(rel.columns) >= {"bin", "n", "mean_R", "observed", "observed_cal"}
 
 

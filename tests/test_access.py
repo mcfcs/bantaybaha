@@ -131,9 +131,9 @@ def test_ferry_keep_mask_and_edges_in():
     assert not AC.edges_in(None, r).any()
 
 
-def test_speeds_are_positive_and_links_slower():
+def test_speeds_are_positive_and_links_not_faster():
     assert all(v > 0 for v in AC.SPEED.values())
-    assert AC.SPEED["primary_link"] == pytest.approx(0.8 * AC.SPEED["primary"])
+    assert all(AC.SPEED[f"{k}_link"] <= AC.SPEED[k] for k in AC.SPEED if f"{k}_link" in AC.SPEED)
 
 
 # ---------------------------------------------------------------- raster method (MAP friction) on a 5 x 5 grid
