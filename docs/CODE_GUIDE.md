@@ -629,8 +629,8 @@ videos land in `tests/artifacts/` (git-ignored). Install `requirements-dev.txt` 
 `python -m playwright install chromium` once, then:
 
 ```
-python -m pytest tests                            # everything (~2 min): unit, build outputs, AppTest, Playwright
-python -m pytest tests -m "not e2e"               # no browser (~1 min)
+python -m pytest tests                            # everything (~1.5 min): unit, build outputs, AppTest, Playwright
+python -m pytest tests -m "not e2e"               # no browser (~40 s)
 python -m pytest tests -m "not e2e and not data"  # pipeline unit tests + AppTest, no build-output invariants
 python -m pytest tests -m data                    # build-output invariants only
 python tests/capture.py                           # refresh docs/results/figures/dashboard.png + record the demo video
@@ -643,8 +643,8 @@ bug is fixed, so the marker is removed together with the fix.
 
 | Block | Lines | Explanation |
 |---|---|---|
-| Paths | [21-28](../tests/conftest.py#L21-L28) | Repo root, the app, the build outputs, the artifacts folder; puts `app/`, the repo root (for `bantay`) and `scripts/` on the path. |
-| `needs_data` | [30-31](../tests/conftest.py#L30-L31) | Skip marker for dashboard tests that need a finished build. |
+| Paths | [20-27](../tests/conftest.py#L20-L27) | Repo root, the app, the build outputs, the artifacts folder; puts `app/`, the repo root (for `bantay`) and `scripts/` on the path. |
+| `needs_data` | [29-30](../tests/conftest.py#L29-L30) | Skip marker for dashboard tests that need a finished build. |
 | `pytest_configure()` | [33-35](../tests/conftest.py#L33-L35) | Registers the `e2e` and `data` markers, so `-m "not e2e"` / `-m "not data"` deselect them without warnings. |
 | `free_port()` | [38-41](../tests/conftest.py#L38-L41) | A free local port for the test server. |
 | `sus_csv()` | [44-48](../tests/conftest.py#L44-L48) | A throw-away responses file, set through `BANTAY_SUS_PATH`. |
