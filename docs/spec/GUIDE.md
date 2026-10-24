@@ -65,9 +65,22 @@ add a `M.put("name", ..., "source")` line to the matching `put_*()` function in 
 `\tablerows{name}` (it uses TeX's primitive input, because LaTeX's `\input` before `\bottomrule` fails).
 
 Typed figures are allowed only where nothing computes them, and they live in `main.tex` as macros: the proposal's
-targets (`\targetCov`, `\proposalProvinces`) and figures quoted from the literature (`\litNCRShare`). Method settings that
-live in the code (tier thresholds, PCMCI+ settings, the cut-off rule, track shifts) are read from the code by the
-generator, so the text cannot drift from it. `tests/test_spec.py` fails on a result typed into a section (a decimal, a
+assumption (`\proposalProvinces`) and figures quoted from the literature (`\litNCRShare`). The proposal's targets that
+the results are judged against (`\targetCov`) and the method settings that live in the code (tier thresholds, PCMCI+
+settings, the cut-off rule, track shifts) are written by the generator from the code, so the text cannot drift from it.
+
+### Qualitative claims are conditions
+
+Words such as "beats", "best", "does not help" or "the targets are met" are results too. The generator writes them as
+TeX conditionals next to the numbers (`M.flag("ForecastBeats", lambda: ..., "source")` gives `\ifForecastBeats`), and the
+prose states both outcomes:
+
+```latex
+\ifForecastBeats The forecast beats the bar.\else The forecast does not beat the bar.\fi
+```
+
+so a rebuild with different results changes the wording instead of leaving a stale claim. The thresholds behind the
+flags (what counts as "helps", "the same", "alike", "stable") are named constants at the top of `scripts/make_spec.py`. `tests/test_spec.py` fails on a result typed into a section (a decimal, a
 percentage, a number with M or k, a thousands separator, or a count of units, storms, links and the like).
 
 ### Acronyms

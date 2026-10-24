@@ -212,6 +212,11 @@ def test_anonymous_sources():
     for p in [SPEC / "main.tex", SPEC / "GUIDE.md", *SECTIONS]:
         assert not email.search(p.read_text(encoding="utf-8")), f"{p.name} contains an e-mail address"
     assert "pdfauthor" not in (SPEC / "main.tex").read_text(encoding="utf-8")
+    pdf = ROOT / "docs" / "results" / "Bantay-Baha_Technical_Spec.pdf"
+    if pdf.exists():
+        raw = pdf.read_bytes()
+        assert b"/Author()" in raw, "the spec PDF names an author"
+        assert b"\\Users\\" not in raw and b"/Users/" not in raw, "the spec PDF embeds a local path"
 
 
 # ---------------------------------------------------------------- citations and figures

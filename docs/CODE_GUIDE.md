@@ -25,7 +25,7 @@ benchmark models. Each entry is one function or one top-level block.
 6. [The dashboard: `app/streamlit_app.py`](#6-the-dashboard-appstreamlit_apppy)
     - [6.1 ui](#61-appuipy) · [6.2 sus](#62-appsuspy) · [6.3 lepto_tab](#63-applepto_tabpy) ·
       [6.4 theme](#64-streamlitconfigtoml) · [6.5 tests](#65-tests-tests)
-7. [Documents: `make_results.py`, `results_pages.py`, `results_slides.py`, `make_proposal.py`, `check_code_guide.py`](#7-documents)
+7. [Documents: `make_results.py`, `results_pages.py`, `results_slides.py`, `make_spec.py`, `make_proposal.py`, `check_code_guide.py`](#7-documents)
 8. [Benchmark models: `scripts/benchmark_*.py`](#8-benchmark-models)
 9. [The EDA notebook](#9-the-eda-notebook)
 10. [Every file the pipeline writes](#10-every-file-the-pipeline-writes)
@@ -633,7 +633,7 @@ python tests/capture.py                 # refresh docs/results/figures/dashboard
 |---|---|---|
 | Paths | [17-21](../tests/conftest.py#L17-L21) | Repo root, the app, the build outputs, the artifacts folder; puts `app/` on the path so the tests can import `sus`. |
 | `needs_data` | [23-24](../tests/conftest.py#L23-L24) | Skip marker for tests that need a finished build. |
-| `pytest_configure()` | [27-28](../tests/conftest.py#L27-L28) | Registers the `e2e` marker, so `-m "not e2e"` deselects the browser tests. |
+| `pytest_configure()` | [27-28](../tests/conftest.py#L27-L28) | Registers the `e2e` and `slow` markers, so `-m "not e2e"` deselects the browser tests and `-m "not slow"` the LaTeX compile. |
 | `free_port()` | [31-34](../tests/conftest.py#L31-L34) | A free local port for the test server. |
 | `sus_csv()` | [37-41](../tests/conftest.py#L37-L41) | A throw-away responses file, set through `BANTAY_SUS_PATH`. |
 | `server()` | [44-73](../tests/conftest.py#L44-L73) | Starts `streamlit run` on a free port for the whole session, waits for its health check and stops it at the end. |
@@ -690,6 +690,30 @@ Drives the running dashboard in Chromium (pytest-playwright) and fails on any ap
 | `test_storm_and_shift()` | [71-104](../tests/test_e2e.py#L71-L104) | Moves the track with the keyboard, checks title, ferries and the upper-bound note, resets, switches to Tisoy and searches for a catalogue storm. |
 | `test_dark_mode()` | [107-114](../tests/test_e2e.py#L107-L114) | In dark mode the map uses the dark "no data" colour. |
 | `test_sus_submit()` | [117-133](../tests/test_e2e.py#L117-L133) | Fills and submits the usability form and checks the saved row. |
+
+#### `tests/test_spec.py`
+
+Checks the LaTeX technical specification (`docs/spec/`) and its generator `scripts/make_spec.py`. The static tests need no
+build; the ones that read `data/processed/` skip without it; the compile test is `slow` and skips without latexmk.
+
+| Block | Lines | Explanation |
+|---|---|---|
+| Paths, `needs_build` | [18-28](../tests/test_spec.py#L18-L28) | The spec folders, the figures, the build outputs; skip marker for tests that need a finished build. |
+| `STANDARD` | [31-41](../tests/test_spec.py#L31-L41) | LaTeX and package commands the sections may use; any other macro must be defined in `main.tex` or `generated/numbers.tex`. |
+| `TYPED`, `NOMINAL`, `VERSION`, `ARGS` | [44-57](../tests/test_spec.py#L44-L57) | The typed-result heuristic (a decimal, a percentage, a thousands separator, a number in M or k, a count of units, storms, links ...) and what it leaves alone (nominal 50/90/95% levels, version numbers, years, labels, keys and file names). |
+| `strip_comments()`, `prose()` | [60-71](../tests/test_spec.py#L60-L71) | Section text without comments, command arguments, environment options and the allowed numbers. |
+| `defined()`, `numbers()`, `macro_values()`, `bib_keys()` | [74-98](../tests/test_spec.py#L74-L98) | Macro names a source defines (`\newcommand`, `\newif` with its switches), the generated macros and their values, the bibliography keys. |
+| `test_main_inputs_every_section()`, `test_sections_have_root_magic_comment()`, `test_build_settings()` | [104-127](../tests/test_spec.py#L104-L127) | `main.tex` inputs every section file and the numbers; each section has the LaTeX Workshop root comment; latexmkrc, `.vscode` and `.gitignore` hold the build setup. |
+| `test_every_macro_used_is_defined()` | [133-140](../tests/test_spec.py#L133-L140) | No section uses a macro that nothing defines. |
+| `test_generated_macros_are_letters_only_and_unique()`, `test_no_generated_value_is_missing()`, `test_generated_tables_exist()` | [143-161](../tests/test_spec.py#L143-L161) | Generated names are letters only and unique, none printed as n/a, every `\tablerows{}` file exists and holds table rows. |
+| `test_no_typed_results_in_prose()`, `test_typed_result_heuristic_catches_examples()` | [167-184](../tests/test_spec.py#L167-L184) | No typed result in the sections, and the heuristic itself flags typed examples and passes macros, nominal levels, versions and years. |
+| `test_one_paragraph_per_source_line()`, `test_no_hyphenation_preamble()`, `test_anonymous_sources()` | [187-219](../tests/test_spec.py#L187-L219) | The writing conventions of `docs/spec/GUIDE.md`: no hard-wrapped prose, the no-hyphenation penalties and no local `\sloppy`, no e-mail address or PDF author. |
+| `test_every_citation_is_in_refs_bib()`, `test_refs_bib_has_no_duplicate_keys_or_stray_at_signs()` | [225-237](../tests/test_spec.py#L225-L237) | Every cited key is in `refs.bib`; no duplicate keys or at-signs in comments (both silently break biber). |
+| `test_every_figure_exists()`, `test_every_float_is_referenced()` | [240-252](../tests/test_spec.py#L240-L252) | Every `\includegraphics` resolves through the `\graphicspath` (`docs/results/figures/`); every table and figure label is referenced from the text. |
+| `test_formatting_helpers()`, `test_html_rows_to_latex()`, `test_macros_registry()` | [258-293](../tests/test_spec.py#L258-L293) | The generator's pure logic: number formats, the HTML-rows-to-LaTeX converter (ranges, minus signs, bold total row), the macro registry (n/a on a missing output, no duplicates, letters only). |
+| `test_macro_values_match_build_outputs()`, `test_generated_tables_match_build_outputs()` | [299-336](../tests/test_spec.py#L299-L336) | Macro values (relative WIS, coverage, forecasts scored, ensemble, Brier, links, hospitals, NCR benchmark, people cut off, units) and table rows equal what the output files say. |
+| `test_generated_files_are_up_to_date()` | [339-354](../tests/test_spec.py#L339-L354) | Re-runs the generator into `docs/spec/build/` and compares: fails when `docs/spec/generated/` is stale. |
+| `test_spec_compiles_cleanly()` | [360-374](../tests/test_spec.py#L360-L374) | `slow`: latexmk into a temporary folder; no errors, no undefined references or citations, no overfull box over 1 pt, no biber error. |
 
 #### `tests/capture.py`
 
@@ -785,6 +809,32 @@ computed from the outputs.
 | `_slide()` | [94-97](../scripts/results_slides.py#L94-L97) | Wraps a slide: signal tag numbered with the slide (Signal 01-20), the judging criterion it answers, brand and page number. |
 | `_img()` | [100-101](../scripts/results_slides.py#L100-L101) | A figure on a white card at a set height. |
 | `slides_html()` | [104-366](../scripts/results_slides.py#L104-L366) | The 20 slides: title with headline results; the problem (typhoons and disease, the cascade, access in an archipelago); design; data; data challenges; method; nine result slides (forecast skill and the models, calibrated surge risk, outbreak links, Sentinel-1 flood, access loss by two methods, the Ompong case, the storm catalogue, validation, leptospirosis); the demo; deployment in the loop; sources. No names or internal file names (anonymous judging). |
+
+### `scripts/make_spec.py`
+
+Writes the numbers and tables of the LaTeX technical specification (`docs/spec/`, see `docs/spec/GUIDE.md`) from the build
+outputs, compiles it with latexmk and copies the PDF to `docs/results/Bantay-Baha_Technical_Spec.pdf`. It reuses
+`make_results.load()` and `stats()`, so the spec quotes exactly the report's numbers, and the report's HTML row builders
+for its tables. `--no-pdf` writes `docs/spec/generated/` only.
+
+| Block | Lines | Explanation |
+|---|---|---|
+| Paths and thresholds | [37-48](../scripts/make_spec.py#L37-L48) | Output folders, the n/a marker, the macro-name rule (letters only), the storm suffixes, and the named thresholds behind the qualitative flags (middle reliability bins, the proposal's coverage band, "helps", "the same", "alike", "stable"). |
+| `f()`, `pct()`, `thou()`, `mil()`, `kilo()`, `rng()`, `lst()`, `ci()`, `date()` | [53-96](../scripts/make_spec.py#L53-L96) | Number formats in TeX: fixed decimals (NaN raises, so the value prints n/a; a minus sign is `$-$`), percentages, `{,}` thousands, millions, ranges with an en dash, "a, b and c", an IRR with its interval, a date. |
+| `TEX_ESC`, `UNICODE`, `esc()` | [99-111](../scripts/make_spec.py#L99-L111) | Escapes TeX specials and maps the few Unicode symbols the row builders use. |
+| `cell()`, `html_rows()` | [114-138](../scripts/make_spec.py#L114-L138) | Turn the HTML table rows of `make_results` (`eval_rows()`, `model_rows()`, ...) into LaTeX rows: tags dropped, bold kept, numeric ranges with en dashes, minus signs, a rule above a total row. |
+| `Macros` | [143-182](../scripts/make_spec.py#L143-L182) | The registry: `put()` adds a `\newcommand` (a missing output gives n/a and a warning, never a crash), `flag()` a `\newif` condition for a qualitative claim, `tex()` writes `numbers.tex` with each source as a comment. |
+| `defaults()` | [185-187](../scripts/make_spec.py#L185-L187) | A function's default argument values, so method settings (PCMCI+ lags and alpha, the cut-off rule, the gale fallback) are read from the code. |
+| `put_data()`, `put_methods()` | [190-243](../scripts/make_spec.py#L190-L243) | Data facts (files, units, weeks, census, hazard coverage, IBTrACS) and method settings (quantiles, horizons, refits, tiers, track shifts, leptospirosis lags). |
+| `put_forecast()`, `put_models()`, `put_calibration()` | [246-318](../scripts/make_spec.py#L246-L318) | Forecast skill by horizon and the ablations, the model comparison (ensemble, median WIS, the epidemic-week split, benchmark variants), the calibration (Brier, middle-bin gaps, ties). |
+| `put_graph()`, `put_flood()`, `put_access()` | [321-370](../scripts/make_spec.py#L321-L370) | Lead-lag graph size, Sentinel-1 against EMS, both access methods, the proxy tracks, sensitivity, vulnerable groups, the NCR benchmark. |
+| `put_priority()`, `put_catalog()`, `put_validation()`, `put_lepto()` | [373-439](../scripts/make_spec.py#L373-L439) | Per-storm tiers and top priority, the storm catalogue, the backtest correlations, the leptospirosis IRRs and event study. |
+| `put_status()`, `put_verdicts()` | [442-552](../scripts/make_spec.py#L442-L552) | The scorecard status words, and every qualitative claim as a flag (forecast beats the bar, best model on mean and median, ablations help, coverage inside the band, methods agree, ranking stable, leptospirosis effects significant, ...). |
+| `macros()` | [555-564](../scripts/make_spec.py#L555-L564) | Runs all of the above into one registry. |
+| `tables()` | [569-599](../scripts/make_spec.py#L569-L599) | Table bodies (`tab_*.tex`): sources, evaluation, models, calibration, links, Sentinel-1 per storm and per municipality, methods, storms, catalogue, backtest, sensitivity. |
+| `write()` | [602-613](../scripts/make_spec.py#L602-L613) | Writes `numbers.tex` and the tables and lists any n/a value. |
+| `compile_pdf()` | [616-629](../scripts/make_spec.py#L616-L629) | Runs latexmk in `docs/spec/` (reads its `latexmkrc`), copies `build/main.pdf` to `docs/results/`; warns and skips when latexmk is missing. |
+| `main()` and entry | [632-645](../scripts/make_spec.py#L632-L645) | Loads the outputs, computes `stats()`, writes, compiles unless `--no-pdf`. |
 
 ### `scripts/make_proposal.py`
 
@@ -972,6 +1022,7 @@ All build outputs under `data/` stay out of git (only `data/raw/MANIFEST.csv` an
 | `data/processed/lepto_summary.md`, `data/interim/lepto_city_chirps_week.parquet` | `lepto` stage | people; `lepto` (cache) |
 | `data/processed/sus/sus_responses.csv` | dashboard *Usability test* tab (`sus.save`) | dashboard, results |
 | `docs/results/*.pdf`, `docs/results/figures/f*.png`, `docs/results/src/*.html` | `make_results.py` | people |
+| `docs/spec/generated/numbers.tex`, `docs/spec/generated/tab_*.tex` (committed), `docs/spec/build/` (git-ignored), `docs/results/Bantay-Baha_Technical_Spec.pdf` | `make_spec.py` (latexmk) | the technical specification; people |
 | `docs/results/figures/dashboard.png`, `tests/artifacts/` | `tests/capture.py`, the tests | report and slides; people |
 | `docs/proposal/Bantay-Baha_Proposal_v3.pdf` | `make_proposal.py` | people |
 
