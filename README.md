@@ -52,8 +52,15 @@ run_app.bat               :: opens the dashboard in the browser
 python scripts\make_results.py   :: regenerates the report and slides in docs\results\
 python scripts\make_spec.py      :: regenerates the LaTeX technical specification (needs MiKTeX or TeX Live)
 python scripts\make_results.py --guide-only   :: only the two code-guide PDFs (needs no build outputs)
-python scripts\make_results.py --scripts-only :: only the two demo-script PDFs, video and technical (needs no build outputs)
+python scripts\make_results.py --scripts-only :: only the demo scripts (video, technical) and the slide notes (needs no build outputs)
+python scripts\make_submission.py   :: the submission zip in dist\ (code, launchers, documents, this machine's outputs)
 ```
+
+`make_submission.py` packs the git-tracked code, the launchers (`install.bat`, `run_app.bat`, `build.bat`,
+`download_data.bat`), `docs/results/*.pdf` and `data/processed/app/` into `dist/Bantay-Baha_Submission.zip`, with the
+user guide `docs/submission/README.md` as its `README.md` and a `requirements.txt` pinned to the installed versions. Run
+it on the machine with the current build (`--no-data` for code only). It refuses to package if any file names a
+contributor. `install.bat` (in the zip and here) only creates the environment and installs `requirements.txt`, no data.
 
 `build.bat` runs `scripts/build.py`. Inputs that are not on disk yet (Sentinel-1 flood masks, PSGC, NHFR, or anything still
 downloading) are skipped with a warning, their outputs are left empty and listed in `data/processed/status.json` and on the
@@ -176,6 +183,8 @@ scripts/download_gee.py     Earth Engine downloads (needs --project)
 setup.bat                   one-click team setup: venv, kernel, sign-in, pull data from the bucket
 scripts/sync_data.py        push/pull data/raw to/from the team's private Cloud Storage bucket
 download_data.bat           one-click setup + download for Windows
+install.bat                 environment + requirements only, no data (to open the dashboard on existing outputs)
+scripts/make_submission.py  the submission zip (dist/, git-ignored); its user guide is docs/submission/README.md
 scripts/build.py            one-command rebuild of everything the dashboard reads (build.bat)
 scripts/make_results.py     regenerates docs/results/ (evaluation report, 20-slide deck, demo scripts, code-guide PDFs)
 scripts/make_spec.py        regenerates docs/spec/generated/ and the technical specification PDF (latexmk)

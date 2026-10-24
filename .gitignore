@@ -36,3 +36,4 @@ docs/spec/**/*.synctex(busy)
 docs/spec/**/*.toc
 docs/spec/**/*.xdv
 docs/spec/main.pdf
+dist/

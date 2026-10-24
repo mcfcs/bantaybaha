@@ -827,11 +827,12 @@ computed from the outputs.
 | `GUIDE_CSS` | [1216-1243](../scripts/make_results.py#L1216-L1243) | Page style of the code-guide PDFs: A4 with page numbers in the margin, headings, code blocks, and the Block / Lines tables with a line-number column style. |
 | `LIBRARY_GUIDE_INTRO` | [1246-1257](../scripts/make_results.py#L1246-L1257) | Title, a short introduction and a `[TOC]` marker (the contents list) for the library and dashboard guide. |
 | `library_guide_md()` | [1260-1280](../scripts/make_results.py#L1260-L1280) | Cuts this guide down to the `bantay` library (section 4), the dashboard (section 6 without the tests subsection) and the glossary, renumbered 1-3; the data downloads, build, documents, benchmarks and notebook are left out. |
-| `code_guide_html()` | [1283-1298](../scripts/make_results.py#L1283-L1298) | Turns this guide (or the markdown it is given) into styled HTML: repo file links become plain text, the contents links stay, `[TOC]` becomes the contents list, and the Block / Lines tables get the line-number column style. |
-| `write_code_guides()` | [1301-1315](../scripts/make_results.py#L1301-L1315) | Writes both code guides, the full one (`Bantay-Baha_Code_Guide.pdf`) and the library and dashboard one (`Bantay-Baha_Code_Guide_Library_App.pdf`). Needs no build outputs. |
-| `OVERFLOW_JS`, `check_overflow()` | [1318-1360](../scripts/make_results.py#L1318-L1360) | Lays each page out in headless Chrome and lists any element that runs into the footer band or off the edge, so overflow is caught automatically. |
-| `main()` | [1363-1381](../scripts/make_results.py#L1363-L1381) | Loads, computes, draws, writes the HTML, checks the report and slides for overflow, prints the PDFs (report, slides, both code guides, both demo scripts). |
-| `write_demo_scripts()` and entry | [1384-1408](../scripts/make_results.py#L1384-L1408) | Writes every demo script in `DEMO_SCRIPTS` whose markdown exists (HTML in `src/`, then the PDF). `--no-pdf` skips printing; `--guide-only` writes only the two code guides and `--scripts-only` only the two demo scripts, neither loading any build output. |
+| `code_guide_html()` | [1283-1300](../scripts/make_results.py#L1283-L1300) | Turns this guide (or the markdown it is given) into styled HTML: repo file links become plain text, the contents links stay, `[TOC]` becomes the contents list, and the Block / Lines tables get the line-number column style. `footer` and `css` let the slide notes reuse it. |
+| `write_code_guides()` | [1303-1317](../scripts/make_results.py#L1303-L1317) | Writes both code guides, the full one (`Bantay-Baha_Code_Guide.pdf`) and the library and dashboard one (`Bantay-Baha_Code_Guide_Library_App.pdf`). Needs no build outputs. |
+| `OVERFLOW_JS`, `check_overflow()` | [1322-1364](../scripts/make_results.py#L1322-L1364) | Lays each page out in headless Chrome and lists any element that runs into the footer band or off the edge, so overflow is caught automatically. |
+| `main()` | [1365-1384](../scripts/make_results.py#L1365-L1384) | Loads, computes, draws, writes the HTML, checks the report and slides for overflow, prints the PDFs (report, slides, both code guides, both demo scripts, slide notes). |
+| `NOTES_CSS`, `slide_thumbnails()`, `write_slide_notes()` | [1387-1426](../scripts/make_results.py#L1387-L1426) | The slide notes (`Bantay-Baha_Slide_Notes.md` -> PDF): renders each page of the current slides PDF to a PNG thumbnail (pypdfium2), points the notes' `slide_NN.png` images at them (dropping any the deck lacks), one slide per page. |
+| `write_demo_scripts()` and entry | [1429-1455](../scripts/make_results.py#L1429-L1455) | Writes every demo script in `DEMO_SCRIPTS` whose markdown exists (HTML in `src/`, then the PDF). `--no-pdf` skips printing; `--guide-only` writes only the two code guides and `--scripts-only` only the demo scripts and slide notes, neither loading any build output. |
 
 ### `scripts/results_pages.py` (evaluation report, A4)
 
@@ -852,7 +853,7 @@ computed from the outputs.
 | `N` | [91](../scripts/results_slides.py#L91) | Slide count (checked at the end). |
 | `_slide()` | [94-97](../scripts/results_slides.py#L94-L97) | Wraps a slide: signal tag numbered with the slide (Signal 01-20), the judging criterion it answers, brand and page number. |
 | `_img()` | [100-101](../scripts/results_slides.py#L100-L101) | A figure on a white card at a set height. |
-| `slides_html()` | [104-367](../scripts/results_slides.py#L104-L367) | The 20 slides: title with headline results; the problem (typhoons and disease, the cascade, access in an archipelago); design; data; data challenges; method; nine result slides (forecast skill and the models, calibrated surge risk, outbreak links, Sentinel-1 flood, access loss by two methods, the Ompong case, the storm catalogue, validation, leptospirosis); the demo; deployment in the loop; sources. No names or internal file names (anonymous judging). |
+| `slides_html()` | [104-366](../scripts/results_slides.py#L104-L366) | The 20 slides: title with headline results; the problem (typhoons and disease, the cascade, access in an archipelago); design; data; data challenges; method; nine result slides (forecast skill and the models, calibrated surge risk, outbreak links, Sentinel-1 flood, access loss by two methods, the Ompong case, the storm catalogue, validation, leptospirosis); the demo; deployment in the loop; sources. No names or internal file names (anonymous judging). |
 
 ### `scripts/make_spec.py`
 
@@ -916,6 +917,24 @@ line links first (against `HEAD`, or a revision given after `--fix`). Three rule
 | `_git_old()` | [110-114](../scripts/check_code_guide.py#L110-L114) | Reads a file as it was at a git revision (default `HEAD`), the "old" side for `fix()`. |
 | `fix()` | [117-158](../scripts/check_code_guide.py#L117-L158) | `--fix`: re-syncs every link after code moved. Function rows take their range from the AST; a link to a whole file follows its new length; other ranges are mapped through `_line_map()` against `HEAD`. Run it before committing a code change, then re-read any row whose code changed meaning. |
 | entry | [159-163](../scripts/check_code_guide.py#L159-L163) | `--fix [REV]` re-syncs first; exit code 1 when problems remain. |
+
+---
+
+### `scripts/make_submission.py`
+
+Packs the submission into `dist/Bantay-Baha_Submission.zip`: the git-tracked code, launchers (`install.bat`,
+`run_app.bat`, `build.bat`, `download_data.bat`), documents and the build outputs the dashboard reads, with the user guide
+(`docs/submission/README.md`) as the zip's `README.md`. Run it on the machine with the current build. `--no-data` leaves
+the outputs out.
+
+| Block | Lines | Explanation |
+|---|---|---|
+| Paths and lists | [25-36](../scripts/make_submission.py#L25-L36) | Output zip, the user guide, the include and exclude patterns (the team-only bucket sync stays out), the build outputs, the requirements files and the text extensions scanned for names. |
+| `matches()`, `tracked_files()`, `code_files()`, `data_files()` | [39-54](../scripts/make_submission.py#L39-L54) | Pick the files: only what git tracks (no caches or unfinished work) that matches the include list, plus the outputs on disk. |
+| `requirement_names()` | [57-68](../scripts/make_submission.py#L57-L68) | Package names from the requirements files, without comments, `-r` includes, version specifiers or duplicates. |
+| `pinned_requirements()` | [71-82](../scripts/make_submission.py#L71-L82) | The zip's `requirements.txt`: every package pinned to the version installed in the running environment. |
+| `contributors()`, `identity_hits()` | [85-103](../scripts/make_submission.py#L85-L103) | Anonymous judging: the names and emails in the git history, and a search for them (whole words) or a user-folder path in a text. |
+| `build_zip()` and entry | [106-139](../scripts/make_submission.py#L106-L139) | Collects the files, refuses to package if any text names a contributor, writes the zip via a `.part` file and prints a summary. |
 
 ---
 

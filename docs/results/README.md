@@ -7,6 +7,7 @@
 | `Bantay-Baha_Slides.pdf` | 20-slide deck (16:9) for the PJDSC 2026 panel presentation; each slide is tagged with the judging criterion it answers |
 | `Bantay-Baha_Demo_Script.md` / `.pdf` | Demonstration-video script (2:50), with the on-screen numbers checked against the build; the markdown is the source, the PDF is generated from it |
 | `Bantay-Baha_Tech_Demo_Script.md` / `.pdf` | Technical demo script (2:50): a feature-by-feature tour of the dashboard (storm picker and catalogue, track shifts, map layers, Act first, Provinces columns and CSV, Municipalities, Outbreak graph, Forecast skill, Validation, Leptospirosis, Data & caveats, Usability test) with click-by-click cues; the markdown is the source |
+| `Bantay-Baha_Slide_Notes.md` / `.pdf` | Speaker notes for the deck: per slide a thumbnail, what it shows, how to say it, the numbers to remember and answers to likely panel questions; thumbnails are rendered from the current `Bantay-Baha_Slides.pdf`, so regenerate after the deck |
 | `Bantay-Baha_Code_Guide.pdf` | The full code guide (`docs/CODE_GUIDE.md`): every file and code block, from the downloads to the documents |
 | `Bantay-Baha_Code_Guide_Library_App.pdf` | The same guide cut to the `bantay` library and the `app/` dashboard (no data downloads, build, benchmarks, documents or tests), with its own contents and the glossary |
 | `figures/` | The figures, drawn from the pipeline outputs. `dashboard.png` is a screenshot of the running app (`run_app.bat`, Ompong, observed track), maintained with the dashboard |
@@ -21,8 +22,8 @@ python scripts\make_spec.py      :: the technical specification (needs MiKTeX or
 ```
 
 The two code-guide PDFs need no build outputs: `python scripts\make_results.py --guide-only` (run it after editing
-`docs/CODE_GUIDE.md`). The same holds for the two demo scripts: `python scripts\make_results.py --scripts-only` (run it
-after editing either `*_Demo_Script.md`).
+`docs/CODE_GUIDE.md`). The same holds for the two demo scripts and the slide notes: `python scripts\make_results.py --scripts-only` (run it
+after editing a `*_Demo_Script.md` or `Bantay-Baha_Slide_Notes.md`, or after a new slides PDF).
 
 `make_spec.py` writes `docs/spec/generated/` (number macros and table rows), compiles `docs/spec/main.tex` with latexmk
 and copies the PDF here. The spec's figures are this folder's `figures/`, so run `make_results.py` first.

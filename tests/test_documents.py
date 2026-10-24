@@ -158,6 +158,46 @@ def test_tech_demo_script_fits_and_matches_the_app():
     places = {"Pampanga"}  # a province picked in a selectbox: data, not code
     for cue in re.findall(r"\*\*(.+?)\*\*", " ".join(r[2] for r in rows)):
         assert cue in tabs or cue in app or cue in shifts or cue in places, f"no control or tab named '{cue}' in the app"
+    # "nothing is trained while you click ... the training is repeatable": the app never fits a model, XGBoost is seeded
+    assert "fit_at" not in app and "XGBRegressor" not in app and "import xgboost" not in app
+    fc = (ROOT / "bantay" / "forecast.py").read_text(encoding="utf-8")
+    assert "def fit_quantile_model(X, y, seed=0)" in fc and "random_state=seed" in fc
+
+
+NOTES = ROOT / "docs" / "results" / "Bantay-Baha_Slide_Notes.md"
+
+
+def test_slide_notes_use_thumbnails_that_exist_and_drop_the_rest(tmp_path, monkeypatch):
+    pdfium = pytest.importorskip("pypdfium2")
+    monkeypatch.setattr(M, "OUT", tmp_path)
+    monkeypatch.setattr(M, "SRC", tmp_path / "src")
+    deck = pdfium.PdfDocument.new()
+    deck.new_page(960, 540)  # a one-slide deck
+    deck.save(tmp_path / "Bantay-Baha_Slides.pdf")
+    deck.close()
+    (tmp_path / "Bantay-Baha_Slide_Notes.md").write_text(
+        "# Notes\n\n## 01 · One\n\n![slide 1](slide_01.png)\n\ntext\n\n## 02 · Two\n\n![slide 2](slide_02.png)\n", encoding="utf-8")
+    M.write_slide_notes(pdf=False)
+    html = (tmp_path / "src" / "slide_notes.html").read_text(encoding="utf-8")
+    assert (tmp_path / "src" / "slide_notes" / "slide_01.png").exists()
+    assert 'src="slide_notes/slide_01.png"' in html and "slide_02.png" not in html  # no broken image for slide 2
+    assert "Bantay-Baha / slide notes" in html and "Bantay-Baha / code guide" not in html
+
+
+@pytest.mark.skipif(not NOTES.exists(), reason="slide notes missing")
+def test_slide_notes_cover_every_slide_with_the_decks_numbers():
+    md = NOTES.read_text(encoding="utf-8")
+    heads = re.findall(r"^## (\d\d) · ", md, re.M)
+    assert heads == [f"{i:02d}" for i in range(1, 21)]
+    for i in range(1, 21):
+        assert f"](slide_{i:02d}.png)" in md, f"slide {i} has no thumbnail"
+    src = ROOT / "docs" / "results" / "src"
+    if not (src / "slides.html").exists():
+        pytest.skip("generated deck HTML missing")
+    known = "".join((src / f).read_text(encoding="utf-8") for f in ("slides.html", "report.html") if (src / f).exists())
+    known += (ROOT / "docs" / "results" / "Bantay-Baha_Demo_Script.md").read_text(encoding="utf-8")  # checked on screen
+    for n in set(re.findall(r"(?<![\d.])\d\.\d{2,3}(?!\d)", md)):
+        assert n in known, f"the notes quote {n}, which is in neither the deck, the report nor the demo script"
 
 
 def test_demo_slide_lists_every_dashboard_tab():

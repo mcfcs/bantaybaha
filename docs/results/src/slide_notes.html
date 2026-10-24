@@ -1,0 +1,341 @@
+<!doctype html><html><head><meta charset='utf-8'><title>Bantay-Baha slide notes</title><style>
+@font-face { font-family: "Big Shoulders Display"; src: url("fonts/BigShouldersDisplay-VF.ttf"); font-weight: 100 900; }
+@font-face { font-family: "Barlow"; src: url("fonts/Barlow-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Barlow"; src: url("fonts/Barlow-SemiBold.ttf"); font-weight: 600 700; }
+@font-face { font-family: "Barlow"; src: url("fonts/Barlow-Italic.ttf"); font-style: italic; }
+@font-face { font-family: "Space Mono"; src: url("fonts/SpaceMono-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Space Mono"; src: url("fonts/SpaceMono-Bold.ttf"); font-weight: 600 700; }
+:root { --ink: #0F1E28; --deep: #0B1720; --teal: #0A86B5; --teal-lt: #5FC3E4; --amber: #C77700; --signal: #F2A93B;
+        --red: #C8323F; --grey: #6B7A88; --rule: #DDE3E8; --paper: #FFFFFF; --mist: #F2F5F7; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Barlow", sans-serif; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.mono { font-family: "Space Mono", monospace; }
+table { border-collapse: collapse; width: 100%; }
+th { font-family: "Space Mono", monospace; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; text-align: left; }
+td, th { padding: 4px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+td.n, th.n { text-align: right; font-family: "Space Mono", monospace; }
+
+@page { size: A4; margin: 16mm 15mm 16mm 15mm;
+        @bottom-left { content: "Bantay-Baha / slide notes"; font-family: "Space Mono"; font-size: 7pt; color: #6B7A88; }
+        @bottom-right { content: counter(page) " / " counter(pages); font-family: "Space Mono"; font-size: 7pt; color: #6B7A88; } }
+body { font-size: 9.6pt; line-height: 1.42; }
+h1 { font-family: "Big Shoulders Display"; font-weight: 800; text-transform: uppercase; font-size: 34pt; line-height: .95; margin: 0 0 3mm;
+     border-bottom: 3px solid var(--signal); padding-bottom: 2mm; }
+h2 { font-family: "Big Shoulders Display"; font-weight: 800; text-transform: uppercase; font-size: 20pt; margin: 7mm 0 2mm; color: var(--ink);
+     break-after: avoid; }
+h3 { font-family: "Big Shoulders Display"; font-weight: 700; text-transform: uppercase; font-size: 14pt; margin: 5mm 0 1.5mm; color: var(--teal);
+     break-after: avoid; }
+h2 code, h3 code { font-family: inherit; font-size: inherit; background: none; padding: 0; text-transform: none; }
+p, li { margin: 0 0 2mm; }
+ul, ol { padding-left: 5mm; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 4mm 0; }
+code { font-family: "Space Mono"; font-size: 7.8pt; background: var(--mist); padding: 0 1mm; }
+pre { background: var(--deep); color: #DCE8EE; padding: 3mm 3mm; font-size: 6.6pt; line-height: 1.35; overflow: hidden; break-inside: avoid; }
+pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+table { font-size: 8.6pt; margin: 2mm 0 4mm; }
+th { font-size: 6.8pt; color: var(--grey); border-bottom: 1.5px solid var(--ink); }
+td { border-bottom: 1px solid var(--rule); vertical-align: top; padding: 1.6mm 2mm; }
+tr { break-inside: avoid; }
+table.blocks td:first-child { width: 26%; }
+table.blocks td:nth-child(2) { width: 9%; white-space: nowrap; font-family: "Space Mono"; font-size: 7.6pt; color: var(--amber); }
+table.files td:first-child { width: 22%; }
+a { color: inherit; text-decoration: none; }
+a.toc { color: var(--teal); }
+
+h2 { break-before: page; border-bottom: 2px solid var(--signal); padding-bottom: 1mm; }
+p img { display: block; width: 125mm; margin: 1mm auto 4mm; border: 1px solid var(--rule); }
+</style></head><body><h1 id="bantay-baha-slide-notes">Bantay-Baha slide notes</h1>
+<p>Speaker notes for the 20-slide deck: for every slide, what it shows, how to say it, the numbers to remember, and short
+answers to the questions a panel is likely to ask. The thumbnails are the slides as they were last generated. Every
+number here is the deck's own; keep the notes off screen and never read them aloud word for word.</p>
+<div class="toc">
+<ul>
+<li><a class="toc" href="#01-title-bantay-baha">01 · Title: Bantay-Baha</a></li>
+<li><a class="toc" href="#02-problem-statement-typhoons-bring-floods-floods-bring-disease">02 · Problem statement: typhoons bring floods, floods bring disease</a></li>
+<li><a class="toc" href="#03-the-cascade-the-response-arrives-after-the-surge">03 · The cascade: the response arrives after the surge</a></li>
+<li><a class="toc" href="#04-access-an-archipelago-makes-access-the-problem">04 · Access: an archipelago makes access the problem</a></li>
+<li><a class="toc" href="#05-design-three-graphs-one-ranking">05 · Design: three graphs, one ranking</a></li>
+<li><a class="toc" href="#06-data-501-open-files-22-sources">06 · Data: 501 open files, 22 sources</a></li>
+<li><a class="toc" href="#07-challenges-the-data-fought-back">07 · Challenges: the data fought back</a></li>
+<li><a class="toc" href="#08-method-honest-ranges-tested-like-real-time">08 · Method: honest ranges, tested like real time</a></li>
+<li><a class="toc" href="#09-result-1-beats-the-bar-by-46-an-ensemble-by-56">09 · Result 1: beats the bar by 46%; an ensemble by 56%</a></li>
+<li><a class="toc" href="#10-result-2-surge-risk-r-calibrated-on-the-past">10 · Result 2: surge risk R, calibrated on the past</a></li>
+<li><a class="toc" href="#11-result-3-how-outbreaks-travel-between-provinces">11 · Result 3: how outbreaks travel between provinces</a></li>
+<li><a class="toc" href="#12-result-4-flood-seen-from-space-town-by-town">12 · Result 4: flood seen from space, town by town</a></li>
+<li><a class="toc" href="#13-result-5-who-gets-cut-off-two-methods-four-typhoons">13 · Result 5: who gets cut off, two methods, four typhoons</a></li>
+<li><a class="toc" href="#14-result-6-ompong-2018-pampanga-first">14 · Result 6: Ompong 2018, Pampanga first</a></li>
+<li><a class="toc" href="#15-result-7-every-storm-2017-2020-not-just-four">15 · Result 7: every storm 2017-2020, not just four</a></li>
+<li><a class="toc" href="#16-result-8-it-points-at-the-right-places">16 · Result 8: it points at the right places</a></li>
+<li><a class="toc" href="#17-result-9-leptospirosis-rain-now-cases-in-a-month">17 · Result 9: leptospirosis, rain now, cases in a month</a></li>
+<li><a class="toc" href="#18-demo-what-a-health-officer-sees">18 · Demo: what a health officer sees</a></li>
+<li><a class="toc" href="#19-deployment-putting-it-in-the-loop">19 · Deployment: putting it in the loop</a></li>
+<li><a class="toc" href="#20-sources">20 · Sources</a></li>
+</ul>
+</div>
+<hr />
+<h2 id="01-title-bantay-baha">01 · Title: Bantay-Baha</h2>
+<p><img alt="slide 1" src="slide_notes/slide_01.png" /></p>
+<p><strong>What it shows.</strong> The one-sentence promise and three headline results: 46% lower forecast error than the seasonal
+baseline, 7 of the 10 top-ranked provinces surged after Typhoon Ompong, and up to 100 of 108 ferry routes closed by a
+single typhoon.</p>
+<p><strong>Say it like this.</strong> "Bantay-Baha is an early warning for flood-linked disease. For any typhoon track it tells a health
+office two things: which provinces will see a surge, and which of them will be cut off from a hospital."</p>
+<p><strong>Numbers to remember.</strong></p>
+<ul>
+<li>46% = relative weighted interval score 0.544 against "same week last year".</li>
+<li>7 / 10 = Ompong 2018, top-ranked by priority, surged in the next four weeks.</li>
+<li>100 of 108 = Typhoon Tisoy's gale swath crosses 100 of the 108 RoRo routes in the network.</li>
+</ul>
+<p><strong>If asked.</strong></p>
+<ul>
+<li><em>What does the name mean?</em> "Bantay" is to watch over; "baha" is flood.</li>
+</ul>
+<hr />
+<h2 id="02-problem-statement-typhoons-bring-floods-floods-bring-disease">02 · Problem statement: typhoons bring floods, floods bring disease</h2>
+<p><img alt="slide 2" src="slide_notes/slide_02.png" /></p>
+<p><strong>What it shows.</strong> Why this matters: 8-9 tropical cyclones cross the country every year; Ondoy (2009) was followed by
+2,089 leptospirosis cases and 162 deaths; 2019 brought a national dengue epidemic (146k cases January-July).</p>
+<p><strong>Say it like this.</strong> "Floodwater spreads leptospirosis within days, and standing water breeds dengue mosquitoes for
+weeks after. The same storm closes roads and grounds ferries, so the most exposed communities are often the ones that
+cannot reach care."</p>
+<p><strong>Numbers to remember.</strong> 8-9 cyclones a year (PAGASA); 2,089 cases and 162 deaths after Ondoy (Balbuena et al., 2010),
+five times the national leptospirosis deaths of 2008; 146k dengue cases January-July 2019.</p>
+<p><strong>If asked.</strong></p>
+<ul>
+<li><em>Why dengue and not only leptospirosis?</em> Dengue has weekly province-level open data for every province; leptospirosis
+  has open city-level data for 12 cities only, so it is analysed separately (slide 17).</li>
+</ul>
+<hr />
+<h2 id="03-the-cascade-the-response-arrives-after-the-surge">03 · The cascade: the response arrives after the surge</h2>
+<p><img alt="slide 3" src="slide_notes/slide_03.png" /></p>
+<p><strong>What it shows.</strong> The sequence after landfall: day 0 winds and closed ferries, days 1-7 river flooding, weeks 1-2
+leptospirosis, weeks 2-8 dengue; today's response starts only after cases rise. Below: what already exists and what is
+missing.</p>
+<p><strong>Say it like this.</strong> "Each step is predictable from data that already exist, yet the response starts at the last one.
+Dengue forecasts exist, access studies exist, outbreak waves are known; nobody joins them for a specific storm."</p>
+<p><strong>Numbers to remember.</strong> Leptospirosis risk peaks about two weeks after heavy rain (Matsushita et al., 2018).</p>
+<p><strong>If asked.</strong></p>
+<ul>
+<li><em>What is new compared with the existing work?</em> The join: a storm-specific disease forecast times storm-specific loss
+  of access, with ferries, nationwide. Buczak et al. (2014) forecast dengue without storms or ranges; Tariverdi et al.
+  (2023) measured access for Metro Manila only, without health forecasts or ferries.</li>
+</ul>
+<hr />
+<h2 id="04-access-an-archipelago-makes-access-the-problem">04 · Access: an archipelago makes access the problem</h2>
+<p><img alt="slide 4" src="slide_notes/slide_04.png" /></p>
+<p><strong>What it shows.</strong> Why access is the second half of the problem: island provinces depend on RoRo ferries that stop in a
+gale; roads to hospitals run through floodplains; the only published measurement is one city.</p>
+<p><strong>Say it like this.</strong> "A 15-centimetre flood leaves about 22% of Metro Manila without access to higher-level care.
+Nobody has measured that nationwide, or with ferries. So our guiding question is: can flood exposure, outbreak spread
+and a storm-disrupted transport network, with calibrated forecasts, rank the provinces that need help first, early
+enough to act?"</p>
+<p><strong>Numbers to remember.</strong> ~22% of Metro Manila cut off at 15 cm (Tariverdi et al., 2023).</p>
+<hr />
+<h2 id="05-design-three-graphs-one-ranking">05 · Design: three graphs, one ranking</h2>
+<p><img alt="slide 5" src="slide_notes/slide_05.png" /></p>
+<p><strong>What it shows.</strong> The architecture. (1) Flood exposure: Sentinel-1 observed flood, CHIRPS and IMERG rain, rain routed
+down rivers, UP NOAH hazard maps, gale swaths. (2) Lead-lag graph: which provinces rise first, fed into the forecast.
+The quantile forecast gives R, the surge risk. (3) Access graph: roads, ferries, hospitals, plus a friction raster as a
+second method, gives A, the access loss. Priority P = R x A.</p>
+<p><strong>Say it like this.</strong> "Two halves, each validated on its own. Risk comes from a forecast that reads flood, rain, storms
+and leader provinces. Access comes from a transport network the storm cuts. Multiply them, and the provinces at the top
+are the ones that are both likely to surge and hard to reach."</p>
+<p><strong>If asked.</strong></p>
+<ul>
+<li><em>Why multiply instead of add?</em> A province only needs outside help first when both are high: a surge you can reach is
+  handled locally; an isolated province with no surge needs no outbreak response.</li>
+<li><em>Is P a probability?</em> No, it is a ranking score; R is the calibrated probability, A a share of people.</li>
+</ul>
+<hr />
+<h2 id="06-data-501-open-files-22-sources">06 · Data: 501 open files, 22 sources</h2>
+<p><img alt="slide 6" src="slide_notes/slide_06.png" /></p>
+<p><strong>What it shows.</strong> Every source by layer: disease, people and places, rain and rivers, storms and flood, getting to care.
+The scale: 22,270 province-weeks, 2,199 hospitals, 108 ferry routes, 369k one-kilometre population cells covering 109 M
+people.</p>
+<p><strong>Say it like this.</strong> "Everything is open data, downloaded by script with a checksum, so anyone can rebuild it. Only
+aggregated, non-identifiable health data are used."</p>
+<p><strong>Numbers to remember.</strong> 22,270 = 85 provinces x 262 weeks (2016-2021). 369k cells, 109 M people (WorldPop 2020).</p>
+<p><strong>If asked.</strong></p>
+<ul>
+<li><em>Why 85 provinces, not 81?</em> The DOH file reports 126 units, provinces mixed with cities, on 2016-2020 boundaries; we
+  harmonised them to 85 consistent units (Metro Manila districts and merged areas included).</li>
+<li><em>Which hospitals?</em> OpenStreetMap and UP NOAH facilities; the DOH facility registry can be added by dropping its export
+  in, with no code change.</li>
+</ul>
+<hr />
+<h2 id="07-challenges-the-data-fought-back">07 · Challenges: the data fought back</h2>
+<p><img alt="slide 7" src="slide_notes/slide_07.png" /></p>
+<p><strong>What it shows.</strong> Eight problems and what we did about each: messy reporting units, the 2020 COVID collapse, missing
+hazard maps, radar flood that disagreed at first, over-confident causal discovery, under-confident surge probability,
+and two access methods that disagree.</p>
+<p><strong>Say it like this.</strong> Pick two: "2020 dengue reporting collapsed under COVID, 91k cases against 442k in 2019, so 2020 is
+never a forecast target. And where a flood-hazard map is missing we carry it as missing, never as zero hazard: not
+knowing is not the same as safe."</p>
+<p><strong>Numbers to remember.</strong> 126 reporting units -&gt; 85 provinces; 91k vs 442k cases (2020 vs 2019); hazard maps missing for
+11 provinces.</p>
+<hr />
+<h2 id="08-method-honest-ranges-tested-like-real-time">08 · Method: honest ranges, tested like real time</h2>
+<p><img alt="slide 8" src="slide_notes/slide_08.png" /></p>
+<p><strong>What it shows.</strong> The model (one pooled XGBoost per horizon, 1-4 weeks ahead, 23 quantiles; a direct 4-week model for
+the surge risk R) and the evaluation (rolling origin over 2018-2019, refit every 13 weeks on past data only, scored with
+the weighted interval score against "same week last year" and three benchmark models).</p>
+<p><strong>Say it like this.</strong> "We never use a random split. Every 13 weeks we retrain on the past only and forecast the next
+block, exactly as it would run live. The lead-lag graph, the surge thresholds and the calibration are re-learned inside
+each window, so nothing leaks from the future."</p>
+<p><strong>Numbers to remember.</strong> 23 quantiles (the CDC FluSight standard); 34,050 out-of-sample forecasts; 85 provinces x 4
+horizons over 2018-2019.</p>
+<p><strong>If asked.</strong></p>
+<ul>
+<li><em>Why XGBoost?</em> It handles mixed features and missing values, gives all 23 quantiles from one model,
+  and SHAP explains each prediction, which a health officer needs.</li>
+<li><em>What is WIS?</em> A score for a forecast range: it rewards narrow ranges that still contain what happened, and it is the
+  standard for epidemic forecast hubs (Bracher et al., 2021).</li>
+</ul>
+<hr />
+<h2 id="09-result-1-beats-the-bar-by-46-an-ensemble-by-56">09 · Result 1: beats the bar by 46%; an ensemble by 56%</h2>
+<p><img alt="slide 9" src="slide_notes/slide_09.png" /></p>
+<p><strong>What it shows.</strong> Every model on the same 34,050 forecasts. Relative WIS (lower is better, seasonal naive = 1): median
+ensemble 0.444, Chronos-2 0.494, MPNN-LSTM 0.495, TabPFN-TS 0.504, XGBoost 0.544. XGBoost has the best median WIS
+(6.23) and 85% of outcomes inside its 90% range.</p>
+<p><strong>Say it like this.</strong> "Our model cuts the error of the seasonal baseline by 46%. Blending it with three foundation and
+graph models cuts it by 56%: the benchmarks are better on epidemic peaks. On a typical province-week, XGBoost is the
+best. The storm scenarios use XGBoost because it is the only model that reads the storm track."</p>
+<p><strong>Numbers to remember.</strong> 0.544 (ours), 0.444 (ensemble), 1.000 (naive); median WIS 6.23 vs 6.54-6.83; 90% coverage 85%
+(target 80-95%).</p>
+<p><strong>If asked.</strong></p>
+<ul>
+<li><em>Does the lead-lag graph improve the forecast?</em> Not on average: XGBoost with and without the graph both score 0.544.
+  The graph is sparse (8 links) because we kept only links that survive false-discovery control. Its value is the
+  sentinel list, which provinces to watch first, and it costs no accuracy.</li>
+<li><em>Do rain and flood features help?</em> Not on average skill either (0.542 without them). They matter for the storm
+  scenarios: without them the forecast could not respond to a track.</li>
+<li><em>Why not use the ensemble for scenarios?</em> A what-if track works by rewriting the storm features of the forecast in the
+  landfall week and predicting again; that is wired up for XGBoost only. The benchmarks were run as forecasts on the
+  evaluation weeks (some with rain and storm covariates), not as scenario engines. Plugging the ensemble into the
+  scenarios is a next step.</li>
+</ul>
+<hr />
+<h2 id="10-result-2-surge-risk-r-calibrated-on-the-past">10 · Result 2: surge risk R, calibrated on the past</h2>
+<p><img alt="slide 10" src="slide_notes/slide_10.png" /></p>
+<p><strong>What it shows.</strong> How trustworthy the probability R is. Brier score 0.089 for the model's R, 0.082 after recalibration,
+against 0.216 for always predicting the base rate. When R is above 0.7, 91% of province-weeks really surged.</p>
+<p><strong>Say it like this.</strong> "When we say 80%, it should happen about 80% of the time. The raw model was too cautious in the
+middle range, so we recalibrate it with an isotonic map fitted only on past forecasts whose outcome was already known."</p>
+<p><strong>Numbers to remember.</strong> Brier 0.089 -&gt; 0.082 (0.216 base rate); above 0.7: 91% surged; base rate 32% of province-weeks
+(2019 epidemic).</p>
+<p><strong>If asked.</strong></p>
+<ul>
+<li><em>What counts as a surge?</em> The next 4 weeks' incidence above that province's own 90th percentile of 4-week incidence in
+  the training data: "worse than its usual bad month".</li>
+</ul>
+<hr />
+<h2 id="11-result-3-how-outbreaks-travel-between-provinces">11 · Result 3: how outbreaks travel between provinces</h2>
+<p><img alt="slide 11" src="slide_notes/slide_11.png" /></p>
+<p><strong>What it shows.</strong> The lead-lag graph learned with PCMCI+: 8 links survive false-discovery control where plain
+correlation would draw 4,265. The table lists leader, follower, lead time and bootstrap confidence.</p>
+<p><strong>Say it like this.</strong> "Most provinces rise together in the rainy season; that is not spread. PCMCI+ removes that shared
+signal and keeps only 'A rises, then B'. Eight links survive; the leaders become sentinel sites on the dashboard."</p>
+<p><strong>Numbers to remember.</strong> 8 links vs 4,265; lags of 1-3 weeks; bootstrap 65-85%.</p>
+<p><strong>If asked.</strong></p>
+<ul>
+<li><em>Is this transmission?</em> No: a statistical lead, not proof of transmission. We say so on the dashboard and treat it as
+  a weak signal.</li>
+</ul>
+<hr />
+<h2 id="12-result-4-flood-seen-from-space-town-by-town">12 · Result 4: flood seen from space, town by town</h2>
+<p><img alt="slide 12" src="slide_notes/slide_12.png" /></p>
+<p><strong>What it shows.</strong> Sentinel-1 radar flood (before/after change detection) per typhoon: people in new floodwater,
+municipalities more than 1% flooded, and the town with most people flooded. Checked against Copernicus EMS maps for
+Ompong.</p>
+<p><strong>Say it like this.</strong> "Radar sees through clouds. For Ulysses, 1.4 million people were in new floodwater, with
+Tuguegarao the worst. Against expert maps it is right 55% of the time inside the mapped areas and finds 24% of the
+flooded area, because one pass every 6-12 days misses short floods. So we treat it as a lower bound."</p>
+<p><strong>Numbers to remember.</strong> Ompong 0.5 M, Tisoy 1.1 M, Rolly 0.6 M, Ulysses 1.4 M people; precision 55%, recall 24%.</p>
+<hr />
+<h2 id="13-result-5-who-gets-cut-off-two-methods-four-typhoons">13 · Result 5: who gets cut off, two methods, four typhoons</h2>
+<p><img alt="slide 13" src="slide_notes/slide_13.png" /></p>
+<p><strong>What it shows.</strong> Per typhoon: ferry routes cancelled, people cut off by the road network and by the friction raster,
+and children under 5 and people over 60 cut off.</p>
+<p><strong>Say it like this.</strong> "The two methods agree on a normal day, rank correlation 0.95 across provinces, but not on the
+size of a storm's cut. We show both as a range instead of hiding the disagreement in one number. Ulysses cut off one to
+1.6 million people."</p>
+<p><strong>Numbers to remember.</strong> Tisoy: 100 ferries cancelled. Ulysses: 1.0 M (network) to 1.6 M (raster), 96k under-5, 63k aged
+60+. Shifted tracks with hazard maps: 2.3 M-11.3 M, an upper bound.</p>
+<p><strong>If asked.</strong></p>
+<ul>
+<li><em>Why do the methods differ?</em> They model travel differently: the network follows real roads and ferry routes and cuts
+  only the flooded road segments; the raster is a travel-time surface on a grid, where flood slows all movement through
+  a cell. Neither is ground truth, so the gap between them is our uncertainty.</li>
+<li><em>Why is the 60+ number low?</em> The population map under-counts older people (6.7% vs 8.5% in the census).</li>
+</ul>
+<hr />
+<h2 id="14-result-6-ompong-2018-pampanga-first">14 · Result 6: Ompong 2018, Pampanga first</h2>
+<p><img alt="slide 14" src="slide_notes/slide_14.png" /></p>
+<p><strong>What it shows.</strong> The backtest map for Ompong with data up to its landfall week only: priority by province, the track
+and swath; 22 provinces flagged to pre-position supplies; 7 of the top 10 really surged.</p>
+<p><strong>Say it like this.</strong> "This is what the tool would have said in Ompong's landfall week. Pampanga comes first: likely to
+surge and with people cut off. In the next four weeks, seven of the ten provinces we ranked highest really surged."</p>
+<p><strong>Numbers to remember.</strong> 22 provinces pre-position; 7 / 10 surged; Pampanga R 0.83 (calibrated).</p>
+<hr />
+<h2 id="15-result-7-every-storm-2017-2020-not-just-four">15 · Result 7: every storm 2017-2020, not just four</h2>
+<p><img alt="slide 15" src="slide_notes/slide_15.png" /></p>
+<p><strong>What it shows.</strong> The storm catalogue: 42 storms scored, each with a model trained only up to its own week; the largest
+access loss (Kalmaegi 2019, 7.6 M with hazard-map flood, an upper bound) and the highest mean surge risk (Bailu 2019).</p>
+<p><strong>Say it like this.</strong> "It is not tuned to four storms. Every storm that reached land from 2017 to 2020 runs through the
+same pipeline, with a model that knows only what was known at the time."</p>
+<p><strong>Numbers to remember.</strong> 42 storms (4 backtests + 38 more); 7.6 M (Kalmaegi, upper bound); R 0.81 (Bailu, 2019 epidemic).</p>
+<hr />
+<h2 id="16-result-8-it-points-at-the-right-places">16 · Result 8: it points at the right places</h2>
+<p><img alt="slide 16" src="slide_notes/slide_16.png" /></p>
+<p><strong>What it shows.</strong> Validation: R's ranking against the next four weeks' incidence (rank correlation 0.68 for Ompong,
+0.73 for Tisoy); 7 of 10 vs a 40% base rate; stability under nine changes to the access settings (Kendall's tau &gt;= 0.99);
+Metro Manila benchmark 30% vs about 22% published.</p>
+<p><strong>Say it like this.</strong> "Three checks. The ranking matches what happened. It does not change when we change travel
+speeds, ferry rules or the storm radius. And our Metro Manila cut-off is the same order as the published study."</p>
+<p><strong>Numbers to remember.</strong> rho 0.68 / 0.73; 7 of 10 vs 40%; tau &gt;= 0.99 over nine variants; 30% vs ~22%.</p>
+<p><strong>If asked.</strong></p>
+<ul>
+<li><em>Why not Rolly and Ulysses?</em> They hit in November 2020, when COVID had collapsed dengue reporting; we show them as
+  indicative only.</li>
+<li><em>Why is your Metro Manila number higher?</em> We cut every road in a medium or high 25-year hazard zone, a larger flood
+  than their 15 cm; same order of magnitude is the check.</li>
+</ul>
+<hr />
+<h2 id="17-result-9-leptospirosis-rain-now-cases-in-a-month">17 · Result 9: leptospirosis, rain now, cases in a month</h2>
+<p><img alt="slide 17" src="slide_notes/slide_17.png" /></p>
+<p><strong>What it shows.</strong> Leptospirosis in 12 cities (Project CCHAIN): 1.40 times the cases 4 weeks after an extra 50 mm of
+weekly rain; after Rolly and Ulysses, cities in the gale swath had 4.3 times the expected cases.</p>
+<p><strong>Say it like this.</strong> "Using open city-level data from Project CCHAIN, the signal is clear: rain now, cases in about a
+month. It is not yet in the ranking because it covers only 12 cities."</p>
+<p><strong>Numbers to remember.</strong> 1.40x (95% CI 1.29-1.52) at 4 weeks per +50 mm; 4.3x after Rolly and Ulysses; none after Ompong
+or Tisoy.</p>
+<hr />
+<h2 id="18-demo-what-a-health-officer-sees">18 · Demo: what a health officer sees</h2>
+<p><img alt="slide 18" src="slide_notes/slide_18.png" /></p>
+<p><strong>What it shows.</strong> The dashboard: pick a typhoon or shift its track, the action map, risk vs access, the ranked
+provinces with expected cases and people cut off, and the other tabs; 98 scenarios pre-computed.</p>
+<p><strong>Say it like this.</strong> "Here is the tool itself." Then play the demonstration video, or switch to the live dashboard and
+follow the demo script.</p>
+<p><strong>Numbers to remember.</strong> 98 scenarios = 4 typhoons x 15 tracks + 38 catalogue storms.</p>
+<hr />
+<h2 id="19-deployment-putting-it-in-the-loop">19 · Deployment: putting it in the loop</h2>
+<p><img alt="slide 19" src="slide_notes/slide_19.png" /></p>
+<p><strong>What it shows.</strong> How it would run for real: a PAGASA bulletin goes in (forecast track and shifted tracks), a ranked
+list with action tiers goes to DOH regional offices, provincial health offices and DRRMOs 48-72 h before landfall;
+Sentinel-1 updates it after landfall; each PIDSR report recalibrates it.</p>
+<p><strong>Say it like this.</strong> "The output is an action, not a chart: monitor sentinel sites, pre-position doxycycline and
+vector control, or send mobile clinics before the roads and ferries close. And it learns every week."</p>
+<p><strong>Numbers to remember.</strong> 1,641 municipalities; 98 scenarios; one command rebuilds everything when new data arrive.</p>
+<p><strong>If asked.</strong></p>
+<ul>
+<li><em>Could it run for a storm today?</em> With surveillance data for the weeks before it, yes: the model is retrained from
+  scratch on new data. The open dengue dataset stops in January 2021, so a current storm needs DOH's newer weekly data.</li>
+<li><em>Who would run it?</em> A regional epidemiology unit, or DOH's surveillance team, as part of the pre-landfall briefing.</li>
+</ul>
+<hr />
+<h2 id="20-sources">20 · Sources</h2>
+<p><img alt="slide 20" src="slide_notes/slide_20.png" /></p>
+<p><strong>What it shows.</strong> The references in APA 7th edition: methods (PCMCI+, XGBoost, WIS, isotonic calibration, Chronos-2,
+TabPFN-TS, MPNN-LSTM) and data (DOH, PSA, COD-AB, CHIRPS, IMERG, IBTrACS, HydroRIVERS, WorldPop, OpenStreetMap,
+Copernicus EMS, UN-SPIDER).</p>
+<p><strong>Say it like this.</strong> Do not read it. "Our sources are on the last slide; everything is open data and open methods."</p></body></html>

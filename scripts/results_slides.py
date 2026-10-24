@@ -326,8 +326,7 @@ with calibrated forecasts, rank the provinces that need help first, early enough
         S.append(_slide(17, "Signal 06 / Result 9", "Technical rigor: analytical depth", f"""<h1>Leptospirosis: rain now, <em>cases in a month</em></h1>
 <div class='g64' style='grid-template-columns:1.2fr 1fr'>{_img(F['lepto'], 3.6)}
 <div><div class='stat'><div class='num' style='font-size:44pt'>{c['peak'].irr:.2f}&times;</div><p>leptospirosis cases {int(c['peak'].lag)} weeks after an extra 50 mm of weekly rain, in {L.get('n_cities', 12)} cities ({c['peak'].ci_lo:.2f}-{c['peak'].ci_hi:.2f})</p></div>
-<ul style='margin-top:.15in'><li style='font-size:13pt'>An open city-level series exists (Project CCHAIN): the proposal had assumed none</li>
-<li style='font-size:13pt'>Nationally the same pattern, but mostly from 2020</li>
+<ul style='margin-top:.15in'><li style='font-size:13pt'>Nationally the same pattern, but mostly from 2020</li>
 {f"<li style='font-size:13pt'>After Rolly and Ulysses, cities in the gale swath had {ru.irr:.1f}&times; the expected cases; not after Ompong or Tisoy</li>" if ru is not None else ""}
 <li style='font-size:13pt'>An association in 12 cities: not extrapolated to provinces, not yet in the ranking</li></ul></div></div>"""))
     else:

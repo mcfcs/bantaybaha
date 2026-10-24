@@ -1280,9 +1280,10 @@ def library_guide_md(md):
     return LIBRARY_GUIDE_INTRO + body + "\n"
 
 
-def code_guide_html(md=None, title="Bantay-Baha code guide"):
+def code_guide_html(md=None, title="Bantay-Baha code guide", footer="code guide", css=""):
     """docs/CODE_GUIDE.md (or the given markdown) -> styled HTML. File links become plain text (they point into the
-    repo, which a PDF can't open); the contents links stay as in-document links. A `[TOC]` line becomes the contents."""
+    repo, which a PDF can't open); the contents links stay as in-document links. A `[TOC]` line becomes the contents.
+    `footer` is the page-footer label, `css` extra rules (the slide notes use both)."""
     import re
 
     import markdown
@@ -1295,7 +1296,8 @@ def code_guide_html(md=None, title="Bantay-Baha code guide"):
     body = re.sub(r"<table>(\s*<thead>\s*<tr>\s*<th>[^<]*</th>\s*<th>Lines</th>)", r"<table class='blocks'>\1", body)
     body = body.replace("<table>", "<table class='files'>")
     return (f"<!doctype html><html><head><meta charset='utf-8'><title>{title}</title>"
-            f"<style>{FONT_CSS}{GUIDE_CSS}</style></head><body>{body}</body></html>")
+            f"<style>{FONT_CSS}{GUIDE_CSS.replace('Bantay-Baha / code guide', f'Bantay-Baha / {footer}')}{css}</style>"
+            f"</head><body>{body}</body></html>")
 
 
 def write_code_guides(pdf=True):
@@ -1379,6 +1381,49 @@ def main(pdf=True):
         to_pdf(slides, OUT / "Bantay-Baha_Slides.pdf")
     write_code_guides(pdf)
     write_demo_scripts(pdf)
+    write_slide_notes(pdf)
+
+
+NOTES_CSS = """
+h2 { break-before: page; border-bottom: 2px solid var(--signal); padding-bottom: 1mm; }
+p img { display: block; width: 125mm; margin: 1mm auto 4mm; border: 1px solid var(--rule); }
+"""
+
+
+def slide_thumbnails(slides_pdf, dest, width=1000):
+    """One PNG per slide of the deck PDF (slide_01.png ...) for the slide notes; [] if the deck is not there."""
+    if not Path(slides_pdf).exists():
+        return []
+    import pypdfium2 as pdfium
+
+    dest.mkdir(parents=True, exist_ok=True)
+    doc, out = pdfium.PdfDocument(str(slides_pdf)), []
+    for i in range(len(doc)):
+        page = doc[i]
+        p = dest / f"slide_{i + 1:02d}.png"
+        page.render(scale=width / page.get_width()).to_pil().save(p, optimize=True)
+        out.append(p)
+    doc.close()
+    return out
+
+
+def write_slide_notes(pdf=True):
+    """docs/results/Bantay-Baha_Slide_Notes.md -> PDF, with a thumbnail of each slide rendered from the current
+    Bantay-Baha_Slides.pdf (so regenerate after the deck). Needs no build outputs."""
+    import re
+
+    md_path = OUT / "Bantay-Baha_Slide_Notes.md"
+    if not md_path.exists():
+        return
+    folder = SRC / "slide_notes"
+    shots = {p.name for p in slide_thumbnails(OUT / "Bantay-Baha_Slides.pdf", folder)}
+    md = md_path.read_text(encoding="utf-8")
+    md = re.sub(r"!\[([^\]]*)\]\((slide_\d+\.png)\)",
+                lambda m: f"![{m[1]}](slide_notes/{m[2]})" if m[2] in shots else "", md)
+    page = SRC / "slide_notes.html"
+    page.write_text(code_guide_html(md, "Bantay-Baha slide notes", footer="slide notes", css=NOTES_CSS), encoding="utf-8")
+    if pdf:
+        to_pdf(page, OUT / "Bantay-Baha_Slide_Notes.pdf")
 
 
 def write_demo_scripts(pdf=True):
@@ -1398,11 +1443,13 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-pdf", action="store_true")
     ap.add_argument("--guide-only", action="store_true", help="only the two code-guide PDFs (no build outputs needed)")
-    ap.add_argument("--scripts-only", action="store_true", help="only the demo-script PDFs (no build outputs needed)")
+    ap.add_argument("--scripts-only", action="store_true",
+                    help="only the demo-script and slide-notes PDFs (no build outputs needed)")
     a = ap.parse_args()
     if a.guide_only:
         write_code_guides(pdf=not a.no_pdf)
     elif a.scripts_only:
         write_demo_scripts(pdf=not a.no_pdf)
+        write_slide_notes(pdf=not a.no_pdf)
     else:
         main(pdf=not a.no_pdf)
