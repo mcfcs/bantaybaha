@@ -5,10 +5,10 @@
 \subsection{Threats to validity}
 
 \begin{itemize}
-\item \textbf{Two evaluation years.} 2018--2019 contains one epidemic; the model ranking changes between mean and median WIS because of it.
+\item \textbf{Two evaluation years.} 2018--2019 contains one epidemic\ifMeanMedianDiffer; the best model changes between mean and median WIS because of it\else, which weighs heavily on the mean WIS\fi.
 \item \textbf{Surveillance artefacts.} Reporting delays and under-reporting are in the target; the forecasts predict reported, not true, cases.
 \item \textbf{Observed flood.} Sentinel-1 sees each place every 6 to 12 days and misses flooding under dense vegetation and in built-up areas; the shifted tracks and the catalogue fall back to static hazard maps.
-\item \textbf{Network gaps.} OSM completeness is uneven outside Luzon (the raster method bounds this); the ferries are 2024--2026 routes; the hospitals are an OSM and NOAH fallback without facility level or capacity. HRSL under-counts older people.
+\item \textbf{Network gaps.} OSM completeness is uneven outside Luzon (the raster method bounds this); the ferries are 2024--2026 routes; the hospitals are an OSM and NOAH fallback without facility level or capacity.\ifHRSLUnderOld{} HRSL under-counts older people.\fi
 \item \textbf{Provisional rules.} The tier thresholds, road speeds and the cut-off rule are assumptions, partly addressed by the sensitivity analysis.
 \item \textbf{Causality.} The PCMCI+ links and the leptospirosis lags are associations, not transmission routes or causal effects.
 \end{itemize}

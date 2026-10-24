@@ -4,7 +4,7 @@
 
 \subsection{Did high-priority provinces see more cases?}
 
-For each typhoon, the ranking made at the landfall week is compared with the incidence each unit saw over the next four weeks, relative to its own threshold (Table~\ref{tab:valid}, Figure~\ref{fig:valid}). $R$ ranks provinces well for both 2018--2019 storms. $P$ correlates less with cases, as it should: $A$ measures access, not disease. After Ompong, \topTenSurgedOmpong{} of the ten highest-priority provinces surged against a \surgeRateOmpong{} base rate. After Tisoy almost nothing surged (the 2019 season was over), so the top-ten rate is zero and the Brier score is low for the right reason.
+For each typhoon, the ranking made at the landfall week is compared with the incidence each unit saw over the next four weeks, relative to its own threshold (Table~\ref{tab:valid}, Figure~\ref{fig:valid}). The Spearman correlation of $R$ is \rhoROmpong{} for Ompong and \rhoRTisoy{} for Tisoy\ifRRanksWell: $R$ ranks provinces well for both 2018--2019 storms\fi. \ifPLessThanR $P$ correlates less with cases, as it should: $A$ measures access, not disease. \fi After Ompong, \topTenSurgedOmpong{} of the ten highest-priority provinces surged against a \surgeRateOmpong{} base rate. After Tisoy \surgeRateTisoy{} of units surged (the 2019 season was ending) and \topTenSurgedTisoy{} of the top ten, so a low Brier score there says little about the ranking.
 
 \begin{table}[htbp]
 \centering
@@ -29,7 +29,7 @@ typhoon & origin & units & surged & $\rho(R, \text{obs})$ & $\rho(P, \text{obs})
 
 \subsection{Sensitivity}
 
-Table~\ref{tab:sens} gives Kendall's $\tau$ between the base ranking by $P$ (network method) and the ranking under each changed setting. Every variant changes $A$ a little but none reorders the ranking: the spread of $P$ is dominated by $R$. The same variants on the raster method give $\tau \geq \tauMinRaster$. The gale fallback never triggers for these storms.
+Table~\ref{tab:sens} gives Kendall's $\tau$ between the base ranking by $P$ (network method) and the ranking under each changed setting. The smallest $\tau$ is \tauMin{}\ifSensStable: the variants change $A$ a little but none reorders the ranking, because the spread of $P$ is dominated by $R$\fi. The same variants on the raster method give $\tau \geq \tauMinRaster$.\ifGaleNoEffect{} The gale-radius variants change nothing: the fixed fallback radius never applies to these storms.\fi
 
 \begin{table}[htbp]
 \centering

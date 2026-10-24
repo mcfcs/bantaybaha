@@ -41,6 +41,11 @@ NA = r"\textit{n/a}"
 NAME = re.compile(r"^[A-Za-z]+$")
 STORM_MACRO = {k: s["local"] for k, s in STORMS.items()}  # ompong -> Ompong, used as a macro suffix
 GAP_BINS = (0.1, 0.7)  # "middle" reliability bins of R, as in the evaluation report's calibration page
+COV_TARGET = (0.80, 0.95)  # the proposal's target band for 90% interval coverage
+HELPS = 0.98  # a feature group "helps" when it lowers WIS by more than 2% (relative WIS with / without below this)
+SAME = 0.01  # two relative WIS values closer than this are "the same within seed noise"
+ALIKE = 0.7  # a Spearman correlation at or above this counts as "ranking alike"
+STABLE_TAU = 0.95  # Kendall's tau at or above this: a setting change does not reorder the ranking
 
 
 # ---------------------------------------------------------------- formatting
@@ -139,7 +144,19 @@ class Macros:
     """Ordered {name: (tex, source)}; a value that cannot be computed becomes n/a and is reported."""
 
     def __init__(self):
-        self.m, self.na = {}, []
+        self.m, self.na, self.flags = {}, [], {}
+
+    def flag(self, name, fn, src=""):
+        """A TeX conditional \\if<name>: the prose writes \\if<name> ... \\else ... \\fi, so a qualitative claim
+        follows the numbers. A condition that cannot be evaluated is false and reported."""
+        if not NAME.match(name) or name in self.flags:
+            raise ValueError(f"flag name {name!r}: letters only, defined once")
+        try:
+            v = bool(fn() if callable(fn) else fn)
+        except (KeyError, IndexError, TypeError, ValueError, AttributeError, ZeroDivisionError) as e:
+            v = False
+            self.na.append(f"flag {name} ({type(e).__name__}: {e})")
+        self.flags[name] = (v, src)
 
     def put(self, name, fn, src=""):
         if not NAME.match(name):
@@ -159,6 +176,9 @@ class Macros:
                  "% Every result quoted in docs/spec/sections/*.tex is one of these macros.", ""]
         for name, (v, src) in self.m.items():
             lines.append(rf"\newcommand{{\{name}}}{{{v}}}" + (f" % {src}" if src else ""))
+        lines += ["", "% Conditions behind qualitative claims: \\if<Name> ... \\else ... \\fi in the prose."]
+        for name, (v, src) in self.flags.items():
+            lines.append(rf"\newif\if{name}\{name}{'true' if v else 'false'}" + (f" % {src}" if src else ""))
         return "\n".join(lines) + "\n"
 
 
@@ -229,7 +249,7 @@ def put_forecast(M, k):
     M.put("relWIS", lambda: f(k["relwis"], 3), "eval_summary.csv relWIS xgb/naive (all)")
     M.put("covNinety", lambda: f(k["cov90"], 2), "eval_summary.csv cov90 xgb (all)")
     M.put("covFifty", lambda: f(k["cov50"], 2), "eval_summary.csv cov50 xgb (all)")
-    M.put("relWISLowerPct", lambda: pct(1 - k["relwis"]), "1 - relWIS")
+    M.put("relWISDiffPct", lambda: pct(abs(1 - k["relwis"])), "|1 - relWIS|: WIS difference to seasonal naive")
     for i, w in enumerate(("One", "Two", "Three", "Four")):
         M.put(f"relWISH{w}", lambda i=i: f(e.iloc[i]["relWIS xgb/naive"], 2), f"eval_summary.csv relWIS xgb/naive, horizon {i + 1}")
     M.put("covNinetyRange", lambda: rng(e.drop(index="all")["cov90 xgb"].min(), e.drop(index="all")["cov90 xgb"].max()), "eval_summary.csv cov90 by horizon")
@@ -430,6 +450,108 @@ def put_status(M, k):
     M.put("statusLepto", word["part" if k.get("lepto_ok") else "no"], "leptospirosis outputs")
 
 
+def put_verdicts(M, k, d):
+    """Words and conditions for every qualitative claim in the prose, decided from the same numbers (as the report's
+    _targets() and its guarded sentences do), so a rebuild that changes the results changes the claims too."""
+    e = k["ev"]
+    eh = e.drop(index="all")
+    lo, hi = COV_TARGET
+    M.put("targetCov", f"{lo * 100:.0f}--{hi * 100:.0f}\\%", "COV_TARGET: the proposal's coverage band")
+    # forecast skill
+    M.flag("ForecastBeats", lambda: k["relwis"] < 1, "relWIS xgb/naive < 1 (all horizons pooled)")
+    M.flag("RelBelowAllH", lambda: (eh["relWIS xgb/naive"] < 1).all(), "relWIS < 1 at every horizon")
+    M.flag("CovInsideAllH", lambda: eh["cov90 xgb"].between(lo, hi).all(), "cov90 inside COV_TARGET at every horizon")
+    M.flag("CovFourNearFloor", lambda: eh["cov90 xgb"].iloc[-1] - lo < 0.03, "4-week cov90 within 0.03 of the floor")
+    M.flag("CovFiftyNarrow", lambda: eh["cov50 xgb"].max() < 0.5, "every 50% interval covers less than 50%")
+    M.flag("CovFiftyWide", lambda: eh["cov50 xgb"].min() > 0.5, "every 50% interval covers more than 50%")
+    M.flag("ConformalSimilar", lambda: abs(e.loc["all", "cov90 conformal"] - k["cov90"]) < 0.03, "conformal and model 90% coverage within 0.03")
+    M.put("covNinetyConformal", lambda: f(e.loc["all", "cov90 conformal"], 2), "eval_summary.csv cov90 conformal (all)")
+    M.flag("GraphHelps", lambda: k["relwis_graph"] < HELPS, f"relWIS xgb/nograph < {HELPS}")
+    M.flag("EnvHelps", lambda: k["relwis_env"] < HELPS, f"relWIS xgb/noenv < {HELPS}")
+    # model comparison
+    al, bo = k.get("mall"), k.get("bench_only", [])
+    M.put("nBench", lambda: len(bo), "benchmarks in eval_models.csv")
+    M.put("nBenchBeatXGB", lambda: int((al.loc[bo, "relWIS_vs_xgb"] < 1).sum()), "benchmarks with mean WIS below XGBoost")
+    M.flag("AllBenchBeatXGB", lambda: len(bo) > 0 and (al.loc[bo, "relWIS_vs_xgb"] < 1).all(), "every benchmark below XGBoost on mean WIS")
+    M.flag("AnyBenchBeatsXGB", lambda: (al.loc[bo, "relWIS_vs_xgb"] < 1).any(), "some benchmark below XGBoost on mean WIS")
+    M.put("bestMeanLabel", lambda: esc(MR.MODEL_LABEL.get(k["best_mean"], k["best_mean"])), "eval_models.csv: lowest relWIS_vs_naive")
+    M.put("bestMeanRelWIS", lambda: f(al.loc[k["best_mean"], "relWIS_vs_naive"], 3), "eval_models.csv")
+    M.put("bestMeanCov", lambda: pct(al.loc[k["best_mean"], "cov90"]), "eval_models.csv")
+    M.flag("EnsBestMean", lambda: k["best_mean"] == "ens_median", "the median ensemble has the best mean WIS")
+    mw = k.get("mw", {})
+    best_md = (lambda: min(mw, key=mw.get))
+    M.put("bestMedianLabel", lambda: esc(MR.MODEL_LABEL.get(best_md(), best_md())), "lowest median WIS")
+    M.put("bestMedianWIS", lambda: f(mw[best_md()], 2), "lowest median WIS")
+    M.flag("XGBBestMedian", lambda: best_md() == "xgb", "XGBoost has the best median WIS")
+    M.flag("MeanMedianDiffer", lambda: best_md() != k["best_mean"], "the best model on mean WIS is not the best on median WIS")
+    sp = k.get("split", {})
+    M.flag("BenchWinHigh", lambda: all(sp["hi"][x] < 1 for x in bo) and all(sp["lo"][x] > 1 for x in bo),
+           "benchmarks beat XGBoost above the 90th percentile of cases and lose below it")
+    M.flag("EnsGainsBoth", lambda: sp["lo"]["ens_median"] < 1 and sp["hi"]["ens_median"] < 1, "ensemble below XGBoost in both halves")
+    var = k.get("variants", {})
+    M.flag("ChronosLogCollapsed", lambda: var["chronos2_log1p"] > 2, "chronos2_log1p relative WIS above 2")
+    M.flag("ChronosCovHelps", lambda: var["chronos2"] < var["chronos2_nocov"], "chronos2 with covariates below without")
+    M.flag("MpnnGraphSame", lambda: abs(var["mpnn_lstm_none"] - var["mpnn_lstm"]) < SAME, f"MPNN-LSTM with / without graph within {SAME}")
+    # calibration
+    cal = k.get("calib", {}).get("all_rows", {})
+    r = d["rel"]
+    mid = r[(r.mean_R > GAP_BINS[0]) & (r.mean_R <= GAP_BINS[1])]
+    M.flag("CalImproves", lambda: cal["brier_cal"] < cal["brier_raw"], "Brier calibrated < raw")
+    M.flag("RawUnderConfident", lambda: (mid.observed - mid.mean_R).mean() > 0, "middle bins: observed above raw R on average")
+    M.flag("CalGapSmaller", lambda: float(M.m["gapCal"][0].rstrip("\\%")) < float(M.m["gapRaw"][0].rstrip("\\%")), "largest middle-bin gap shrinks")
+    M.flag("BaseRateHigh", lambda: cal["base_rate"] > 1 - forecast.SURGE_PCTL + 0.05, "base rate well above the quiet-year rate")
+    st = k["storm_tab"]
+    M.flag("OmpongRRises", lambda: st.loc["ompong", "R"] > st.loc["ompong", "R_raw"], "Ompong mean R calibrated > raw")
+    # lead-lag graph
+    M.flag("XcorrMany", lambda: k["xc_edges"] > 10 * max(k["ll_edges"], 1), "cross-correlation keeps 10x the PCMCI+ links")
+    # Sentinel-1 against EMS
+    M.flag("EMSRecallLow", lambda: k["ems"]["recall"] < 0.5, "Sentinel-1 recovers under half of the EMS area")
+    # access methods
+    mb, pr = k.get("mbase", {}), k.get("proxy", {})
+    M.flag("RasterReachMore", lambda: mb["pop_reach_raster"] > mb["pop_reach_network"], "normal day: raster reaches more people")
+    M.flag("RasterFaster", lambda: mb["popw_mean_hours_raster"] < mb["popw_mean_hours_network"], "normal day: raster trips shorter")
+    M.flag("MethodsRankAlike", lambda: mb["spearman_hours_cells"] >= ALIKE, f"normal day: Spearman over cells >= {ALIKE}")
+    M.flag("RasterMoreSOne", lambda: st.cutr.sum() > st.cut.sum(), "observed tracks: raster cuts off more people")
+    M.flag("RasterMoreProxy", lambda: pr["ratio"] > 1, "proxy tracks: median raster / network > 1")
+    M.flag("ProxyAgreesBetter", lambda: pr["rho"][0] > max(k["rho_A_obs"].values()), "rho of A: every proxy track above every observed track")
+    sens = d["sens"]
+    gale = sens[sens.variant.str.contains("gale")]
+    M.flag("GaleNoEffect", lambda: len(gale) > 0 and (gale.kendall_tau > 1 - 1e-9).all(), "every gale-fallback variant leaves P's ranking unchanged")
+    M.flag("SensStable",lambda: min(k["tau_min"], k["tau_min_raster"]) >= STABLE_TAU, f"Kendall's tau >= {STABLE_TAU} for every variant")
+    M.flag("HRSLUnderOld", lambda: k["o60_share"] < k["census_60"], "HRSL 60+ share below the census")
+    M.flag("HRSLOverYoung", lambda: k["u5_share"] > k["census_u5"], "HRSL under-5 share above the census")
+    # validation
+    v = d["valid"].set_index("storm")
+    pre = v.loc[["Ompong", "Tisoy"]]
+    M.flag("RRanksWell", lambda: (pre.spearman_R_obs >= 0.5).all(), "rho(R, observed) >= 0.5 for both 2018-2019 storms")
+    M.flag("PLessThanR", lambda: (pre.spearman_P_obs < pre.spearman_R_obs).all(), "rho(P) < rho(R) for both 2018-2019 storms")
+    M.flag("TopTenAboveBase", lambda: v.loc["Ompong", "top10_surge_rate"] > v.loc["Ompong", "surge_rate"], "Ompong: top-10 surge rate above the base rate")
+    M.put("surgeRateTisoy", lambda: pct(v.loc["Tisoy", "surge_rate"]), "validation.csv surge_rate")
+    M.put("topTenSurgedTisoy", lambda: f(v.loc["Tisoy", "top10_surge_rate"] * 10, 0), "validation.csv top10_surge_rate x 10")
+    # catalogue
+    a = k.get("allst")
+    cat = a[a.kind == "catalogue"] if a is not None else None
+    M.flag("CatLargestLowR", lambda: cat.nlargest(3, "cut").R.max() < cat.R.median(), "the 3 largest cut-offs all have R below the catalogue median")
+    M.flag("CatHighRNineteen", lambda: (cat.nlargest(3, "R").season == 2019).all(), "the 3 highest-R storms are all 2019")
+    # leptospirosis
+    L = k.get("lepto", {})
+    M.flag("CitySig", lambda: len(L["city"]["sig"]) > 0, "some city lag has a 95% CI above 1")
+    M.flag("CityPeakLater", lambda: L["city"]["peak"].lag > 2, "city peak later than two weeks")
+    M.flag("NatNineteenNull", lambda: L["nat19_cum"].ci_lo < 1, "2019-only national cumulative CI includes 1")
+    sig = (lambda r: r.ci_lo > 1 or r.ci_hi < 1)
+    M.flag("RUPostSig", lambda: sig(L["ru_post"]), "Rolly+Ulysses inside x weeks 1-4: CI excludes 1")
+    M.flag("RUPlaceboOK", lambda: not sig(L["ru_pre"]), "Rolly+Ulysses placebo CI includes 1")
+    M.flag("OTPostSig", lambda: sig(L["ot_post"]), "Ompong+Tisoy inside x weeks 1-4: CI excludes 1")
+    M.flag("OTPlaceboOK", lambda: not sig(L["ot_pre"]), "Ompong+Tisoy placebo CI includes 1")
+    M.flag("LeptoFloodFew", lambda: L["s1_pairs"][2] < 10, "fewer than 10 flooded city-storm pairs")
+    # scorecard rows decided by a number
+    word = {True: r"\stOk", False: r"\stNo"}
+    M.put("statusRelWIS", lambda: word[bool(k["relwis"] < 1)], "relWIS < 1")
+    M.put("statusCov", lambda: word[bool(eh["cov90 xgb"].between(lo, hi).all())], "cov90 inside COV_TARGET at every horizon")
+    M.flag("SUSPending", lambda: k["sus_n"] < 3, "fewer than three SUS responses")
+    M.flag("NHFRMissing", lambda: "nhfr" in k["missing"], "status.json: nhfr missing")
+
+
 def macros(d, k):
     M = Macros()
     for fn in (put_data, put_calibration):
@@ -438,6 +560,7 @@ def macros(d, k):
                put_lepto, put_status):
         fn(M, k)
     put_validation(M, d)
+    put_verdicts(M, k, d)
     return M
 
 

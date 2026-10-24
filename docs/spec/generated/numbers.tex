@@ -67,7 +67,7 @@
 \newcommand{\relWIS}{0.544} % eval_summary.csv relWIS xgb/naive (all)
 \newcommand{\covNinety}{0.85} % eval_summary.csv cov90 xgb (all)
 \newcommand{\covFifty}{0.43} % eval_summary.csv cov50 xgb (all)
-\newcommand{\relWISLowerPct}{46\%} % 1 - relWIS
+\newcommand{\relWISDiffPct}{46\%} % |1 - relWIS|: WIS difference to seasonal naive
 \newcommand{\relWISHOne}{0.42} % eval_summary.csv relWIS xgb/naive, horizon 1
 \newcommand{\relWISHTwo}{0.51} % eval_summary.csv relWIS xgb/naive, horizon 2
 \newcommand{\relWISHThree}{0.59} % eval_summary.csv relWIS xgb/naive, horizon 3
@@ -204,3 +204,69 @@
 \newcommand{\rhoPRange}{$-$0.03--0.21} % validation.csv
 \newcommand{\topTenSurgedOmpong}{7} % validation.csv top10_surge_rate x 10
 \newcommand{\surgeRateOmpong}{40\%} % validation.csv surge_rate
+\newcommand{\targetCov}{80--95\%} % COV_TARGET: the proposal's coverage band
+\newcommand{\covNinetyConformal}{0.87} % eval_summary.csv cov90 conformal (all)
+\newcommand{\nBench}{3} % benchmarks in eval_models.csv
+\newcommand{\nBenchBeatXGB}{3} % benchmarks with mean WIS below XGBoost
+\newcommand{\bestMeanLabel}{median ensemble} % eval_models.csv: lowest relWIS_vs_naive
+\newcommand{\bestMeanRelWIS}{0.444} % eval_models.csv
+\newcommand{\bestMeanCov}{90\%} % eval_models.csv
+\newcommand{\bestMedianLabel}{XGBoost + graph (ours)} % lowest median WIS
+\newcommand{\bestMedianWIS}{6.23} % lowest median WIS
+\newcommand{\surgeRateTisoy}{5\%} % validation.csv surge_rate
+\newcommand{\topTenSurgedTisoy}{0} % validation.csv top10_surge_rate x 10
+\newcommand{\statusRelWIS}{\stOk} % relWIS < 1
+\newcommand{\statusCov}{\stOk} % cov90 inside COV_TARGET at every horizon
+
+% Conditions behind qualitative claims: \if<Name> ... \else ... \fi in the prose.
+\newif\ifForecastBeats\ForecastBeatstrue % relWIS xgb/naive < 1 (all horizons pooled)
+\newif\ifRelBelowAllH\RelBelowAllHtrue % relWIS < 1 at every horizon
+\newif\ifCovInsideAllH\CovInsideAllHtrue % cov90 inside COV_TARGET at every horizon
+\newif\ifCovFourNearFloor\CovFourNearFloortrue % 4-week cov90 within 0.03 of the floor
+\newif\ifCovFiftyNarrow\CovFiftyNarrowtrue % every 50% interval covers less than 50%
+\newif\ifCovFiftyWide\CovFiftyWidefalse % every 50% interval covers more than 50%
+\newif\ifConformalSimilar\ConformalSimilartrue % conformal and model 90% coverage within 0.03
+\newif\ifGraphHelps\GraphHelpsfalse % relWIS xgb/nograph < 0.98
+\newif\ifEnvHelps\EnvHelpsfalse % relWIS xgb/noenv < 0.98
+\newif\ifAllBenchBeatXGB\AllBenchBeatXGBtrue % every benchmark below XGBoost on mean WIS
+\newif\ifAnyBenchBeatsXGB\AnyBenchBeatsXGBtrue % some benchmark below XGBoost on mean WIS
+\newif\ifEnsBestMean\EnsBestMeantrue % the median ensemble has the best mean WIS
+\newif\ifXGBBestMedian\XGBBestMediantrue % XGBoost has the best median WIS
+\newif\ifMeanMedianDiffer\MeanMedianDiffertrue % the best model on mean WIS is not the best on median WIS
+\newif\ifBenchWinHigh\BenchWinHightrue % benchmarks beat XGBoost above the 90th percentile of cases and lose below it
+\newif\ifEnsGainsBoth\EnsGainsBothtrue % ensemble below XGBoost in both halves
+\newif\ifChronosLogCollapsed\ChronosLogCollapsedtrue % chronos2_log1p relative WIS above 2
+\newif\ifChronosCovHelps\ChronosCovHelpsfalse % chronos2 with covariates below without
+\newif\ifMpnnGraphSame\MpnnGraphSametrue % MPNN-LSTM with / without graph within 0.01
+\newif\ifCalImproves\CalImprovestrue % Brier calibrated < raw
+\newif\ifRawUnderConfident\RawUnderConfidenttrue % middle bins: observed above raw R on average
+\newif\ifCalGapSmaller\CalGapSmallertrue % largest middle-bin gap shrinks
+\newif\ifBaseRateHigh\BaseRateHightrue % base rate well above the quiet-year rate
+\newif\ifOmpongRRises\OmpongRRisestrue % Ompong mean R calibrated > raw
+\newif\ifXcorrMany\XcorrManytrue % cross-correlation keeps 10x the PCMCI+ links
+\newif\ifEMSRecallLow\EMSRecallLowtrue % Sentinel-1 recovers under half of the EMS area
+\newif\ifRasterReachMore\RasterReachMoretrue % normal day: raster reaches more people
+\newif\ifRasterFaster\RasterFastertrue % normal day: raster trips shorter
+\newif\ifMethodsRankAlike\MethodsRankAliketrue % normal day: Spearman over cells >= 0.7
+\newif\ifRasterMoreSOne\RasterMoreSOnetrue % observed tracks: raster cuts off more people
+\newif\ifRasterMoreProxy\RasterMoreProxyfalse % proxy tracks: median raster / network > 1
+\newif\ifProxyAgreesBetter\ProxyAgreesBettertrue % rho of A: every proxy track above every observed track
+\newif\ifGaleNoEffect\GaleNoEffecttrue % every gale-fallback variant leaves P's ranking unchanged
+\newif\ifSensStable\SensStabletrue % Kendall's tau >= 0.95 for every variant
+\newif\ifHRSLUnderOld\HRSLUnderOldtrue % HRSL 60+ share below the census
+\newif\ifHRSLOverYoung\HRSLOverYoungtrue % HRSL under-5 share above the census
+\newif\ifRRanksWell\RRanksWelltrue % rho(R, observed) >= 0.5 for both 2018-2019 storms
+\newif\ifPLessThanR\PLessThanRtrue % rho(P) < rho(R) for both 2018-2019 storms
+\newif\ifTopTenAboveBase\TopTenAboveBasetrue % Ompong: top-10 surge rate above the base rate
+\newif\ifCatLargestLowR\CatLargestLowRfalse % the 3 largest cut-offs all have R below the catalogue median
+\newif\ifCatHighRNineteen\CatHighRNineteentrue % the 3 highest-R storms are all 2019
+\newif\ifCitySig\CitySigtrue % some city lag has a 95% CI above 1
+\newif\ifCityPeakLater\CityPeakLatertrue % city peak later than two weeks
+\newif\ifNatNineteenNull\NatNineteenNulltrue % 2019-only national cumulative CI includes 1
+\newif\ifRUPostSig\RUPostSigtrue % Rolly+Ulysses inside x weeks 1-4: CI excludes 1
+\newif\ifRUPlaceboOK\RUPlaceboOKtrue % Rolly+Ulysses placebo CI includes 1
+\newif\ifOTPostSig\OTPostSigfalse % Ompong+Tisoy inside x weeks 1-4: CI excludes 1
+\newif\ifOTPlaceboOK\OTPlaceboOKfalse % Ompong+Tisoy placebo CI includes 1
+\newif\ifLeptoFloodFew\LeptoFloodFewtrue % fewer than 10 flooded city-storm pairs
+\newif\ifSUSPending\SUSPendingtrue % fewer than three SUS responses
+\newif\ifNHFRMissing\NHFRMissingtrue % status.json: nhfr missing

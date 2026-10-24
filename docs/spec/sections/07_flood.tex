@@ -43,7 +43,7 @@ typhoon & seen & flooded & most people in new flood: municipality (province), pe
 
 \subsection{Checked against Copernicus EMS}
 
-Inside the EMS areas of interest for Ompong, EMS mapped \emsKm{}~km\textsuperscript{2} of observed flood and Sentinel-1 flagged \sOneKm{}~km\textsuperscript{2}; \bothKm{}~km\textsuperscript{2} overlap. \textbf{\emsPrecision{}} of the Sentinel-1 flood there is confirmed by EMS, and Sentinel-1 recovers \textbf{\emsRecall{}} of the EMS area (Figure~\ref{fig:s1ems}). Low recall is expected: EMS used other imagery and dates, while one Sentinel-1 orbit passed here only twice in the window.
+Inside the EMS areas of interest for Ompong, EMS mapped \emsKm{}~km\textsuperscript{2} of observed flood and Sentinel-1 flagged \sOneKm{}~km\textsuperscript{2}; \bothKm{}~km\textsuperscript{2} overlap. \textbf{\emsPrecision{}} of the Sentinel-1 flood there is confirmed by EMS, and Sentinel-1 recovers \textbf{\emsRecall{}} of the EMS area (Figure~\ref{fig:s1ems}).\ifEMSRecallLow{} Low recall is expected: EMS used other imagery and dates, while one Sentinel-1 orbit passed here only twice in the window.\fi
 
 \begin{figure}[htbp]
 \centering

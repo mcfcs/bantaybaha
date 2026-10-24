@@ -2,7 +2,7 @@
 \section{Surge probability: calibration}
 \label{sec:calibration}
 
-The model's $R$ was \textbf{under-confident in the middle}: in the reliability bins between \gapBinLo{} and \gapBinHi{}, outcomes came true up to \gapRaw{} more often than forecast (Figure~\ref{fig:reliability}). Isotonic regression maps raw $R$ to the observed surge frequency. It is fitted at each origin on earlier forecasts whose four-week outcome was already known (target week no later than the origin), so it never sees the future. It needs \calMinRows{} past outcomes first: the \nUncalOrigins{} origins before \firstCalOrigin{} keep raw $R$ (\nUncalRows{} rows). After recalibration the largest middle-bin gap is \gapCal{}.
+The model's raw $R$ is \textbf{\ifRawUnderConfident under-confident\else over-confident\fi{} in the middle}: in the reliability bins between \gapBinLo{} and \gapBinHi{}, outcomes came true \ifRawUnderConfident more\else less\fi{} often than forecast, by up to \gapRaw{} (Figure~\ref{fig:reliability}). Isotonic regression maps raw $R$ to the observed surge frequency. It is fitted at each origin on earlier forecasts whose four-week outcome was already known (target week no later than the origin), so it never sees the future. It needs \calMinRows{} past outcomes first: the \nUncalOrigins{} origins before \firstCalOrigin{} keep raw $R$ (\nUncalRows{} rows). After recalibration the largest middle-bin gap is \gapCal{}\ifCalGapSmaller, smaller than before\else, no smaller than before\fi.
 
 \begin{figure}[htbp]
 \centering
@@ -11,7 +11,7 @@ The model's $R$ was \textbf{under-confident in the middle}: in the reliability b
 \label{fig:reliability}
 \end{figure}
 
-Table~\ref{tab:calib} gives the Brier scores. The base rate is \baseRatePct{}, not \surgeExpected{}, because 2019 was an epidemic year and the thresholds come from earlier, quieter years. The scenario files keep both \code{R} (calibrated, used for $P$ and the tiers) and \code{R\_raw}. Recalibration raises mid-range $R$, so more provinces reach the provisional tiers (pre-position at $R \geq \tierPreR$, deploy at $R \geq \tierDeployR$ with $A \geq \tierDeployA$): for Ompong the mean $R$ rises from \ompongRRaw{} to \ompongR{}. The tier thresholds still need review with users.
+Table~\ref{tab:calib} gives the Brier scores: recalibration \ifCalImproves lowers\else raises\fi{} it from \brierRaw{} to \brierCal{} over all 2018--2019 origins. The base rate is \baseRatePct{}\ifBaseRateHigh, not \surgeExpected{}, because 2019 was an epidemic year and the thresholds come from earlier, quieter years\fi. The scenario files keep both \code{R} (calibrated, used for $P$ and the tiers) and \code{R\_raw}. Recalibration changes which provinces reach the provisional tiers (pre-position at $R \geq \tierPreR$, deploy at $R \geq \tierDeployR$ with $A \geq \tierDeployA$): for Ompong the mean $R$ \ifOmpongRRises rises\else falls\fi{} from \ompongRRaw{} to \ompongR{}. The tier thresholds still need review with users.
 
 \begin{table}[htbp]
 \centering

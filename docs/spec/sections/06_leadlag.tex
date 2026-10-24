@@ -2,9 +2,9 @@
 \section{The lead-lag graph}
 \label{sec:leadlag}
 
-In the final window (\llN{} series, $T = \llT$ weeks after seasonal differencing; Davao Occidental sits out with more than a tenth of its weeks missing), PCMCI+ keeps \textbf{\llEdges{}} lagged links between provinces at $q < \fdrQ$ (Figure~\ref{fig:leadlag} and Table~\ref{tab:edges}). Plain lagged cross-correlation with the same FDR filter keeps \textbf{\xcEdges{}}, because the 2019 national epidemic makes almost every pair of provinces move together.
+In the final window (\llN{} of the \nUnits{} units have few enough missing weeks to enter; $T = \llT$ weeks after seasonal differencing), PCMCI+ keeps \textbf{\llEdges{}} lagged links between provinces at $q < \fdrQ$ (Figure~\ref{fig:leadlag} and Table~\ref{tab:edges}). Plain lagged cross-correlation with the same FDR filter keeps \textbf{\xcEdges{}}\ifXcorrMany, because the 2019 national epidemic makes almost every pair of provinces move together\fi.
 
-The proposal's sentinel idea is therefore \textbf{weakly supported at province-week level}. The links are statistical dependencies, not evidence of transmission, and several join distant provinces. Likely reasons: weekly province totals average out local waves, four years is short for \llN{} series, and reporting artefacts dominate small provinces. Synchrony studies have found travelling dengue waves at longer time scales \parencite{vanpanhuis2015}. The MPNN-LSTM benchmark points the same way: its result does not depend on its graph.
+\ifGraphHelps The graph's leader features lower the forecast WIS (Section~\ref{sec:forecast}), which supports the proposal's sentinel idea at province-week level. \else The graph's leader features do not lower the forecast WIS (Section~\ref{sec:forecast}), so the proposal's sentinel idea is \textbf{weakly supported at province-week level}. Likely reasons: weekly province totals average out local waves, four years is short for \llN{} series, and reporting artefacts dominate small provinces. Synchrony studies have found travelling dengue waves at longer time scales \parencite{vanpanhuis2015}.\fi{} The links are statistical dependencies, not evidence of transmission. \ifMpnnGraphSame The MPNN-LSTM benchmark points the same way: its result does not depend on its graph.\fi
 
 \begin{figure}[htbp]
 \centering

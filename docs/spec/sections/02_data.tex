@@ -34,7 +34,7 @@ The 2020 census table's municipal codes are the old 9-digit Philippine Standard 
 
 Figure~\ref{fig:coverage} shows how much of the \nUnits{}~$\times$~\nWeeks{} panel (\unitWeeks{} unit-weeks) each input fills. Rain from CHIRPS and IMERG agrees (weekly $r = \rainR$). River routing accumulates CHIRPS rain down the HydroRIVERS network. The flood hazard maps of the Nationwide Operational Assessment of Hazards (NOAH) at a 25-year return period cover \hazUnits{} of \nUnits{} units; the median unit has \hazMedian{} of its people in a hazard zone. The \nHazNoMap{} units with no map are \textbf{missing, not zero}: \hazNoMapList{}.
 
-Storm exposure uses every Western Pacific track of 2016--2020 from IBTrACS, with the gale radius from the United States 34-knot radius, else the Japan Meteorological Agency (JMA) 30-knot radius, else a fixed \galeFallbackKm{}~km. The United States radius is missing on \rThirtyFourMissingRolly{} of Rolly's gale-strength fixes (JMA fills them); the fixed fallback never triggers for the four storms.
+Storm exposure uses every Western Pacific track of 2016--2020 from IBTrACS, with the gale radius from the United States 34-knot radius, else the Japan Meteorological Agency (JMA) 30-knot radius, else a fixed \galeFallbackKm{}~km. The United States radius is missing on \rThirtyFourMissingRolly{} of Rolly's gale-strength fixes (JMA fills them)\ifGaleNoEffect; the fixed fallback never applies to the four storms (Section~\ref{sec:validation})\fi.
 
 \begin{figure}[htbp]
 \centering
