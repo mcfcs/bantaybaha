@@ -71,22 +71,42 @@ build.bat ensemble                                                          :: r
 Only `chronos2`, `tabpfn_ts` and `mpnn_lstm` (`bantay/forecast.py: BENCH_MODELS`) join the median ensemble; other
 `bench_*` files are variants.
 
-### Testing the dashboard
+### Testing
 
-The tests read the build outputs in `data/processed/app/` (they skip if those are missing) and never write there;
-SUS answers go to a temporary file. Screenshots and videos land in `tests/artifacts/` (git-ignored).
+Three kinds of tests live in `tests/`. **Pipeline unit tests** check the logic of `bantay/` and `scripts/` on small
+hand-built inputs and need no build. **Build-output tests** (marker `data`) check invariants of the outputs in
+`data/processed/` and skip when those are missing. **Dashboard tests** run the app with Streamlit's AppTest and, with
+the marker `e2e`, in a real browser (Playwright). No test writes into `data/`: the status registry and SUS answers go to
+temporary files, and a session check fails the run if any file under `data/` changed (so don't run the tests during a
+build). Screenshots and videos land in `tests/artifacts/` (git-ignored).
 
 ```bat
 pip install -r requirements-dev.txt
 python -m playwright install chromium
-python -m pytest tests                    :: everything (~1 min): AppTest + Playwright end-to-end
-python -m pytest tests -m "not e2e"       :: fast AppTest checks only (~15 s)
-python tests\capture.py                   :: refresh docs\results\figures\dashboard.png + record the demo walkthrough video
+python -m pytest tests                            :: everything (~1.5 min)
+python -m pytest tests -m "not e2e"               :: no browser (~40 s)
+python -m pytest tests -m "not e2e and not data"  :: no browser, no build-output invariants
+python -m pytest tests\test_forecast.py           :: one module
+python tests\capture.py                           :: refresh docs\results\figures\dashboard.png + record the demo walkthrough video
 ```
 
-`tests/test_app.py` runs the app headless with Streamlit's AppTest (every tab, storm and track controls, SUS form,
-and the hooks for outputs still being built). `tests/test_e2e.py` starts `streamlit run` on a free port and drives it in
-Chromium (every tab, storm and shift, dark mode, SUS submission), failing on any app exception or browser console error.
+| Tests | What they check |
+|---|---|
+| `test_config.py` | the DOH week rule (`week_ending`: Mon-Sun, a Sunday maps to itself), the `record` / `missing` / `have` status round trip |
+| `test_units.py` | `norm`; the crosswalk rules on a mini COD-AB table: city first (Quezon City is not Quezon), the Isabela collision, the Maguindanao merge and its synthetic id; `#` header comments |
+| `test_dengue.py` | HXL row, stripped `loc`, Sunday weeks; a unit-week is NaN unless every member reported; deaths are never used |
+| `test_storms.py` | gale-radius fallback (USA R34, TOKYO R30, fixed; below gale = 0), shifted tracks, the forecast-origin exposure window |
+| `test_panel.py` | Sentinel-1 placed from the week its map is known, never at its storm's origin week; the interim cache; weekly rain sums, river routing |
+| `test_forecast.py` | WIS (hand values, pinball identity), coverage, `prob_exceed`, seasonal naive, no target leakage in features, surge thresholds, R calibration on past outcomes only, benchmark loading and the median ensemble, rolling-origin training windows |
+| `test_access.py` | the cut-off rule, summaries, flood multipliers, the network solver on a 4-node road with a ferry, the MAP friction raster on a 5 x 5 GeoTIFF |
+| `test_scenarios.py`, `test_leadlag.py`, `test_lepto.py` | tiers from `TIERS`, the access-method range, priority P; an empty graph below `MIN_T`, a planted lead; the leptospirosis findings wording |
+| `test_scripts.py` | downloads skip existing files and write through `.part` (no network), manifest merge and sha256, the bucket manifest, `check_code_guide.py` (and that the real guide is current) |
+| `test_build_outputs.py`, `test_make_results.py` (`data`) | 85 units x 262 weeks, S1 timing, scenario ranges, catalogue `train_end` <= origin, every model on the same rows, `status.json`; the report and 20 slides on the full build and with each optional part removed |
+| `test_sus.py`, `test_app.py`, `test_e2e.py` (`e2e`) | SUS scoring and storage; every dashboard tab, control and optional output; the browser walk-through (every tab, storm and shift, dark mode, SUS submission; fails on any app exception or browser console error) |
+
+A test marked `xfail(strict=True)` documents a known bug that is not fixed yet; its reason says what is wrong, and the
+suite fails as soon as the bug is fixed (then remove the mark).
+
 User-test answers from the dashboard's *Usability test* tab go to `data/processed/sus/sus_responses.csv` (set
 `BANTAY_SUS_PATH` to write elsewhere); no names or identifiers are collected.
 
@@ -126,7 +146,7 @@ scripts/make_proposal.py    revised anonymous proposal v3 (docs/proposal/, PDF v
 bantay/                     library: units, dengue, storms, rain, rivers, flood, grids, panel, leadlag, forecast, access,
                             scenarios, lepto
 app/                        the dashboard (streamlit_app.py + ui, sus, lepto_tab; run_app.bat)
-tests/                      AppTest + Playwright end-to-end tests (requirements-dev.txt)
+tests/                      pytest: pipeline unit tests, build-output checks, AppTest + Playwright (requirements-dev.txt)
 notebooks/00_data_eda.ipynb one notebook: a short EDA of every dataset + proposal checks
 data/raw/                   downloaded data (git-ignored, read-only; only MANIFEST.csv is tracked)
 data/crosswalks/            reviewed crosswalks into the harmonised 2016-2020 province units (tracked)

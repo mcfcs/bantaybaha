@@ -617,27 +617,62 @@ statistics, and the light and dark themes (Public Sans, one flood-blue accent). 
 
 ### 6.5 Tests: `tests/`
 
-The tests read the real build outputs in `data/processed/app/` (they skip when those are missing) and never write
-there; usability answers go to a temporary file. Screenshots and videos land in `tests/artifacts/` (git-ignored). Install
-`requirements-dev.txt` and `python -m playwright install chromium` once, then:
+Two kinds of tests. **Pipeline unit tests** check the documented rules of `bantay/` and `scripts/` on small hand-built
+inputs (a few units, a 4-node road, a 5 x 5 GeoTIFF, a temporary CSV); they need no build and no network. **Build
+tests** read the real outputs: the dashboard tests (`test_app.py`, `test_e2e.py`) and the output invariants
+(`test_build_outputs.py`, `test_make_results.py`, marker `data`); they skip when the outputs are missing. Build tests
+check facts fixed by the data (126 dengue units, 85 units, 262 weeks) and consistency between outputs (ranges, leak-free
+dates, same-row scoring, ensemble members), never numbers that come from a fitted model, so model improvements do not
+break them. No test writes into `data/`: the status registry goes to a temporary file, downloads go to `tmp_path`, and a
+session check fails the run if any file under `data/` changed. Usability answers go to a temporary file; screenshots and
+videos land in `tests/artifacts/` (git-ignored). Install `requirements-dev.txt` and
+`python -m playwright install chromium` once, then:
 
 ```
-python -m pytest tests                  # everything: AppTest + Playwright end-to-end
-python -m pytest tests -m "not e2e"     # fast AppTest checks only
-python tests/capture.py                 # refresh docs/results/figures/dashboard.png + record the demo walkthrough video
+python -m pytest tests                            # everything (~1.5 min): unit, build outputs, AppTest, Playwright
+python -m pytest tests -m "not e2e"               # no browser (~40 s)
+python -m pytest tests -m "not e2e and not data"  # pipeline unit tests + AppTest, no build-output invariants
+python -m pytest tests -m data                    # build-output invariants only
+python tests/capture.py                           # refresh docs/results/figures/dashboard.png + record the demo video
 ```
+
+A test marked `xfail(strict=True)` documents a known bug in the code: it fails today, and the suite turns red once the
+bug is fixed, so the marker is removed together with the fix.
 
 #### `tests/conftest.py`
 
 | Block | Lines | Explanation |
 |---|---|---|
-| Paths | [17-21](../tests/conftest.py#L17-L21) | Repo root, the app, the build outputs, the artifacts folder; puts `app/` on the path so the tests can import `sus`. |
-| `needs_data` | [23-24](../tests/conftest.py#L23-L24) | Skip marker for tests that need a finished build. |
-| `pytest_configure()` | [27-28](../tests/conftest.py#L27-L28) | Registers the `e2e` marker, so `-m "not e2e"` deselects the browser tests. |
-| `free_port()` | [31-34](../tests/conftest.py#L31-L34) | A free local port for the test server. |
-| `sus_csv()` | [37-41](../tests/conftest.py#L37-L41) | A throw-away responses file, set through `BANTAY_SUS_PATH`. |
-| `server()` | [44-73](../tests/conftest.py#L44-L73) | Starts `streamlit run` on a free port for the whole session, waits for its health check and stops it at the end. |
-| `shots()` | [76-80](../tests/conftest.py#L76-L80) | The screenshot folder. |
+| Paths | [20-27](../tests/conftest.py#L20-L27) | Repo root, the app, the build outputs, the artifacts folder; puts `app/`, the repo root (for `bantay`) and `scripts/` on the path. |
+| `needs_data` | [29-30](../tests/conftest.py#L29-L30) | Skip marker for dashboard tests that need a finished build. |
+| `pytest_configure()` | [33-35](../tests/conftest.py#L33-L35) | Registers the `e2e` and `data` markers, so `-m "not e2e"` / `-m "not data"` deselect them without warnings. |
+| `free_port()` | [38-41](../tests/conftest.py#L38-L41) | A free local port for the test server. |
+| `sus_csv()` | [44-48](../tests/conftest.py#L44-L48) | A throw-away responses file, set through `BANTAY_SUS_PATH`. |
+| `server()` | [51-80](../tests/conftest.py#L51-L80) | Starts `streamlit run` on a free port for the whole session, waits for its health check and stops it at the end. |
+| `shots()` | [83-87](../tests/conftest.py#L83-L87) | The screenshot folder. |
+| `isolated_status()` | [90-97](../tests/conftest.py#L90-L97) | Points `bantay.config`'s status registry (`record`, `missing`, `have`) at a temporary `status.json`; the pipeline tests use it. |
+| `need()` | [100-104](../tests/conftest.py#L100-L104) | Skips the calling test unless the named build outputs exist. |
+| `_snapshot()`, `data_untouched()` | [107-120](../tests/conftest.py#L107-L120) | Session check (autouse): size and mtime of every file under `data/processed`, `data/interim`, `data/crosswalks` and of `data/raw/MANIFEST.csv`, before and after; any change fails the run. |
+
+#### Pipeline and build-output tests
+
+One file per module; each test name states the rule it checks. Counts are collected tests (parametrised cases included).
+
+| File | Lines | What it checks |
+|---|---|---|
+| `tests/test_config.py` (14) | [1-95](../tests/test_config.py#L1-L95) | `week_ending` (Mon-Sun, a Sunday maps to itself, scalar and Series, the 262-week grid), the 23 FluSight quantiles, the `record` / `missing` / `have` round trip (a later success clears a gap). |
+| `tests/test_units.py` (26) | [1-115](../tests/test_units.py#L1-L115) | `norm` (Las Piñas, "City of X", parentheses); ADM2 merges and the synthetic Maguindanao id on a mini COD-AB; dengue names city-first (Quezon City is not Quezon), the Isabela collision, Naga by region, misspellings, unmatched names; crosswalk header comments skipped. |
+| `tests/test_dengue.py` (7) | [1-90](../tests/test_dengue.py#L1-L90) | HXL row skipped, `loc` stripped, Sunday weeks enforced, deaths never loaded or used; a unit-week is NaN unless every member reported (a reported 0 stays 0); a missing file is recorded, not fatal. |
+| `tests/test_storms.py` (10) | [1-137](../tests/test_storms.py#L1-L137) | Gale radius USA R34 -> TOKYO R30 -> fixed (below 34 kt = 0); `shift_track`; `shift_storm` moves one storm only; `origin_exposure` uses the 4 weeks to the origin only (later fixes ignored; no fixes -> distance 2000, gale 0). |
+| `tests/test_panel.py` (13) | [1-165](../tests/test_panel.py#L1-L165) | Sentinel-1 weeks start at the week of landfall + `S1_AFTER_DAYS`, never at a storm's own origin week; overlapping storms take the max; the constant equals the GEE window; the interim cache rule; rain week sums, river routing, grid helpers. |
+| `tests/test_forecast.py` (37) | [1-526](../tests/test_forecast.py#L1-L526) | WIS (0 for a perfect forecast, the absolute error for a point forecast, a hand-computed case, the pinball identity), coverage, `prob_exceed`, seasonal naive; features and targets never use t+h; surge thresholds use weeks <= end only; calibration ignores outcomes after the cutoff and stays raw below `CAL_MIN_ROWS`; `load_bench` (bad schema skipped, variants ignored, re-sorted) and the median ensemble on common rows; rolling-origin and `fit_at` training windows (stand-in model); one small real fit and prediction. |
+| `tests/test_access.py` (14) | [1-243](../tests/test_access.py#L1-L243) | The cut-off rule, `summarise` (A = pop_cut / pop), `road_multiplier`; the network solver on a 4-node road with a parallel road and a ferry; ferry cancellation and edges in a swath; the MAP friction method on a 5 x 5 GeoTIFF (cost distance, flood detours, ferry line, missing raster). |
+| `tests/test_scenarios.py` (9) | [1-113](../tests/test_scenarios.py#L1-L113) | Tier boundaries read from `TIERS` (inclusive; NaN A never deploys); case columns; network / raster access tables and the A_lo-A_hi range; P = R x A; catalogue training ends; rank-change helpers. |
+| `tests/test_leadlag.py` (6) | [1-77](../tests/test_leadlag.py#L1-L77) | `prepare` uses the window only and standardises; an empty graph below `MIN_T`; the cross-correlation baseline finds a planted 2-week lead; sentinels and communities. |
+| `tests/test_lepto.py` (19) | [1-189](../tests/test_lepto.py#L1-L189) | Week labels, lags never cross a gap, the seasonal expectation, event ratios; the key-findings text follows the numbers (lag spans, the ~2-week comparison, a placebo whose CI contains 1 "passes"). |
+| `tests/test_scripts.py` (14) | [1-214](../tests/test_scripts.py#L1-L214) | `download_data.fetch` skips existing files and writes through `.part` (no network); `write_manifest` merge and sha256; the bucket manifest round trip; `check_code_guide` catches a wrong range, a missing function and bad links, and the real guide passes. |
+| `tests/test_build_outputs.py` (16) | [1-231](../tests/test_build_outputs.py#L1-L231) | Marker `data`. Crosswalk 126 -> 85 with nothing unmatched; panel 85 x 262; no Sentinel-1 at a storm's own origin week; scenarios: R, A in [0, 1], A_lo <= A <= A_hi, P = R x A, tiers, train_end <= origin; catalogue leak-free; every model scored on the same rows, ensemble members = xgb + `BENCH_MODELS`, built-in rows equal `eval_summary.csv`; calibration and lead-lag edges; `status.json` well formed. |
+| `tests/test_make_results.py` (16) | [1-116](../tests/test_make_results.py#L1-L116) | Marker `data`. `stats()` and the report / 20-slide builders on the full build, on a minimal build and without each optional output in turn (in memory; nothing is written). |
 
 #### `tests/test_sus.py`
 
