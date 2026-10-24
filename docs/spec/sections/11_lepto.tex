@@ -1,0 +1,21 @@
+% !TEX root = ../main.tex
+\section{Leptospirosis: the stretch goal}
+\label{sec:lepto}
+
+The proposal assumed that no open subnational leptospirosis series exists. Project CCHAIN on HDX has weekly counts from the Philippine Integrated Disease Surveillance and Response (PIDSR) system for \leptoNCities{} cities, and a national weekly series of notifiable diseases is published on Mendeley Data. Both are analysed as \textbf{retrospective associations}, not forecasts: negative-binomial models of weekly cases on CHIRPS rain 0 to \leptoMaxLag{} weeks earlier, with seasonal terms, year and city effects and a COVID-19 term. Figure~\ref{fig:lepto} shows the incidence rate ratios (IRR) by lag.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.72\linewidth]{f17_lepto}
+\caption{Joint distributed-lag incidence rate ratios (95\% confidence intervals) per +\leptoRainPer{}~mm/week of rain, for the cities and the national series.}
+\label{fig:lepto}
+\end{figure}
+
+\begin{itemize}
+\item \textbf{Cities (\cityObs{} city-weeks, \cityCases{} cases, 2016--2020): the headline.} \ifCitySig Rain is followed by leptospirosis \citySigRange{} weeks later (the lags whose 95\% confidence interval lies above 1)\else No lag of rain has a 95\% confidence interval above 1\fi; the joint peak is at lag \cityPeakLag{}, IRR \cityPeakCI{} per +\leptoRainPer{}~mm/week, and the cumulative IRR over lags 0 to \leptoMaxLag{} is \cityCumCI{}. A heavy-rain week (at or above the city's \leptoHeavyPctl{} percentile) peaks at lag \heavyPeakLag{}: \heavyPeakCI{}. An earlier Philippine study found a peak after \litLeptoPeak{} \parencite{matsushita2018}\ifCityPeakLater; the peak here is later, and the CCHAIN week label is uncertain by about a week\fi.
+\item \textbf{National (\natObs{} weeks, 2019--2020).} The joint peak is at lag \natPeakLag{}, \natPeakCI{}; the cumulative IRR is \natCumCI{}. With 2019 alone the cumulative effect is \natNineteenCumCI{}\ifNatNineteenNull: much of the national signal comes from 2020 (the December surge after Rolly and Ulysses, under COVID-19 reporting)\fi.
+\item \textbf{Typhoons.} After Rolly and Ulysses (2020), cities inside the gale swath had \didRUPost{} times the outside cities' ratio of observed to expected cases in weeks 1 to 4, with a pre-landfall placebo of \didRUPre{}\ifRUPlaceboOK{} (the placebo passes)\else{} (the placebo fails)\fi. For Ompong and Tisoy the ratio is \didOTPost{} with a placebo of \didOTPre{}\ifOTPlaceboOK{} (the placebo passes)\else{}: the placebo fails, as weeks of monsoon rain had already raised cases before Ompong\fi. \ifRUPostSig\ifOTPostSig\ifRUPlaceboOK\ifOTPlaceboOK Both storm pairs show an effect with a clean placebo.\else Four storms and \leptoNCities{} cities support no general storm effect.\fi\else Four storms and \leptoNCities{} cities support no general storm effect.\fi\else Four storms and \leptoNCities{} cities support no general storm effect.\fi\else Four storms and \leptoNCities{} cities support no general storm effect.\fi
+\item \textbf{Flood.} Of \sOnePairs{} city-storm pairs, \sOnePairsSeen{} had radar over more than a fifth of the city and \sOnePairsFlooded{} show any new flood (at most \sOnePairsMax{})\ifLeptoFloodFew: too few to relate flood to cases, so flood mediation stays an assumption from the literature\fi.
+\end{itemize}
+
+The \leptoNCities{} cities are not a sample of provinces, so nothing here is extrapolated to provinces, and leptospirosis is not in the dashboard's ranking.

@@ -1,0 +1,129 @@
+% Bantay-Baha technical specification. Build: latexmk (docs/spec/latexmkrc) or LaTeX Workshop in VS Code; see GUIDE.md.
+% Results are never typed here or in sections/: they are macros from generated/numbers.tex (python scripts/make_spec.py).
+\documentclass[11pt,a4paper]{article}
+
+% ---------------------------------------------------------------- fonts and language
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[british]{babel}
+\usepackage{libertine}
+\usepackage[libertine]{newtxmath}
+\usepackage[varqu,scaled=0.95]{inconsolata}
+\usepackage{textcomp}
+\usepackage{microtype}
+\usepackage{csquotes}
+
+% ---------------------------------------------------------------- page
+\usepackage[a4paper,left=25mm,right=25mm,top=24mm,bottom=26mm,headheight=14pt]{geometry}
+\usepackage{xcolor}
+\definecolor{ink}{HTML}{0F1E28}
+\definecolor{teal}{HTML}{0A86B5}
+\definecolor{amber}{HTML}{C77700}
+\definecolor{alert}{HTML}{C8323F}
+\definecolor{mist}{HTML}{F2F5F7}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{ink!70}Bantay-Baha technical specification}
+\fancyhead[R]{\small\sffamily\color{ink!70}PJDSC 2026}
+\fancyfoot[C]{\small\sffamily\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\usepackage{titlesec}
+\titleformat{\section}{\Large\sffamily\bfseries\color{ink}}{\thesection}{0.8em}{}
+\titleformat{\subsection}{\large\sffamily\bfseries\color{teal}}{\thesubsection}{0.8em}{}
+\titleformat{\subsubsection}{\normalsize\sffamily\bfseries\color{ink}}{\thesubsubsection}{0.8em}{}
+\titlespacing*{\section}{0pt}{2.2ex plus 1ex}{1.2ex}
+\titlespacing*{\subsection}{0pt}{1.8ex plus 0.8ex}{0.8ex}
+
+% Words are never split across lines (see GUIDE.md): looser spacing instead of hyphens.
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\tolerance=9999
+\emergencystretch=3em
+
+% ---------------------------------------------------------------- floats, tables, lists
+\usepackage{graphicx}
+\graphicspath{{../results/figures/}}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[font=small,labelfont={bf,sf},format=plain]{caption}
+\usepackage[section]{placeins}
+% Floats: allow more of a text page to be float, and put float-only pages at the top instead of centring them.
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.75}
+\makeatletter
+\setlength{\@fptop}{0pt}
+\setlength{\@fpsep}{12pt plus 2fil}
+\setlength{\@fpbot}{0pt plus 1fil}
+\makeatother
+\usepackage{enumitem}
+\setlist{itemsep=0.25ex,topsep=0.6ex}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+\renewcommand{\arraystretch}{1.12}
+\setlength{\tabcolsep}{4.5pt}
+
+% ---------------------------------------------------------------- references
+\usepackage[style=apa,backend=biber]{biblatex}
+\addbibresource{refs.bib}
+\usepackage{xurl}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{colorlinks=true,linkcolor=teal,citecolor=teal,urlcolor=teal,pdftitle={Bantay-Baha technical specification},pdfsubject={PJDSC 2026}}
+
+% ---------------------------------------------------------------- notation used in the prose
+\newcommand{\code}[1]{\texttt{#1}}
+% \tablerows{name} reads the generated rows generated/tab_name.tex inside a tabular. It uses TeX's primitive \input,
+% because LaTeX's \input before \bottomrule fails with "Misplaced \noalign".
+\makeatletter
+\newcommand{\tablerows}[1]{\@@input generated/tab_#1.tex }
+\makeatother
+\newcommand{\stOk}{\textcolor{teal}{\textbf{done}}}
+\newcommand{\stPart}{\textcolor{amber}{\textbf{partly}}}
+\newcommand{\stNo}{\textcolor{alert}{\textbf{not done}}}
+\usepackage{tcolorbox}
+\newtcolorbox{note}{colback=amber!7,colframe=amber,boxrule=0pt,leftrule=2.5pt,arc=0pt,left=3mm,right=3mm,top=1.5mm,bottom=1.5mm,fontupper=\small}
+
+% Figures that are typed, not computed: the proposal's assumption and figures quoted from the literature.
+% (The proposal's coverage band \targetCov comes from scripts/make_spec.py COV_TARGET, which also tests against it.)
+\newcommand{\proposalProvinces}{81}
+\newcommand{\litNCRShare}{about 22\%}
+\newcommand{\litLeptoPeak}{about two weeks}
+
+% Results: every number below comes from the build outputs.
+\input{generated/numbers}
+
+\title{\sffamily\bfseries Bantay-Baha\\[0.4ex]\Large\mdseries Technical specification}
+\author{\normalsize PJDSC 2026}
+\date{\normalsize Generated from the pipeline outputs on \today}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{fancy}
+
+\input{sections/00_abstract}
+\tableofcontents
+\clearpage
+
+\input{sections/01_summary}
+\input{sections/02_data}
+\input{sections/03_methods}
+\input{sections/04_forecast}
+\input{sections/05_calibration}
+\input{sections/06_leadlag}
+\input{sections/07_flood}
+\input{sections/08_access}
+\input{sections/09_priority}
+\input{sections/10_validation}
+\input{sections/11_lepto}
+\input{sections/12_scorecard}
+\input{sections/13_limitations}
+
+\printbibliography[heading=bibnumbered]
+
+\appendix
+\input{sections/14_acronyms}
+
+\end{document}

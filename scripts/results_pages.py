@@ -429,6 +429,8 @@ or west), so a health officer can ask "what if it comes in further south?" and g
         a = k["allst"]
         cat = a[a.kind == "catalogue"]
         sk = k.get("cat_skipped")
+        rho_txt = (f" Network-raster agreement across units: &rho; median {k['cat_rho'][1]:.2f} (min {k['cat_rho'][0]:.2f}) over "
+                   f"{k['cat_rho'][2]} storms with any cut-off." if k.get("cat_rho") else "")
         pages.append(("Catalogue", f"""<h1>Every storm, {pd.Timestamp(a.origin.min()).year}-{pd.Timestamp(a.origin.max()).year}</h1>
 <p>Beyond the four backtests, the build scores the observed track of every other storm whose gale swath touched Philippine land:
 <b>{n_cat} storms</b>. Each uses the latest model fitted before its week (never later data), R calibrated where enough past outcomes exist
@@ -439,8 +441,8 @@ bounds); circles: catalogue storms (NOAH proxy, upper bounds); hollow: raw R.</f
 <div class='two' style='gap:4mm'><table class='cat'>{t1}</table><table class='cat'>{t2}</table></div>
 <p style='font-size:8pt'>R: mean over {k['n_units']} units; cut: people cut off (M), network and raster; R&times;cut: expected people at surge risk who are cut off
 (&Sigma; R &times; cut off over units); D/P: provinces at deploy / pre-position. &#9670; backtest (Sentinel-1); &dagger; raw R (before calibration was possible).
-The largest cut-offs ({_lst(cat.nlargest(3, 'cut').label)}) pair with low R; high-R storms ({_lst(cat.nlargest(3, 'R').label)}) came in the 2019
-epidemic season. Network-raster agreement across units: &rho; median {k['cat_rho'][1]:.2f} (min {k['cat_rho'][0]:.2f}) over {k['cat_rho'][2]} storms with any cut-off.</p>"""))
+The largest cut-offs ({_lst(cat.nlargest(3, 'cut').label)}) pair with low R; high-R storms ({_lst(cat.nlargest(3, 'R').label)}) came
+{"in the 2019 epidemic season" if (pd.to_datetime(cat.nlargest(3, 'R').origin).dt.year == 2019).all() else "in several seasons"}.{rho_txt}</p>"""))
 
     pages.append(("Validation", f"""<h1>Backtest, sensitivity, benchmark</h1>
 <h2>Did high-priority provinces see more cases?</h2>

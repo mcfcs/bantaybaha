@@ -68,7 +68,7 @@ benchmark models. Each entry is one function or one top-level block.</p>
   <a class="toc" href="#64-streamlitconfigtoml">6.4 theme</a> · <a class="toc" href="#65-tests-tests">6.5 tests</a></li>
 </ul>
 </li>
-<li><a class="toc" href="#7-documents">Documents: <code>make_results.py</code>, <code>results_pages.py</code>, <code>results_slides.py</code>, <code>make_proposal.py</code>, <code>check_code_guide.py</code></a></li>
+<li><a class="toc" href="#7-documents">Documents: <code>make_results.py</code>, <code>results_pages.py</code>, <code>results_slides.py</code>, <code>make_spec.py</code>, <code>make_proposal.py</code>, <code>check_code_guide.py</code></a></li>
 <li><a class="toc" href="#8-benchmark-models">Benchmark models: <code>scripts/benchmark_*.py</code></a></li>
 <li><a class="toc" href="#9-the-eda-notebook">The EDA notebook</a></li>
 <li><a class="toc" href="#10-every-file-the-pipeline-writes">Every file the pipeline writes</a></li>
@@ -449,8 +449,13 @@ Database events, a Sentinel-1 scene inventory and the Sentinel-1 flood masks. Li
 <td>Checks that paths exist (and, for a folder, that it holds a matching file), records the result, returns True/False.</td>
 </tr>
 <tr>
-<td><code>ensure_dirs()</code></td>
+<td><code>_rel()</code></td>
 <td>93-95</td>
+<td>A path relative to the repo when it lies inside it, else as given, so <code>have()</code> can record inputs that live outside the repo (e.g. tests' temporary files) instead of failing.</td>
+</tr>
+<tr>
+<td><code>ensure_dirs()</code></td>
+<td>98-100</td>
 <td>Creates the output folders.</td>
 </tr>
 </tbody>
@@ -872,37 +877,37 @@ reporting units (provinces mixed with cities) and today's boundary file (COD-AB)
 </tr>
 <tr>
 <td><code>ems_observed_flood()</code></td>
-<td>161-177</td>
+<td>161-179</td>
 <td>Reads the observed-flood polygons from the Copernicus EMSR312 packages (Ompong; first map and later monitoring map).</td>
 </tr>
 <tr>
 <td><code>s1_tiles()</code></td>
-<td>182-184</td>
+<td>184-186</td>
 <td>Lists a storm's Sentinel-1 flood tiles.</td>
 </tr>
 <tr>
 <td><code>_tile_cell()</code></td>
-<td>187-190</td>
+<td>189-192</td>
 <td>The nominal 1-degree cell of a tile, read from its name (<code>s1flood_121E_17N.tif</code>).</td>
 </tr>
 <tr>
 <td><code>_s1_zone_sums()</code></td>
-<td>193-218</td>
+<td>195-220</td>
 <td>The shared counter: resamples each tile of a storm onto the WorldPop grid and adds up, per zone code (unit or municipality), the pixels the radar saw, the flooded pixels and the people in them. With <code>crop</code>, each tile is read only over its 1-degree cell, so the ~2-pixel overlap between neighbouring tiles is counted once.</td>
 </tr>
 <tr>
 <td><code>s1_unit_flood()</code></td>
-<td>221-235</td>
+<td>223-237</td>
 <td>Per unit: share of the land Sentinel-1 saw that newly flooded, and people in that flood (WorldPop). Uncropped, as the panel was built.</td>
 </tr>
 <tr>
 <td><code>s1_adm3_flood()</code></td>
-<td>238-276</td>
+<td>240-278</td>
 <td>The same per municipality for every storm with tiles (flood share, people in flood, and <code>seen_frac</code>, the share of the municipality the radar saw), on the municipality raster with cropped tiles. Written to <code>s1_adm3.parquet</code> by the scenarios stage.</td>
 </tr>
 <tr>
 <td><code>s1_flood_lookup()</code></td>
-<td>279-301</td>
+<td>281-303</td>
 <td>Loads a storm's tiles into memory once and returns a function that answers "flooded or not" for millions of points at once with array indexing (road midpoints, friction cells).</td>
 </tr>
 </tbody>
@@ -1141,7 +1146,7 @@ reporting units (provinces mixed with cities) and today's boundary file (COD-AB)
 </tr>
 <tr>
 <td><code>SurgeCalibrator</code></td>
-<td>348-361</td>
+<td>348-362</td>
 <td>An isotonic map from raw R to the observed surge frequency, fitted on past forecasts only; keeps how many outcomes it used and the last target week it saw.</td>
 </tr>
 <tr>
@@ -1151,72 +1156,72 @@ reporting units (provinces mixed with cities) and today's boundary file (COD-AB)
 </tr>
 <tr>
 <td><code>SurgeCalibrator.__call__()</code></td>
-<td>356-361</td>
+<td>356-362</td>
 <td>Maps raw R to calibrated R (NaN stays NaN, result clipped to <code>R_CLIP</code>).</td>
 </tr>
 <tr>
 <td><code>fit_calibrator()</code></td>
-<td>364-372</td>
+<td>365-373</td>
 <td>Builds a calibrator from rows whose outcome is known at a given date (target week on or before it, the same rule as model training); None with fewer than <code>CAL_MIN_ROWS</code> outcomes or only one class.</td>
 </tr>
 <tr>
 <td><code>cum4_eval()</code></td>
-<td>375-400</td>
+<td>376-401</td>
 <td>The evaluation version: for every forecast origin t, calibrates that origin's R with a calibrator fitted on forecasts whose 4-week window ended by t (expanding window), so calibrated R never uses a later outcome; rows before 850 past outcomes keep the raw R. Asserts there is no leakage.</td>
 </tr>
 <tr>
 <td><code>RELIABILITY_BINS</code>, <code>_reliability()</code></td>
-<td>403-408</td>
+<td>404-409</td>
 <td>Reliability table: in bins of R, the mean R and how often a surge happened.</td>
 </tr>
 <tr>
 <td><code>_brier()</code></td>
-<td>411-412</td>
+<td>412-413</td>
 <td>Brier score of a probability column.</td>
 </tr>
 <tr>
 <td><code>surge_calibration()</code></td>
-<td>415-443</td>
+<td>416-444</td>
 <td>Brier score of raw and calibrated R, the base rate, the climatology Brier, which origins stayed uncalibrated, and the reliability table before and after calibration.</td>
 </tr>
 <tr>
 <td><code>surge_calibrator()</code></td>
-<td>446-461</td>
+<td>447-462</td>
 <td>The production version for the scenarios: a calibrator fitted on every saved rolling-origin surge forecast (<code>eval_cum4.parquet</code>) whose outcome is known by the model's training end. None (R stays raw, recorded) if the file is missing or there are too few outcomes.</td>
 </tr>
 <tr>
 <td><code>calibrate_R()</code></td>
-<td>464-472</td>
+<td>465-473</td>
 <td>Scenario hook: keeps the model probability as <code>R_raw</code>, sets <code>R</code> to the calibrated value (raw if there is no calibrator) and flags <code>R_calibrated</code>.</td>
 </tr>
 <tr>
 <td><code>eval_quantiles()</code></td>
-<td>477-484</td>
+<td>478-485</td>
 <td>The rolling-origin horizon 1-4 rows with every built-in model's 23 quantiles, saved so benchmarks can be scored and ensembled later without refitting XGBoost.</td>
 </tr>
 <tr>
 <td><code>_key()</code></td>
-<td>487-490</td>
+<td>488-491</td>
 <td>The join key (unit, origin week, horizon) in one fixed set of types.</td>
 </tr>
 <tr>
 <td><code>load_bench()</code></td>
-<td>493-539</td>
+<td>494-540</td>
 <td>Reads each <code>bench_&lt;model&gt;.parquet</code> in <code>BENCH_MODELS</code> (and its <code>.json</code> metadata), checks the schema, drops invalid or duplicate rows and aligns it to the evaluation rows. Other names are recorded as ignored variants; a bad file is skipped with a warning, never fatal.</td>
 </tr>
 <tr>
 <td><code>evaluate_models()</code></td>
-<td>542-583</td>
+<td>543-584</td>
 <td>Scores xgb, its ablations, the naive baseline, every benchmark and the <strong>median ensemble</strong> (element-wise median of the 23 quantiles over xgb and the benchmarks, only where all exist) on the same rows. Returns the model x horizon table, fan-chart bands for the benchmarks and the ensemble, and metadata.</td>
 </tr>
 <tr>
 <td><code>fit_at()</code></td>
-<td>588-603</td>
+<td>589-604</td>
 <td>For the scenarios: learns the graph and the surge thresholds and trains the graph model for every horizon and the 4-week model on data up to a storm's forecast origin (never past 2019).</td>
 </tr>
 <tr>
 <td><code>predict_at()</code></td>
-<td>606-631</td>
+<td>607-632</td>
 <td>Forecasts every province from that week; optional overrides replace the storm features (one row per unit); computes raw R and the per-driver SHAP contributions shown on the dashboard.</td>
 </tr>
 </tbody>
@@ -1321,7 +1326,7 @@ them is reported as uncertainty.</p>
 </tr>
 <tr>
 <td><code>FrictionGrid</code></td>
-<td>302-399</td>
+<td>302-401</td>
 <td><strong>The raster access method</strong>: cost-distance from the same hospitals over the ~1 km friction grid, with the same ferries, storm rules and cut-off rule as the network, evaluated at cell centres. There is no walking leg.</td>
 </tr>
 <tr>
@@ -1341,17 +1346,17 @@ them is reported as uncertainty.</p>
 </tr>
 <tr>
 <td><code>FrictionGrid.solve()</code></td>
-<td>382-399</td>
+<td>382-401</td>
 <td>Applies the storm multipliers (flooded cells impassable, slowed cells costlier) and the ferries that still sail, then runs scikit-image's <code>MCP_Geometric</code> from all hospital cells: hours to the nearest hospital per population cell. A hospital in a flooded cell is not a start.</td>
 </tr>
 <tr>
 <td><code>friction_grid()</code></td>
-<td>402-406</td>
+<td>404-408</td>
 <td>Builds the <code>FrictionGrid</code>, or records the friction raster as missing and returns None.</td>
 </tr>
 <tr>
 <td><code>summarise()</code></td>
-<td>411-423</td>
+<td>413-425</td>
 <td>Per unit (or municipality): population, people cut off, people with no route even normally, average normal trip time, and A = share cut off.</td>
 </tr>
 </tbody>
@@ -1681,12 +1686,12 @@ are never read as provincial or national numbers.</p>
 </tr>
 <tr>
 <td><code>_lag_md()</code>, <code>_peak()</code>, <code>_sig_lags()</code>, <code>_span()</code>, <code>_findings()</code></td>
-<td>618-704</td>
+<td>618-707</td>
 <td>Markdown lag tables, the peak lag of a joint profile, the lags whose 95% CI lies above 1, and the key-findings bullets for the summary. Every qualitative word in the findings (the lag window, "same direction", a placebo that "passes" or "fails", "no general storm effect") is decided from the numbers, so the summary stays right if the data change.</td>
 </tr>
 <tr>
 <td><code>write_summary()</code></td>
-<td>707-825</td>
+<td>710-828</td>
 <td>Writes <code>data/processed/lepto_summary.md</code>: key findings, data and week labels, the national and city tables, the event study and the caveats; every number from the output tables.</td>
 </tr>
 </tbody>
@@ -2162,13 +2167,24 @@ only when their files exist.</p>
 viewer-only toolbar (no developer or deploy menu for health officers), short error messages without tracebacks, no usage
 statistics, and the light and dark themes (Public Sans, one flood-blue accent). The data colours live in <code>app/ui.py</code>.</p>
 <h3 id="65-tests-tests">6.5 Tests: <code>tests/</code></h3>
-<p>The tests read the real build outputs in <code>data/processed/app/</code> (they skip when those are missing) and never write
-there; usability answers go to a temporary file. Screenshots and videos land in <code>tests/artifacts/</code> (git-ignored). Install
-<code>requirements-dev.txt</code> and <code>python -m playwright install chromium</code> once, then:</p>
-<pre><code>python -m pytest tests                  # everything: AppTest + Playwright end-to-end
-python -m pytest tests -m &quot;not e2e&quot;     # fast AppTest checks only
-python tests/capture.py                 # refresh docs/results/figures/dashboard.png + record the demo walkthrough video
+<p>Two kinds of tests. <strong>Pipeline unit tests</strong> check the documented rules of <code>bantay/</code> and <code>scripts/</code> on small hand-built
+inputs (a few units, a 4-node road, a 5 x 5 GeoTIFF, a temporary CSV); they need no build and no network. <strong>Build
+tests</strong> read the real outputs: the dashboard tests (<code>test_app.py</code>, <code>test_e2e.py</code>) and the output invariants
+(<code>test_build_outputs.py</code>, <code>test_make_results.py</code>, marker <code>data</code>); they skip when the outputs are missing. Build tests
+check facts fixed by the data (126 dengue units, 85 units, 262 weeks) and consistency between outputs (ranges, leak-free
+dates, same-row scoring, ensemble members), never numbers that come from a fitted model, so model improvements do not
+break them. No test writes into <code>data/</code>: the status registry goes to a temporary file, downloads go to <code>tmp_path</code>, and a
+session check fails the run if any file under <code>data/</code> changed. Usability answers go to a temporary file; screenshots and
+videos land in <code>tests/artifacts/</code> (git-ignored). Install <code>requirements-dev.txt</code> and
+<code>python -m playwright install chromium</code> once, then:</p>
+<pre><code>python -m pytest tests                            # everything (~1.5 min): unit, build outputs, AppTest, Playwright
+python -m pytest tests -m &quot;not e2e&quot;               # no browser (~40 s)
+python -m pytest tests -m &quot;not e2e and not data&quot;  # pipeline unit tests + AppTest, no build-output invariants
+python -m pytest tests -m data                    # build-output invariants only
+python tests/capture.py                           # refresh docs/results/figures/dashboard.png + record the demo video
 </code></pre>
+<p>A test marked <code>xfail(strict=True)</code> documents a known bug in the code: it fails today, and the suite turns red once the
+bug is fixed, so the marker is removed together with the fix.</p>
 <h4 id="testsconftestpy"><code>tests/conftest.py</code></h4>
 <table class='blocks'>
 <thead>
@@ -2181,38 +2197,141 @@ python tests/capture.py                 # refresh docs/results/figures/dashboard
 <tbody>
 <tr>
 <td>Paths</td>
-<td>17-21</td>
-<td>Repo root, the app, the build outputs, the artifacts folder; puts <code>app/</code> on the path so the tests can import <code>sus</code>.</td>
+<td>20-27</td>
+<td>Repo root, the app, the build outputs, the artifacts folder; puts <code>app/</code>, the repo root (for <code>bantay</code>) and <code>scripts/</code> on the path.</td>
 </tr>
 <tr>
 <td><code>needs_data</code></td>
-<td>23-24</td>
-<td>Skip marker for tests that need a finished build.</td>
+<td>29-30</td>
+<td>Skip marker for dashboard tests that need a finished build.</td>
 </tr>
 <tr>
 <td><code>pytest_configure()</code></td>
-<td>27-28</td>
-<td>Registers the <code>e2e</code> marker, so <code>-m "not e2e"</code> deselects the browser tests.</td>
+<td>33-36</td>
+<td>Registers the <code>e2e</code>, <code>data</code> and <code>slow</code> markers, so <code>-m "not e2e"</code> / <code>-m "not data"</code> / <code>-m "not slow"</code> deselect them without warnings.</td>
 </tr>
 <tr>
 <td><code>free_port()</code></td>
-<td>31-34</td>
+<td>39-42</td>
 <td>A free local port for the test server.</td>
 </tr>
 <tr>
 <td><code>sus_csv()</code></td>
-<td>37-41</td>
+<td>45-49</td>
 <td>A throw-away responses file, set through <code>BANTAY_SUS_PATH</code>.</td>
 </tr>
 <tr>
 <td><code>server()</code></td>
-<td>44-73</td>
+<td>52-81</td>
 <td>Starts <code>streamlit run</code> on a free port for the whole session, waits for its health check and stops it at the end.</td>
 </tr>
 <tr>
 <td><code>shots()</code></td>
-<td>76-80</td>
+<td>84-88</td>
 <td>The screenshot folder.</td>
+</tr>
+<tr>
+<td><code>isolated_status()</code></td>
+<td>91-98</td>
+<td>Points <code>bantay.config</code>'s status registry (<code>record</code>, <code>missing</code>, <code>have</code>) at a temporary <code>status.json</code>; the pipeline tests use it.</td>
+</tr>
+<tr>
+<td><code>need()</code></td>
+<td>101-105</td>
+<td>Skips the calling test unless the named build outputs exist.</td>
+</tr>
+<tr>
+<td><code>_snapshot()</code>, <code>data_untouched()</code></td>
+<td>108-121</td>
+<td>Session check (autouse): size and mtime of every file under <code>data/processed</code>, <code>data/interim</code>, <code>data/crosswalks</code> and of <code>data/raw/MANIFEST.csv</code>, before and after; any change fails the run.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="pipeline-and-build-output-tests">Pipeline and build-output tests</h4>
+<p>One file per module; each test name states the rule it checks. Counts are collected tests (parametrised cases included).</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>File</th>
+<th>Lines</th>
+<th>What it checks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tests/test_config.py</code> (14)</td>
+<td>1-92</td>
+<td><code>week_ending</code> (Mon-Sun, a Sunday maps to itself, scalar and Series, the 262-week grid), the 23 FluSight quantiles, the <code>record</code> / <code>missing</code> / <code>have</code> round trip (a later success clears a gap).</td>
+</tr>
+<tr>
+<td><code>tests/test_units.py</code> (26)</td>
+<td>1-115</td>
+<td><code>norm</code> (Las Piñas, "City of X", parentheses); ADM2 merges and the synthetic Maguindanao id on a mini COD-AB; dengue names city-first (Quezon City is not Quezon), the Isabela collision, Naga by region, misspellings, unmatched names; crosswalk header comments skipped.</td>
+</tr>
+<tr>
+<td><code>tests/test_dengue.py</code> (7)</td>
+<td>1-90</td>
+<td>HXL row skipped, <code>loc</code> stripped, Sunday weeks enforced, deaths never loaded or used; a unit-week is NaN unless every member reported (a reported 0 stays 0); a missing file is recorded, not fatal.</td>
+</tr>
+<tr>
+<td><code>tests/test_storms.py</code> (10)</td>
+<td>1-137</td>
+<td>Gale radius USA R34 -&gt; TOKYO R30 -&gt; fixed (below 34 kt = 0); <code>shift_track</code>; <code>shift_storm</code> moves one storm only; <code>origin_exposure</code> uses the 4 weeks to the origin only (later fixes ignored; no fixes -&gt; distance 2000, gale 0).</td>
+</tr>
+<tr>
+<td><code>tests/test_panel.py</code> (13)</td>
+<td>1-165</td>
+<td>Sentinel-1 weeks start at the week of landfall + <code>S1_AFTER_DAYS</code>, never at a storm's own origin week; overlapping storms take the max; the constant equals the GEE window; the interim cache rule; rain week sums, river routing, grid helpers.</td>
+</tr>
+<tr>
+<td><code>tests/test_forecast.py</code> (37)</td>
+<td>1-523</td>
+<td>WIS (0 for a perfect forecast, the absolute error for a point forecast, a hand-computed case, the pinball identity), coverage, <code>prob_exceed</code>, seasonal naive; features and targets never use t+h; surge thresholds use weeks &lt;= end only; calibration ignores outcomes after the cutoff and stays raw below <code>CAL_MIN_ROWS</code>; <code>load_bench</code> (bad schema skipped, variants ignored, re-sorted) and the median ensemble on common rows; rolling-origin and <code>fit_at</code> training windows (stand-in model); one small real fit and prediction.</td>
+</tr>
+<tr>
+<td><code>tests/test_access.py</code> (14)</td>
+<td>1-240</td>
+<td>The cut-off rule, <code>summarise</code> (A = pop_cut / pop), <code>road_multiplier</code>; the network solver on a 4-node road with a parallel road and a ferry; ferry cancellation and edges in a swath; the MAP friction method on a 5 x 5 GeoTIFF (cost distance, flood detours, ferry line, missing raster).</td>
+</tr>
+<tr>
+<td><code>tests/test_scenarios.py</code> (9)</td>
+<td>1-113</td>
+<td>Tier boundaries read from <code>TIERS</code> (inclusive; NaN A never deploys); case columns; network / raster access tables and the A_lo-A_hi range; P = R x A; catalogue training ends; rank-change helpers.</td>
+</tr>
+<tr>
+<td><code>tests/test_leadlag.py</code> (6)</td>
+<td>1-77</td>
+<td><code>prepare</code> uses the window only and standardises; an empty graph below <code>MIN_T</code>; the cross-correlation baseline finds a planted 2-week lead; sentinels and communities.</td>
+</tr>
+<tr>
+<td><code>tests/test_lepto.py</code> (19)</td>
+<td>1-184</td>
+<td>Week labels, lags never cross a gap, the seasonal expectation, event ratios; the key-findings text follows the numbers (lag spans, the ~2-week comparison, a placebo whose CI contains 1 "passes").</td>
+</tr>
+<tr>
+<td><code>tests/test_scripts.py</code> (14)</td>
+<td>1-230</td>
+<td><code>download_data.fetch</code> skips existing files and writes through <code>.part</code> (no network); <code>write_manifest</code> merge and sha256; the bucket manifest round trip; <code>check_code_guide</code> catches a wrong range, a missing function and bad links, and the real guide passes.</td>
+</tr>
+<tr>
+<td><code>tests/test_build_outputs.py</code> (16)</td>
+<td>1-231</td>
+<td>Marker <code>data</code>. Crosswalk 126 -&gt; 85 with nothing unmatched; panel 85 x 262; no Sentinel-1 at a storm's own origin week; scenarios: R, A in [0, 1], A_lo &lt;= A &lt;= A_hi, P = R x A, tiers, train_end &lt;= origin; catalogue leak-free; every model scored on the same rows, ensemble members = xgb + <code>BENCH_MODELS</code>, built-in rows equal <code>eval_summary.csv</code>; calibration and lead-lag edges; <code>status.json</code> well formed.</td>
+</tr>
+<tr>
+<td><code>tests/test_make_results.py</code> (16)</td>
+<td>1-109</td>
+<td>Marker <code>data</code>. <code>stats()</code> and the report / 20-slide builders on the full build, on a minimal build and without each optional output in turn (in memory; nothing is written).</td>
+</tr>
+<tr>
+<td><code>tests/test_flood.py</code> (2)</td>
+<td>1-20</td>
+<td>Reading the Copernicus EMS layer records status by default, and leaves <code>status.json</code> alone with <code>record_status=False</code> (how the documents read it).</td>
+</tr>
+<tr>
+<td><code>tests/test_spec_flags.py</code> (3)</td>
+<td>1-118</td>
+<td>The spec's <code>\if&lt;Name&gt;</code> wording flags: every flag the prose uses is generated and every generated flag is used; marker <code>data</code>: 21 flags recomputed straight from the CSV / JSON outputs; marker <code>slow</code>: the spec compiles with every flag inverted, so both wordings of every claim build.</td>
 </tr>
 </tbody>
 </table>
@@ -2410,6 +2529,100 @@ python tests/capture.py                 # refresh docs/results/figures/dashboard
 </tr>
 </tbody>
 </table>
+<h4 id="teststest_specpy"><code>tests/test_spec.py</code></h4>
+<p>Checks the LaTeX technical specification (<code>docs/spec/</code>) and its generator <code>scripts/make_spec.py</code>. The static tests need no
+build; the ones that read <code>data/processed/</code> skip without it; the compile test is <code>slow</code> and skips without latexmk.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Paths, <code>needs_build</code></td>
+<td>18-28</td>
+<td>The spec folders, the figures, the build outputs; skip marker for tests that need a finished build.</td>
+</tr>
+<tr>
+<td><code>STANDARD</code></td>
+<td>31-41</td>
+<td>LaTeX and package commands the sections may use; any other macro must be defined in <code>main.tex</code> or <code>generated/numbers.tex</code>.</td>
+</tr>
+<tr>
+<td><code>TYPED</code>, <code>NOMINAL</code>, <code>VERSION</code>, <code>ARGS</code></td>
+<td>44-57</td>
+<td>The typed-result heuristic (a decimal, a percentage, a thousands separator, a number in M or k, a count of units, storms, links ...) and what it leaves alone (nominal 50/90/95% levels, version numbers, years, labels, keys and file names).</td>
+</tr>
+<tr>
+<td><code>strip_comments()</code>, <code>prose()</code></td>
+<td>60-71</td>
+<td>Section text without comments, command arguments, environment options and the allowed numbers.</td>
+</tr>
+<tr>
+<td><code>defined()</code>, <code>numbers()</code>, <code>macro_values()</code>, <code>bib_keys()</code></td>
+<td>74-98</td>
+<td>Macro names a source defines (<code>\newcommand</code>, <code>\newif</code> with its switches), the generated macros and their values, the bibliography keys.</td>
+</tr>
+<tr>
+<td><code>test_main_inputs_every_section()</code>, <code>test_sections_have_root_magic_comment()</code>, <code>test_build_settings()</code></td>
+<td>104-127</td>
+<td><code>main.tex</code> inputs every section file and the numbers; each section has the LaTeX Workshop root comment; latexmkrc, <code>.vscode</code> and <code>.gitignore</code> hold the build setup.</td>
+</tr>
+<tr>
+<td><code>test_every_macro_used_is_defined()</code></td>
+<td>133-140</td>
+<td>No section uses a macro that nothing defines.</td>
+</tr>
+<tr>
+<td><code>test_generated_macros_are_letters_only_and_unique()</code>, <code>test_no_generated_value_is_missing()</code>, <code>test_generated_tables_exist()</code></td>
+<td>143-161</td>
+<td>Generated names are letters only and unique, none printed as n/a, every <code>\tablerows{}</code> file exists and holds table rows.</td>
+</tr>
+<tr>
+<td><code>test_no_typed_results_in_prose()</code>, <code>test_typed_result_heuristic_catches_examples()</code></td>
+<td>167-184</td>
+<td>No typed result in the sections, and the heuristic itself flags typed examples and passes macros, nominal levels, versions and years.</td>
+</tr>
+<tr>
+<td><code>test_one_paragraph_per_source_line()</code>, <code>test_no_space_swallowed_after_conditionals()</code>, <code>test_no_hyphenation_preamble()</code>, <code>test_anonymous_sources()</code></td>
+<td>187-228</td>
+<td>The writing conventions of <code>docs/spec/GUIDE.md</code>: no hard-wrapped prose, no word glued to a <code>\fi</code>, the no-hyphenation penalties and no local <code>\sloppy</code>, no e-mail address, no PDF author and no local path in the committed PDF.</td>
+</tr>
+<tr>
+<td><code>test_every_citation_is_in_refs_bib()</code>, <code>test_refs_bib_has_no_duplicate_keys_or_stray_at_signs()</code></td>
+<td>234-246</td>
+<td>Every cited key is in <code>refs.bib</code>; no duplicate keys or at-signs in comments (both silently break biber).</td>
+</tr>
+<tr>
+<td><code>test_every_figure_exists()</code>, <code>test_every_float_is_referenced()</code></td>
+<td>249-261</td>
+<td>Every <code>\includegraphics</code> resolves through the <code>\graphicspath</code> (<code>docs/results/figures/</code>); every table and figure label is referenced from the text.</td>
+</tr>
+<tr>
+<td><code>test_formatting_helpers()</code>, <code>test_html_rows_to_latex()</code>, <code>test_macros_registry()</code></td>
+<td>267-302</td>
+<td>The generator's pure logic: number formats, the HTML-rows-to-LaTeX converter (ranges, minus signs, bold total row), the macro registry (n/a on a missing output, no duplicates, letters only).</td>
+</tr>
+<tr>
+<td><code>test_macro_values_match_build_outputs()</code>, <code>test_generated_tables_match_build_outputs()</code></td>
+<td>308-345</td>
+<td>Macro values (relative WIS, coverage, forecasts scored, ensemble, Brier, links, hospitals, NCR benchmark, people cut off, units) and table rows equal what the output files say.</td>
+</tr>
+<tr>
+<td><code>test_generated_files_are_up_to_date()</code></td>
+<td>348-363</td>
+<td>Re-runs the generator into <code>docs/spec/build/</code> and compares: fails when <code>docs/spec/generated/</code> is stale.</td>
+</tr>
+<tr>
+<td><code>test_spec_compiles_cleanly()</code></td>
+<td>369-383</td>
+<td><code>slow</code>: latexmk into a temporary folder; no errors, no undefined references or citations, no overfull box over 1 pt, no biber error.</td>
+</tr>
+</tbody>
+</table>
 <h4 id="testscapturepy"><code>tests/capture.py</code></h4>
 <p>Not a test: refreshes the dashboard figure used by the report and slides and records a silent walkthrough that follows
 the demo script.</p>
@@ -2516,192 +2729,192 @@ computed from the outputs.</p>
 </tr>
 <tr>
 <td><code>stats_models()</code></td>
-<td>263-286</td>
+<td>263-287</td>
 <td>The model comparison from <code>eval_models.csv</code>: which benchmarks are present or missing, the best model, median WIS, the variants' scores.</td>
 </tr>
 <tr>
 <td><code>median_wis_split()</code></td>
-<td>289-308</td>
+<td>290-309</td>
 <td>Re-scores the saved quantiles and benchmark files exactly like <code>forecast.evaluate_models()</code>: median WIS per model and the mean-WIS ratio to XGBoost below and above the 90th percentile of weekly cases.</td>
 </tr>
 <tr>
 <td><code>stats_catalog()</code></td>
-<td>311-341</td>
+<td>312-343</td>
 <td>One row per scored storm (catalogue + backtests): mean R, calibrated or not, people cut off by both methods, ferries, tiers; the skipped storms; rank agreement of the methods.</td>
 </tr>
 <tr>
 <td><code>_irr()</code></td>
-<td>344-348</td>
+<td>346-350</td>
 <td>The joint lag rows and the cumulative row of one leptospirosis analysis.</td>
 </tr>
 <tr>
 <td><code>stats_lepto()</code></td>
-<td>351-380</td>
+<td>353-382</td>
 <td>Leptospirosis numbers: city and national peaks, heavy-rain peak, the event-study rows, flooded city-storm pairs.</td>
 </tr>
 <tr>
 <td><code>stats_data()</code></td>
-<td>383-413</td>
+<td>385-415</td>
 <td>Data-finding numbers read from raw files (dengue units, 2016 case fatality, cases per year, how often the US gale radius is missing) and the usability responses, if any.</td>
 </tr>
 <tr>
 <td><code>s1_ems_agreement()</code></td>
-<td>416-446</td>
+<td>418-448</td>
 <td>Compares Sentinel-1 with Copernicus EMS inside each EMS area: area each mapped, overlap, precision and recall.</td>
 </tr>
 <tr>
 <td><code>style()</code>, <code>mono()</code>, <code>save()</code></td>
-<td>451-473</td>
+<td>453-475</td>
 <td>Registers the bundled fonts with matplotlib, sets a clean chart style, monospace tick labels, and saves PNGs at 220 dpi (fonts baked in).</td>
 </tr>
 <tr>
 <td><code>fig_timeline()</code></td>
-<td>478-494</td>
+<td>480-496</td>
 <td>National weekly dengue with the four typhoons and the 2020 collapse marked.</td>
 </tr>
 <tr>
 <td><code>fig_coverage()</code></td>
-<td>497-516</td>
+<td>499-518</td>
 <td>Share of panel cells with a value, per input.</td>
 </tr>
 <tr>
 <td><code>KIND_COLOR</code>, <code>fig_wis()</code></td>
-<td>519-569</td>
+<td>521-571</td>
 <td>Relative WIS of every model in the comparison (bars, with 1- and 4-week marks) and coverage by horizon against the 80-95% target.</td>
 </tr>
 <tr>
 <td><code>fig_reliability()</code></td>
-<td>572-589</td>
+<td>574-591</td>
 <td>R's reliability curve, raw and recalibrated.</td>
 </tr>
 <tr>
 <td><code>fig_methods()</code></td>
-<td>592-630</td>
+<td>594-632</td>
 <td>People cut off by the network and the raster: the observed tracks, then every proxy-flood track.</td>
 </tr>
 <tr>
 <td><code>fig_catalog()</code></td>
-<td>633-664</td>
+<td>635-666</td>
 <td>Mean R against people cut off for every scored storm, with the range between the two methods.</td>
 </tr>
 <tr>
 <td><code>fig_lepto()</code></td>
-<td>667-686</td>
+<td>669-688</td>
 <td>Leptospirosis IRR by lag, cities and national.</td>
 </tr>
 <tr>
 <td><code>fig_fan()</code></td>
-<td>689-708</td>
+<td>691-710</td>
 <td>Rolling-origin forecasts for Cagayan, 1 and 4 weeks ahead.</td>
 </tr>
 <tr>
 <td><code>_basemap()</code></td>
-<td>711-715</td>
+<td>713-717</td>
 <td>Grey province outlines and the Philippine extent for maps.</td>
 </tr>
 <tr>
 <td><code>fig_leadlag()</code></td>
-<td>718-739</td>
+<td>720-741</td>
 <td>The PCMCI+ links as arrows on the map (NCR districts share one label).</td>
 </tr>
 <tr>
 <td><code>fig_priority()</code></td>
-<td>742-762</td>
+<td>744-764</td>
 <td>Ompong's P map with track, swath and top-5 labels.</td>
 </tr>
 <tr>
 <td><code>fig_access_multiples()</code></td>
-<td>765-781</td>
+<td>767-783</td>
 <td>A per province for the four typhoons on one colour scale.</td>
 </tr>
 <tr>
 <td><code>fig_scatter()</code></td>
-<td>784-804</td>
+<td>786-806</td>
 <td>Ompong's risk vs access, marker shape = tier.</td>
 </tr>
 <tr>
 <td><code>fig_validation()</code></td>
-<td>807-823</td>
+<td>809-825</td>
 <td>Backtest correlations per storm.</td>
 </tr>
 <tr>
 <td><code>fig_s1()</code></td>
-<td>826-846</td>
+<td>828-848</td>
 <td>Sentinel-1 new-flood share per province for each storm (per-storm values, not the merged panel).</td>
 </tr>
 <tr>
 <td><code>fig_s1_ems()</code></td>
-<td>849-869</td>
+<td>851-871</td>
 <td>Sentinel-1 flood vs EMS outlines around Tuguegarao.</td>
 </tr>
 <tr>
 <td><code>fig_network()</code></td>
-<td>872-884</td>
+<td>874-886</td>
 <td>Ferry routes and hospitals over the islands (the access problem slide).</td>
 </tr>
 <tr>
 <td><code>fig_rolling()</code></td>
-<td>887-905</td>
+<td>889-907</td>
 <td>Diagram of the 8 rolling-origin refits (train on the past, score the next block).</td>
 </tr>
 <tr>
 <td><code>make_figures()</code></td>
-<td>908-913</td>
+<td>910-915</td>
 <td>Draws them all (a figure whose input is missing is None).</td>
 </tr>
 <tr>
 <td><code>FONT_CSS</code></td>
-<td>918-934</td>
+<td>920-936</td>
 <td>The bundled fonts (Big Shoulders Display, Barlow, Space Mono) and colour variables shared by all documents.</td>
 </tr>
 <tr>
 <td><code>REFERENCES</code></td>
-<td>936-972</td>
+<td>938-974</td>
 <td>The APA 7 reference list used by the report and slides.</td>
 </tr>
 <tr>
 <td><code>fmt_m()</code>, <code>storm_rows()</code>, <code>method_rows()</code>, <code>model_rows()</code></td>
-<td>975-1021</td>
+<td>977-1023</td>
 <td>Millions text, and HTML table rows for the storm table, the two access methods and the model comparison.</td>
 </tr>
 <tr>
 <td><code>bench_missing_text()</code></td>
-<td>1024-1026</td>
+<td>1026-1028</td>
 <td>Names the expected benchmarks that are not in the build.</td>
 </tr>
 <tr>
 <td><code>catalog_rows()</code>, <code>s1_muni_rows()</code></td>
-<td>1029-1054</td>
+<td>1031-1056</td>
 <td>Rows for the storm catalogue (split over side-by-side tables) and for Sentinel-1 per municipality.</td>
 </tr>
 <tr>
 <td><code>eval_rows()</code>, <code>edge_rows()</code>, <code>sens_rows()</code>, <code>valid_rows()</code>, <code>source_rows()</code></td>
-<td>1057-1129</td>
+<td>1059-1131</td>
 <td>Rows for the evaluation, the graph links, the sensitivity, the backtest and the data sources.</td>
 </tr>
 <tr>
 <td><code>browser()</code>, <code>to_pdf()</code></td>
-<td>1134-1149</td>
+<td>1136-1151</td>
 <td>Finds Chrome or Edge and prints an HTML file to PDF headlessly.</td>
 </tr>
 <tr>
 <td><code>SCRIPT_CSS</code>, <code>_md_inline()</code>, <code>demo_script_html()</code></td>
-<td>1152-1205</td>
+<td>1154-1207</td>
 <td>Turns the demo-script Markdown (the editable source) into a styled landscape PDF.</td>
 </tr>
 <tr>
 <td><code>GUIDE_CSS</code>, <code>code_guide_html()</code></td>
-<td>1208-1253</td>
+<td>1210-1255</td>
 <td>Turns this guide (<code>docs/CODE_GUIDE.md</code>) into a styled A4 PDF: repo file links become plain text, the contents links stay, and the Block / Lines tables get a line-number column style.</td>
 </tr>
 <tr>
 <td><code>OVERFLOW_JS</code>, <code>check_overflow()</code></td>
-<td>1256-1298</td>
+<td>1258-1300</td>
 <td>Lays each page out in headless Chrome and lists any element that runs into the footer band or off the edge, so overflow is caught automatically.</td>
 </tr>
 <tr>
 <td><code>main()</code> and entry</td>
-<td>1301-1333</td>
+<td>1303-1335</td>
 <td>Loads, computes, draws, writes the HTML, checks the report and slides for overflow, prints the PDFs (report, slides, code guide, demo script). <code>--no-pdf</code> skips printing.</td>
 </tr>
 </tbody>
@@ -2743,7 +2956,7 @@ computed from the outputs.</p>
 </tr>
 <tr>
 <td><code>report_html()</code></td>
-<td>126-543</td>
+<td>126-545</td>
 <td>All pages in order: cover, summary, data, panel, methods, forecast, model comparison, calibration, graph, Sentinel-1, access, the two methods, Ompong priority, the catalogue, validation, leptospirosis, scorecard, limitations, references. Pages whose outputs are missing are left out and the text switches; page cross-references are filled in from the page labels, and figures are numbered in page order at the end.</td>
 </tr>
 </tbody>
@@ -2782,6 +2995,102 @@ computed from the outputs.</p>
 <td><code>slides_html()</code></td>
 <td>104-366</td>
 <td>The 20 slides: title with headline results; the problem (typhoons and disease, the cascade, access in an archipelago); design; data; data challenges; method; nine result slides (forecast skill and the models, calibrated surge risk, outbreak links, Sentinel-1 flood, access loss by two methods, the Ompong case, the storm catalogue, validation, leptospirosis); the demo; deployment in the loop; sources. No names or internal file names (anonymous judging).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="scriptsmake_specpy"><code>scripts/make_spec.py</code></h3>
+<p>Writes the numbers and tables of the LaTeX technical specification (<code>docs/spec/</code>, see <code>docs/spec/GUIDE.md</code>) from the build
+outputs, compiles it with latexmk and copies the PDF to <code>docs/results/Bantay-Baha_Technical_Spec.pdf</code>. It reuses
+<code>make_results.load()</code> and <code>stats()</code>, so the spec quotes exactly the report's numbers, and the report's HTML row builders
+for its tables. <code>--no-pdf</code> writes <code>docs/spec/generated/</code> only.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Paths and thresholds</td>
+<td>37-48</td>
+<td>Output folders, the n/a marker, the macro-name rule (letters only), the storm suffixes, and the named thresholds behind the qualitative flags (middle reliability bins, the proposal's coverage band, "helps", "the same", "alike", "stable").</td>
+</tr>
+<tr>
+<td><code>f()</code>, <code>pct()</code>, <code>thou()</code>, <code>mil()</code>, <code>kilo()</code>, <code>rng()</code>, <code>lst()</code>, <code>ci()</code>, <code>date()</code></td>
+<td>53-96</td>
+<td>Number formats in TeX: fixed decimals (NaN raises, so the value prints n/a; a minus sign is <code>$-$</code>), percentages, <code>{,}</code> thousands, millions, ranges with an en dash, "a, b and c", an IRR with its interval, a date.</td>
+</tr>
+<tr>
+<td><code>TEX_ESC</code>, <code>UNICODE</code>, <code>esc()</code></td>
+<td>99-111</td>
+<td>Escapes TeX specials and maps the few Unicode symbols the row builders use.</td>
+</tr>
+<tr>
+<td><code>cell()</code>, <code>html_rows()</code></td>
+<td>114-138</td>
+<td>Turn the HTML table rows of <code>make_results</code> (<code>eval_rows()</code>, <code>model_rows()</code>, ...) into LaTeX rows: tags dropped, bold kept, numeric ranges with en dashes, minus signs, a rule above a total row.</td>
+</tr>
+<tr>
+<td><code>Macros</code></td>
+<td>143-182</td>
+<td>The registry: <code>put()</code> adds a <code>\newcommand</code> (a missing output gives n/a and a warning, never a crash), <code>flag()</code> a <code>\newif</code> condition for a qualitative claim, <code>tex()</code> writes <code>numbers.tex</code> with each source as a comment.</td>
+</tr>
+<tr>
+<td><code>defaults()</code></td>
+<td>185-187</td>
+<td>A function's default argument values, so method settings (PCMCI+ lags and alpha, the cut-off rule, the gale fallback) are read from the code.</td>
+</tr>
+<tr>
+<td><code>put_data()</code>, <code>put_methods()</code></td>
+<td>190-243</td>
+<td>Data facts (files, units, weeks, census, hazard coverage, IBTrACS) and method settings (quantiles, horizons, refits, tiers, track shifts, leptospirosis lags).</td>
+</tr>
+<tr>
+<td><code>put_forecast()</code>, <code>put_models()</code>, <code>put_calibration()</code></td>
+<td>246-318</td>
+<td>Forecast skill by horizon and the ablations, the model comparison (ensemble, median WIS, the epidemic-week split, benchmark variants), the calibration (Brier, middle-bin gaps, ties).</td>
+</tr>
+<tr>
+<td><code>put_graph()</code>, <code>put_flood()</code>, <code>put_access()</code></td>
+<td>321-370</td>
+<td>Lead-lag graph size, Sentinel-1 against EMS, both access methods, the proxy tracks, sensitivity, vulnerable groups, the NCR benchmark.</td>
+</tr>
+<tr>
+<td><code>put_priority()</code>, <code>put_catalog()</code>, <code>put_validation()</code>, <code>put_lepto()</code></td>
+<td>373-439</td>
+<td>Per-storm tiers and top priority, the storm catalogue, the backtest correlations, the leptospirosis IRRs and event study.</td>
+</tr>
+<tr>
+<td><code>put_status()</code>, <code>put_verdicts()</code></td>
+<td>442-548</td>
+<td>The scorecard status words, and every qualitative claim as a flag (forecast beats the bar, best model on mean and median, ablations help, coverage inside the band, methods agree, ranking stable, leptospirosis effects significant, ...).</td>
+</tr>
+<tr>
+<td><code>macros()</code></td>
+<td>551-560</td>
+<td>Runs all of the above into one registry.</td>
+</tr>
+<tr>
+<td><code>tables()</code></td>
+<td>565-595</td>
+<td>Table bodies (<code>tab_*.tex</code>): sources, evaluation, models, calibration, links, Sentinel-1 per storm and per municipality, methods, storms, catalogue, backtest, sensitivity.</td>
+</tr>
+<tr>
+<td><code>write()</code></td>
+<td>598-609</td>
+<td>Writes <code>numbers.tex</code> and the tables and lists any n/a value.</td>
+</tr>
+<tr>
+<td><code>compile_pdf()</code></td>
+<td>612-625</td>
+<td>Runs latexmk in <code>docs/spec/</code> (reads its <code>latexmkrc</code>), copies <code>build/main.pdf</code> to <code>docs/results/</code>; warns and skips when latexmk is missing.</td>
+</tr>
+<tr>
+<td><code>main()</code> and entry</td>
+<td>628-641</td>
+<td>Loads the outputs, computes <code>stats()</code>, writes, compiles unless <code>--no-pdf</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -2831,7 +3140,8 @@ automatic word counts. <code>--no-pdf</code> prints the counts only.</p>
 </table>
 <h3 id="scriptscheck_code_guidepy"><code>scripts/check_code_guide.py</code></h3>
 <p>Keeps this guide honest: <code>python scripts/check_code_guide.py</code> prints every link or block that no longer matches the code
-and exits 1, or prints "all links and blocks match the code". Three rules follow from it when you edit the guide:</p>
+and exits 1, or prints "all links and blocks match the code". After moving code, <code>python scripts/check_code_guide.py --fix</code> re-syncs the
+line links first (against <code>HEAD</code>, or a revision given after <code>--fix</code>). Three rules follow from it when you edit the guide:</p>
 <ul>
 <li>every line link <code>[a-b](../path#La-Lb)</code> must point inside an existing file;</li>
 <li>in a Block | Lines | Explanation table, a first cell that names exactly one function, method or class (<code>`fetch()`</code>,
@@ -2851,23 +3161,38 @@ and exits 1, or prints "all links and blocks match the code". Three rules follow
 <tbody>
 <tr>
 <td><code>ROOT</code> ... <code>NAME</code></td>
-<td>19-23</td>
+<td>23-27</td>
 <td>The guide's path and the three patterns: a line link, a section heading, a function-name cell.</td>
 </tr>
 <tr>
 <td><code>spans()</code></td>
-<td>26-42</td>
+<td>32-48</td>
 <td>Every function, method and class of a file with its first line (decorators included) and last line, from Python's <code>ast</code>, plus the set of top-level names.</td>
 </tr>
 <tr>
 <td><code>main()</code></td>
-<td>45-89</td>
+<td>51-95</td>
 <td>Reads the guide line by line, tracking the current section and the names it mentions; checks each link and each function row; then lists the top-level names a section never mentions and sections for files that don't exist.</td>
 </tr>
 <tr>
+<td><code>_line_map()</code></td>
+<td>98-107</td>
+<td>Maps each line of an old version of a file to where it now sits, from a <code>difflib</code> diff (a deleted line maps to its neighbourhood).</td>
+</tr>
+<tr>
+<td><code>_git_old()</code></td>
+<td>110-114</td>
+<td>Reads a file as it was at a git revision (default <code>HEAD</code>), the "old" side for <code>fix()</code>.</td>
+</tr>
+<tr>
+<td><code>fix()</code></td>
+<td>117-158</td>
+<td><code>--fix</code>: re-syncs every link after code moved. Function rows take their range from the AST; a link to a whole file follows its new length; other ranges are mapped through <code>_line_map()</code> against <code>HEAD</code>. Run it before committing a code change, then re-read any row whose code changed meaning.</td>
+</tr>
+<tr>
 <td>entry</td>
-<td>92-93</td>
-<td>Exit code 1 when there are problems.</td>
+<td>159-163</td>
+<td><code>--fix [REV]</code> re-syncs first; exit code 1 when problems remain.</td>
 </tr>
 </tbody>
 </table>
@@ -3390,6 +3715,11 @@ and shown in one table at the end.</p>
 <td><code>docs/results/*.pdf</code>, <code>docs/results/figures/f*.png</code>, <code>docs/results/src/*.html</code></td>
 <td><code>make_results.py</code></td>
 <td>people</td>
+</tr>
+<tr>
+<td><code>docs/spec/generated/numbers.tex</code>, <code>docs/spec/generated/tab_*.tex</code> (committed), <code>docs/spec/build/</code> (git-ignored), <code>docs/results/Bantay-Baha_Technical_Spec.pdf</code></td>
+<td><code>make_spec.py</code> (latexmk)</td>
+<td>the technical specification; people</td>
 </tr>
 <tr>
 <td><code>docs/results/figures/dashboard.png</code>, <code>tests/artifacts/</code></td>
