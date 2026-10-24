@@ -6,6 +6,9 @@
 | `Bantay-Baha_Technical_Spec.pdf` | The technical specification: the evaluation report's content as a LaTeX document (A4), compiled from `docs/spec/` (the editable source; see `docs/spec/GUIDE.md`). Same numbers as the report: they come from the same `make_results.stats()` through `docs/spec/generated/numbers.tex` |
 | `Bantay-Baha_Slides.pdf` | 20-slide deck (16:9) for the PJDSC 2026 panel presentation; each slide is tagged with the judging criterion it answers |
 | `Bantay-Baha_Demo_Script.md` / `.pdf` | Demonstration-video script (2:50), with the on-screen numbers checked against the build; the markdown is the source, the PDF is generated from it |
+| `Bantay-Baha_Tech_Demo_Script.md` / `.pdf` | Technical demo script (2:50): a feature-by-feature tour of the dashboard (storm picker and catalogue, track shifts, map layers, Act first, Provinces columns and CSV, Municipalities, Outbreak graph, Forecast skill, Validation, Leptospirosis, Data & caveats, Usability test) with click-by-click cues; the markdown is the source |
+| `Bantay-Baha_Code_Guide.pdf` | The full code guide (`docs/CODE_GUIDE.md`): every file and code block, from the downloads to the documents |
+| `Bantay-Baha_Code_Guide_Library_App.pdf` | The same guide cut to the `bantay` library and the `app/` dashboard (no data downloads, build, benchmarks, documents or tests), with its own contents and the glossary |
 | `figures/` | The figures, drawn from the pipeline outputs. `dashboard.png` is a screenshot of the running app (`run_app.bat`, Ompong, observed track), maintained with the dashboard |
 | `src/` | The generated HTML the PDFs are printed from, and the fonts (Big Shoulders Display, Barlow, Space Mono; SIL Open Font License, licences included) |
 
@@ -16,6 +19,10 @@ build.bat
 python scripts\make_results.py
 python scripts\make_spec.py      :: the technical specification (needs MiKTeX or TeX Live: latexmk, biber)
 ```
+
+The two code-guide PDFs need no build outputs: `python scripts\make_results.py --guide-only` (run it after editing
+`docs/CODE_GUIDE.md`). The same holds for the two demo scripts: `python scripts\make_results.py --scripts-only` (run it
+after editing either `*_Demo_Script.md`).
 
 `make_spec.py` writes `docs/spec/generated/` (number macros and table rows), compiles `docs/spec/main.tex` with latexmk
 and copies the PDF here. The spec's figures are this folder's `figures/`, so run `make_results.py` first.

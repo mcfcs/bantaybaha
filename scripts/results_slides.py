@@ -335,10 +335,11 @@ with calibrated forecasts, rank the provinces that need help first, early enough
 
     S.append(f"""<section class='s'><div class='top'><span class='sig'>Signal 18 / Demo</span><span class='crit'>Demonstration video: functional showcase</span></div>
 <div class='g64'><img class='shot' src='../figures/dashboard.png'>
-<div><h3>What a health officer sees</h3><ul style='font-size:12.5pt'><li>Pick a typhoon, or move its track 1&deg; south or north, east or west</li>
+<div><h3>What a health officer sees</h3><ul style='font-size:12.5pt'><li>Pick a typhoon, or move its track 0.5-1&deg; south or north, or 1&deg; east or west</li>
 <li><b>Action map</b>: priority, track, gale swath and cancelled ferries</li><li><b>Risk vs access</b>, with the action tier for every province</li>
 <li><b>Provinces</b>: expected cases for 4 weeks with a 90% range, people cut off (both methods), drivers</li>
-<li><b>Municipalities</b>, <b>Outbreak graph</b>, <b>Forecast skill</b>, <b>Validation</b></li>
+<li><b>Municipalities</b>, <b>Outbreak graph</b>, <b>Forecast skill</b>, <b>Leptospirosis</b>, <b>Validation</b>,
+<b>Data &amp; caveats</b>, and a built-in <b>Usability test</b></li>
 <li>{k['n_scen'] + k.get('n_cat', 0)} scenarios pre-computed: answers in seconds</li></ul></div></div>
 <div class='brand'>BANTAY-BAHA / PJDSC 2026</div><div class='pn'>18 / {N}</div></section>""")
 

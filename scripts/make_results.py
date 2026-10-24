@@ -1180,9 +1180,15 @@ def _md_inline(t):
     return re.sub(r"`(.+?)`", r"<code>\1</code>", t)
 
 
-def demo_script_html():
-    """docs/results/Bantay-Baha_Demo_Script.md -> HTML in the deck's style (the markdown stays the editable source)."""
-    md = (OUT / "Bantay-Baha_Demo_Script.md").read_text(encoding="utf-8").splitlines()
+DEMO_SCRIPTS = {  # markdown source in docs/results -> (html in src/, header tag)
+    "Bantay-Baha_Demo_Script": ("demo_script.html", "demonstration video"),
+    "Bantay-Baha_Tech_Demo_Script": ("tech_demo_script.html", "technical demo"),
+}
+
+
+def demo_script_html(name="Bantay-Baha_Demo_Script", tag="demonstration video"):
+    """docs/results/<name>.md (a demo script) -> HTML in the deck's style (the markdown stays the editable source)."""
+    md = (OUT / f"{name}.md").read_text(encoding="utf-8").splitlines()
     title = md[0].lstrip("# ").strip()
     intro, rows, extra, i = [], [], [], 1
     while i < len(md) and not md[i].startswith("|"):
@@ -1202,7 +1208,7 @@ def demo_script_html():
     head = title.split(":", 1)
     h1 = f"{head[0]}: <em>{head[1].strip()}</em>" if len(head) == 2 else title
     return (f"<!doctype html><html><head><meta charset='utf-8'><title>{title}</title><style>{FONT_CSS}{SCRIPT_CSS}</style></head><body>"
-            f"<div class='head'><h1>{h1}</h1><span class='tag'>PJDSC 2026 / demonstration video</span></div>"
+            f"<div class='head'><h1>{h1}</h1><span class='tag'>PJDSC 2026 / {tag}</span></div>"
             f"<p class='intro'>{_md_inline(' '.join(intro))}</p>"
             f"<table class='script'><tr><th>time</th><th>on screen</th><th>narration</th></tr>{''.join(rows)}</table>{''.join(extra)}</body></html>")
 
@@ -1237,22 +1243,76 @@ a.toc { color: var(--teal); }
 """
 
 
-def code_guide_html():
-    """docs/CODE_GUIDE.md -> styled HTML. File links become plain text (they point into the repo, which a PDF can't
-    open); the contents links stay as in-document links."""
+LIBRARY_GUIDE_INTRO = """# Bantay-Baha code guide: library and dashboard
+
+Every code block of the `bantay` package (the pipeline: one module per layer) and of the dashboard in `app/`: what it
+does, how, and why it was written that way. The data-download scripts, the build entry point, the benchmarks, the
+document generators and the tests are in the full code guide. Line numbers refer to the code as of the date of this
+PDF; if a function has moved, search for its name.
+
+[TOC]
+
+---
+
+"""
+
+
+def library_guide_md(md):
+    """The `bantay` library and dashboard sections of CODE_GUIDE.md as a stand-alone guide, renumbered 1-3.
+
+    Keeps section 4 (the library), section 6 (the dashboard) without its tests subsection, and the glossary (11); drops
+    the big picture, entry points, data downloads, build, documents, benchmarks, notebook and output list."""
+    import re
+
+    parts = {int(m.group(1)): p for p in re.split(r"(?m)^(?=## )", md) if (m := re.match(r"## (\d+)\. ", p))}
+    if 4 not in parts or 6 not in parts:
+        raise ValueError("CODE_GUIDE.md has no '## 4.' (library) or '## 6.' (dashboard) section")
+    app = re.split(r"(?m)^### \d+\.\d+ Tests\b", parts[6])[0]
+
+    def renumber(section, old, new):
+        section = re.sub(rf"(?m)^## {old}\. ", f"## {new}. ", section)
+        return re.sub(rf"(?m)^### {old}\.(\d+) ", rf"### {new}.\1 ", section)
+
+    out = [renumber(parts[4], 4, 1).rstrip(), renumber(app, 6, 2).rstrip()]
+    if 11 in parts:
+        out.append(renumber(parts[11], 11, 3).rstrip())
+    body = "\n\n".join(re.sub(r"\n---\s*$", "", s) for s in out)  # drop trailing section separators
+    return LIBRARY_GUIDE_INTRO + body + "\n"
+
+
+def code_guide_html(md=None, title="Bantay-Baha code guide"):
+    """docs/CODE_GUIDE.md (or the given markdown) -> styled HTML. File links become plain text (they point into the
+    repo, which a PDF can't open); the contents links stay as in-document links. A `[TOC]` line becomes the contents."""
     import re
 
     import markdown
 
-    md = (ROOT / "docs" / "CODE_GUIDE.md").read_text(encoding="utf-8")
-    body = markdown.markdown(md, extensions=["tables", "fenced_code", "toc"])
+    md = (ROOT / "docs" / "CODE_GUIDE.md").read_text(encoding="utf-8") if md is None else md
+    body = markdown.markdown(md, extensions=["tables", "fenced_code", "toc"], extension_configs={"toc": {"toc_depth": "2-3"}})
     body = re.sub(r'<a href="\.\./[^"]*">(.*?)</a>', r"\1", body)  # repo file links -> text
     body = re.sub(r'<a href="(#[^"]*)">', r'<a class="toc" href="\1">', body)
     # block tables (Block | Lines | Explanation) get the line-number column style; other tables a plain first column
     body = re.sub(r"<table>(\s*<thead>\s*<tr>\s*<th>[^<]*</th>\s*<th>Lines</th>)", r"<table class='blocks'>\1", body)
     body = body.replace("<table>", "<table class='files'>")
-    return (f"<!doctype html><html><head><meta charset='utf-8'><title>Bantay-Baha code guide</title>"
+    return (f"<!doctype html><html><head><meta charset='utf-8'><title>{title}</title>"
             f"<style>{FONT_CSS}{GUIDE_CSS}</style></head><body>{body}</body></html>")
+
+
+def write_code_guides(pdf=True):
+    """The full code guide and the library + dashboard guide (HTML in src/, PDFs in docs/results/). Needs no build
+    outputs, so `--guide-only` can run on any checkout."""
+    path = ROOT / "docs" / "CODE_GUIDE.md"
+    if not path.exists():
+        return
+    SRC.mkdir(parents=True, exist_ok=True)
+    guides = [("code_guide.html", code_guide_html(), "Bantay-Baha_Code_Guide.pdf"),
+              ("code_guide_library_app.html",
+               code_guide_html(library_guide_md(path.read_text(encoding="utf-8")), "Bantay-Baha code guide: library and dashboard"),
+               "Bantay-Baha_Code_Guide_Library_App.pdf")]
+    for html_name, html, pdf_name in guides:
+        (SRC / html_name).write_text(html, encoding="utf-8")
+        if pdf:
+            to_pdf(SRC / html_name, OUT / pdf_name)
 
 
 OVERFLOW_JS = """<script>
@@ -1317,19 +1377,32 @@ def main(pdf=True):
     if pdf:
         to_pdf(report, OUT / "Bantay-Baha_Evaluation_Report.pdf")
         to_pdf(slides, OUT / "Bantay-Baha_Slides.pdf")
-    if (ROOT / "docs" / "CODE_GUIDE.md").exists():
-        guide = SRC / "code_guide.html"
-        guide.write_text(code_guide_html(), encoding="utf-8")
+    write_code_guides(pdf)
+    write_demo_scripts(pdf)
+
+
+def write_demo_scripts(pdf=True):
+    """Every DEMO_SCRIPTS markdown that exists -> src/*.html (+ PDF). The scripts' numbers are typed, so this needs no
+    build outputs and `--scripts-only` can run on any checkout."""
+    SRC.mkdir(parents=True, exist_ok=True)
+    for name, (html, tag) in DEMO_SCRIPTS.items():
+        if not (OUT / f"{name}.md").exists():
+            continue
+        page = SRC / html
+        page.write_text(demo_script_html(name, tag), encoding="utf-8")
         if pdf:
-            to_pdf(guide, OUT / "Bantay-Baha_Code_Guide.pdf")
-    if (OUT / "Bantay-Baha_Demo_Script.md").exists():
-        demo = SRC / "demo_script.html"
-        demo.write_text(demo_script_html(), encoding="utf-8")
-        if pdf:
-            to_pdf(demo, OUT / "Bantay-Baha_Demo_Script.pdf")
+            to_pdf(page, OUT / f"{name}.pdf")
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-pdf", action="store_true")
-    main(pdf=not ap.parse_args().no_pdf)
+    ap.add_argument("--guide-only", action="store_true", help="only the two code-guide PDFs (no build outputs needed)")
+    ap.add_argument("--scripts-only", action="store_true", help="only the demo-script PDFs (no build outputs needed)")
+    a = ap.parse_args()
+    if a.guide_only:
+        write_code_guides(pdf=not a.no_pdf)
+    elif a.scripts_only:
+        write_demo_scripts(pdf=not a.no_pdf)
+    else:
+        main(pdf=not a.no_pdf)

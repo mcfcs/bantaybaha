@@ -51,6 +51,8 @@ build.bat panel forecast  :: selected stages
 run_app.bat               :: opens the dashboard in the browser
 python scripts\make_results.py   :: regenerates the report and slides in docs\results\
 python scripts\make_spec.py      :: regenerates the LaTeX technical specification (needs MiKTeX or TeX Live)
+python scripts\make_results.py --guide-only   :: only the two code-guide PDFs (needs no build outputs)
+python scripts\make_results.py --scripts-only :: only the two demo-script PDFs, video and technical (needs no build outputs)
 ```
 
 `build.bat` runs `scripts/build.py`. Inputs that are not on disk yet (Sentinel-1 flood masks, PSGC, NHFR, or anything still
@@ -164,7 +166,8 @@ These sites block scripted downloads, so save the files by hand:
 ```
 docs/                       concept proposal, team explainer, submitted proposal (PDF); docs/proposal/ revised v3; docs/results/ report + deck
 docs/CODE_GUIDE.md          walkthrough of every file and code block (start here to read the code); after moving code run
-                            python scripts/check_code_guide.py --fix (re-syncs its line links), then check it
+                            python scripts/check_code_guide.py --fix (re-syncs its line links), then check it; as PDFs in
+                            docs/results/: the full guide, and one for the bantay library + dashboard only
 docs/spec/                  technical specification in LaTeX: main.tex, sections/, refs.bib, latexmkrc, GUIDE.md;
                             generated/ (numbers and tables from scripts/make_spec.py); build/ (git-ignored)
 .vscode/                    LaTeX Workshop settings (recipes, build on save) and the recommended extension
@@ -174,7 +177,7 @@ setup.bat                   one-click team setup: venv, kernel, sign-in, pull da
 scripts/sync_data.py        push/pull data/raw to/from the team's private Cloud Storage bucket
 download_data.bat           one-click setup + download for Windows
 scripts/build.py            one-command rebuild of everything the dashboard reads (build.bat)
-scripts/make_results.py     regenerates docs/results/ (evaluation report + 20-slide deck, PDF)
+scripts/make_results.py     regenerates docs/results/ (evaluation report, 20-slide deck, demo scripts, code-guide PDFs)
 scripts/make_spec.py        regenerates docs/spec/generated/ and the technical specification PDF (latexmk)
 scripts/benchmark_*.py      optional benchmarks: Chronos-2, TabPFN-TS, MPNN-LSTM + scorer (requirements-bench.txt)
 scripts/make_proposal.py    revised anonymous proposal v3 (docs/proposal/, PDF via headless Chrome)

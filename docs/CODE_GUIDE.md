@@ -796,10 +796,10 @@ computed from the outputs.
 | `stats_lepto()` | [353-382](../scripts/make_results.py#L353-L382) | Leptospirosis numbers: city and national peaks, heavy-rain peak, the event-study rows, flooded city-storm pairs. |
 | `stats_data()` | [385-415](../scripts/make_results.py#L385-L415) | Data-finding numbers read from raw files (dengue units, 2016 case fatality, cases per year, how often the US gale radius is missing) and the usability responses, if any. |
 | `s1_ems_agreement()` | [418-448](../scripts/make_results.py#L418-L448) | Compares Sentinel-1 with Copernicus EMS inside each EMS area: area each mapped, overlap, precision and recall. |
-| `style()`, `mono()`, `save()` | [453-475](../scripts/make_results.py#L453-L475) | Registers the bundled fonts with matplotlib, sets a clean chart style, monospace tick labels, and saves PNGs at 220 dpi (fonts baked in). |
+| `style()`, `mono()`, `save()` | [451-473](../scripts/make_results.py#L451-L473) | Registers the bundled fonts with matplotlib, sets a clean chart style, monospace tick labels, and saves PNGs at 220 dpi (fonts baked in). |
 | `fig_timeline()` | [480-496](../scripts/make_results.py#L480-L496) | National weekly dengue with the four typhoons and the 2020 collapse marked. |
 | `fig_coverage()` | [499-518](../scripts/make_results.py#L499-L518) | Share of panel cells with a value, per input. |
-| `KIND_COLOR`, `fig_wis()` | [521-571](../scripts/make_results.py#L521-L571) | Relative WIS of every model in the comparison (bars, with 1- and 4-week marks) and coverage by horizon against the 80-95% target. |
+| `KIND_COLOR`, `fig_wis()` | [519-569](../scripts/make_results.py#L519-L569) | Relative WIS of every model in the comparison (bars, with 1- and 4-week marks) and coverage by horizon against the 80-95% target. |
 | `fig_reliability()` | [574-591](../scripts/make_results.py#L574-L591) | R's reliability curve, raw and recalibrated. |
 | `fig_methods()` | [594-632](../scripts/make_results.py#L594-L632) | People cut off by the network and the raster: the observed tracks, then every proxy-flood track. |
 | `fig_catalog()` | [635-666](../scripts/make_results.py#L635-L666) | Mean R against people cut off for every scored storm, with the range between the two methods. |
@@ -816,17 +816,22 @@ computed from the outputs.
 | `fig_network()` | [874-886](../scripts/make_results.py#L874-L886) | Ferry routes and hospitals over the islands (the access problem slide). |
 | `fig_rolling()` | [889-907](../scripts/make_results.py#L889-L907) | Diagram of the 8 rolling-origin refits (train on the past, score the next block). |
 | `make_figures()` | [910-915](../scripts/make_results.py#L910-L915) | Draws them all (a figure whose input is missing is None). |
-| `FONT_CSS` | [920-936](../scripts/make_results.py#L920-L936) | The bundled fonts (Big Shoulders Display, Barlow, Space Mono) and colour variables shared by all documents. |
-| `REFERENCES` | [938-974](../scripts/make_results.py#L938-L974) | The APA 7 reference list used by the report and slides. |
-| `fmt_m()`, `storm_rows()`, `method_rows()`, `model_rows()` | [977-1023](../scripts/make_results.py#L977-L1023) | Millions text, and HTML table rows for the storm table, the two access methods and the model comparison. |
+| `FONT_CSS` | [918-934](../scripts/make_results.py#L918-L934) | The bundled fonts (Big Shoulders Display, Barlow, Space Mono) and colour variables shared by all documents. |
+| `REFERENCES` | [936-972](../scripts/make_results.py#L936-L972) | The APA 7 reference list used by the report and slides. |
+| `fmt_m()`, `storm_rows()`, `method_rows()`, `model_rows()` | [975-1021](../scripts/make_results.py#L975-L1021) | Millions text, and HTML table rows for the storm table, the two access methods and the model comparison. |
 | `bench_missing_text()` | [1026-1028](../scripts/make_results.py#L1026-L1028) | Names the expected benchmarks that are not in the build. |
-| `catalog_rows()`, `s1_muni_rows()` | [1031-1056](../scripts/make_results.py#L1031-L1056) | Rows for the storm catalogue (split over side-by-side tables) and for Sentinel-1 per municipality. |
-| `eval_rows()`, `edge_rows()`, `sens_rows()`, `valid_rows()`, `source_rows()` | [1059-1131](../scripts/make_results.py#L1059-L1131) | Rows for the evaluation, the graph links, the sensitivity, the backtest and the data sources. |
-| `browser()`, `to_pdf()` | [1136-1151](../scripts/make_results.py#L1136-L1151) | Finds Chrome or Edge and prints an HTML file to PDF headlessly. |
-| `SCRIPT_CSS`, `_md_inline()`, `demo_script_html()` | [1154-1207](../scripts/make_results.py#L1154-L1207) | Turns the demo-script Markdown (the editable source) into a styled landscape PDF. |
-| `GUIDE_CSS`, `code_guide_html()` | [1210-1255](../scripts/make_results.py#L1210-L1255) | Turns this guide (`docs/CODE_GUIDE.md`) into a styled A4 PDF: repo file links become plain text, the contents links stay, and the Block / Lines tables get a line-number column style. |
-| `OVERFLOW_JS`, `check_overflow()` | [1258-1300](../scripts/make_results.py#L1258-L1300) | Lays each page out in headless Chrome and lists any element that runs into the footer band or off the edge, so overflow is caught automatically. |
-| `main()` and entry | [1303-1335](../scripts/make_results.py#L1303-L1335) | Loads, computes, draws, writes the HTML, checks the report and slides for overflow, prints the PDFs (report, slides, code guide, demo script). `--no-pdf` skips printing. |
+| `catalog_rows()`, `s1_muni_rows()` | [1029-1054](../scripts/make_results.py#L1029-L1054) | Rows for the storm catalogue (split over side-by-side tables) and for Sentinel-1 per municipality. |
+| `eval_rows()`, `edge_rows()`, `sens_rows()`, `valid_rows()`, `source_rows()` | [1057-1129](../scripts/make_results.py#L1057-L1129) | Rows for the evaluation, the graph links, the sensitivity, the backtest and the data sources. |
+| `browser()`, `to_pdf()` | [1134-1149](../scripts/make_results.py#L1134-L1149) | Finds Chrome or Edge and prints an HTML file to PDF headlessly. |
+| `SCRIPT_CSS`, `_md_inline()`, `DEMO_SCRIPTS`, `demo_script_html()` | [1154-1213](../scripts/make_results.py#L1154-L1213) | Turns a demo-script Markdown (the editable source) into a styled landscape page; `DEMO_SCRIPTS` lists the two scripts (demonstration video, technical demo) with their HTML name and header tag. |
+| `GUIDE_CSS` | [1216-1243](../scripts/make_results.py#L1216-L1243) | Page style of the code-guide PDFs: A4 with page numbers in the margin, headings, code blocks, and the Block / Lines tables with a line-number column style. |
+| `LIBRARY_GUIDE_INTRO` | [1246-1257](../scripts/make_results.py#L1246-L1257) | Title, a short introduction and a `[TOC]` marker (the contents list) for the library and dashboard guide. |
+| `library_guide_md()` | [1260-1280](../scripts/make_results.py#L1260-L1280) | Cuts this guide down to the `bantay` library (section 4), the dashboard (section 6 without the tests subsection) and the glossary, renumbered 1-3; the data downloads, build, documents, benchmarks and notebook are left out. |
+| `code_guide_html()` | [1283-1298](../scripts/make_results.py#L1283-L1298) | Turns this guide (or the markdown it is given) into styled HTML: repo file links become plain text, the contents links stay, `[TOC]` becomes the contents list, and the Block / Lines tables get the line-number column style. |
+| `write_code_guides()` | [1301-1315](../scripts/make_results.py#L1301-L1315) | Writes both code guides, the full one (`Bantay-Baha_Code_Guide.pdf`) and the library and dashboard one (`Bantay-Baha_Code_Guide_Library_App.pdf`). Needs no build outputs. |
+| `OVERFLOW_JS`, `check_overflow()` | [1318-1360](../scripts/make_results.py#L1318-L1360) | Lays each page out in headless Chrome and lists any element that runs into the footer band or off the edge, so overflow is caught automatically. |
+| `main()` | [1363-1381](../scripts/make_results.py#L1363-L1381) | Loads, computes, draws, writes the HTML, checks the report and slides for overflow, prints the PDFs (report, slides, both code guides, both demo scripts). |
+| `write_demo_scripts()` and entry | [1384-1408](../scripts/make_results.py#L1384-L1408) | Writes every demo script in `DEMO_SCRIPTS` whose markdown exists (HTML in `src/`, then the PDF). `--no-pdf` skips printing; `--guide-only` writes only the two code guides and `--scripts-only` only the two demo scripts, neither loading any build output. |
 
 ### `scripts/results_pages.py` (evaluation report, A4)
 
@@ -847,7 +852,7 @@ computed from the outputs.
 | `N` | [91](../scripts/results_slides.py#L91) | Slide count (checked at the end). |
 | `_slide()` | [94-97](../scripts/results_slides.py#L94-L97) | Wraps a slide: signal tag numbered with the slide (Signal 01-20), the judging criterion it answers, brand and page number. |
 | `_img()` | [100-101](../scripts/results_slides.py#L100-L101) | A figure on a white card at a set height. |
-| `slides_html()` | [104-366](../scripts/results_slides.py#L104-L366) | The 20 slides: title with headline results; the problem (typhoons and disease, the cascade, access in an archipelago); design; data; data challenges; method; nine result slides (forecast skill and the models, calibrated surge risk, outbreak links, Sentinel-1 flood, access loss by two methods, the Ompong case, the storm catalogue, validation, leptospirosis); the demo; deployment in the loop; sources. No names or internal file names (anonymous judging). |
+| `slides_html()` | [104-367](../scripts/results_slides.py#L104-L367) | The 20 slides: title with headline results; the problem (typhoons and disease, the cascade, access in an archipelago); design; data; data challenges; method; nine result slides (forecast skill and the models, calibrated surge risk, outbreak links, Sentinel-1 flood, access loss by two methods, the Ompong case, the storm catalogue, validation, leptospirosis); the demo; deployment in the loop; sources. No names or internal file names (anonymous judging). |
 
 ### `scripts/make_spec.py`
 

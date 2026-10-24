@@ -1,0 +1,1924 @@
+<!doctype html><html><head><meta charset='utf-8'><title>Bantay-Baha code guide: library and dashboard</title><style>
+@font-face { font-family: "Big Shoulders Display"; src: url("fonts/BigShouldersDisplay-VF.ttf"); font-weight: 100 900; }
+@font-face { font-family: "Barlow"; src: url("fonts/Barlow-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Barlow"; src: url("fonts/Barlow-SemiBold.ttf"); font-weight: 600 700; }
+@font-face { font-family: "Barlow"; src: url("fonts/Barlow-Italic.ttf"); font-style: italic; }
+@font-face { font-family: "Space Mono"; src: url("fonts/SpaceMono-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Space Mono"; src: url("fonts/SpaceMono-Bold.ttf"); font-weight: 600 700; }
+:root { --ink: #0F1E28; --deep: #0B1720; --teal: #0A86B5; --teal-lt: #5FC3E4; --amber: #C77700; --signal: #F2A93B;
+        --red: #C8323F; --grey: #6B7A88; --rule: #DDE3E8; --paper: #FFFFFF; --mist: #F2F5F7; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Barlow", sans-serif; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.mono { font-family: "Space Mono", monospace; }
+table { border-collapse: collapse; width: 100%; }
+th { font-family: "Space Mono", monospace; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; text-align: left; }
+td, th { padding: 4px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+td.n, th.n { text-align: right; font-family: "Space Mono", monospace; }
+
+@page { size: A4; margin: 16mm 15mm 16mm 15mm;
+        @bottom-left { content: "Bantay-Baha / code guide"; font-family: "Space Mono"; font-size: 7pt; color: #6B7A88; }
+        @bottom-right { content: counter(page) " / " counter(pages); font-family: "Space Mono"; font-size: 7pt; color: #6B7A88; } }
+body { font-size: 9.6pt; line-height: 1.42; }
+h1 { font-family: "Big Shoulders Display"; font-weight: 800; text-transform: uppercase; font-size: 34pt; line-height: .95; margin: 0 0 3mm;
+     border-bottom: 3px solid var(--signal); padding-bottom: 2mm; }
+h2 { font-family: "Big Shoulders Display"; font-weight: 800; text-transform: uppercase; font-size: 20pt; margin: 7mm 0 2mm; color: var(--ink);
+     break-after: avoid; }
+h3 { font-family: "Big Shoulders Display"; font-weight: 700; text-transform: uppercase; font-size: 14pt; margin: 5mm 0 1.5mm; color: var(--teal);
+     break-after: avoid; }
+h2 code, h3 code { font-family: inherit; font-size: inherit; background: none; padding: 0; text-transform: none; }
+p, li { margin: 0 0 2mm; }
+ul, ol { padding-left: 5mm; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 4mm 0; }
+code { font-family: "Space Mono"; font-size: 7.8pt; background: var(--mist); padding: 0 1mm; }
+pre { background: var(--deep); color: #DCE8EE; padding: 3mm 3mm; font-size: 6.6pt; line-height: 1.35; overflow: hidden; break-inside: avoid; }
+pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+table { font-size: 8.6pt; margin: 2mm 0 4mm; }
+th { font-size: 6.8pt; color: var(--grey); border-bottom: 1.5px solid var(--ink); }
+td { border-bottom: 1px solid var(--rule); vertical-align: top; padding: 1.6mm 2mm; }
+tr { break-inside: avoid; }
+table.blocks td:first-child { width: 26%; }
+table.blocks td:nth-child(2) { width: 9%; white-space: nowrap; font-family: "Space Mono"; font-size: 7.6pt; color: var(--amber); }
+table.files td:first-child { width: 22%; }
+a { color: inherit; text-decoration: none; }
+a.toc { color: var(--teal); }
+</style></head><body><h1 id="bantay-baha-code-guide-library-and-dashboard">Bantay-Baha code guide: library and dashboard</h1>
+<p>Every code block of the <code>bantay</code> package (the pipeline: one module per layer) and of the dashboard in <code>app/</code>: what it
+does, how, and why it was written that way. The data-download scripts, the build entry point, the benchmarks, the
+document generators and the tests are in the full code guide. Line numbers refer to the code as of the date of this
+PDF; if a function has moved, search for its name.</p>
+<div class="toc">
+<ul>
+<li><a class="toc" href="#1-the-bantay-library">1. The bantay library</a><ul>
+<li><a class="toc" href="#11-bantayconfigpy">1.1 bantay/config.py</a></li>
+<li><a class="toc" href="#12-bantayunitspy">1.2 bantay/units.py</a></li>
+<li><a class="toc" href="#13-bantaydenguepy">1.3 bantay/dengue.py</a></li>
+<li><a class="toc" href="#14-bantaystormspy">1.4 bantay/storms.py</a></li>
+<li><a class="toc" href="#15-bantayrainpy">1.5 bantay/rain.py</a></li>
+<li><a class="toc" href="#16-bantayriverspy">1.6 bantay/rivers.py</a></li>
+<li><a class="toc" href="#17-bantaygridspy">1.7 bantay/grids.py</a></li>
+<li><a class="toc" href="#18-bantayfloodpy">1.8 bantay/flood.py</a></li>
+<li><a class="toc" href="#19-bantaypanelpy">1.9 bantay/panel.py</a></li>
+<li><a class="toc" href="#110-bantayleadlagpy">1.10 bantay/leadlag.py</a></li>
+<li><a class="toc" href="#111-bantayforecastpy">1.11 bantay/forecast.py</a></li>
+<li><a class="toc" href="#112-bantayaccesspy">1.12 bantay/access.py</a></li>
+<li><a class="toc" href="#113-bantayscenariospy">1.13 bantay/scenarios.py</a></li>
+<li><a class="toc" href="#114-bantayleptopy">1.14 bantay/lepto.py</a></li>
+</ul>
+</li>
+<li><a class="toc" href="#2-the-dashboard-appstreamlit_apppy">2. The dashboard: app/streamlit_app.py</a><ul>
+<li><a class="toc" href="#21-appuipy">2.1 app/ui.py</a></li>
+<li><a class="toc" href="#22-appsuspy">2.2 app/sus.py</a></li>
+<li><a class="toc" href="#23-applepto_tabpy">2.3 app/lepto_tab.py</a></li>
+<li><a class="toc" href="#24-streamlitconfigtoml">2.4 .streamlit/config.toml</a></li>
+</ul>
+</li>
+<li><a class="toc" href="#3-glossary">3. Glossary</a></li>
+</ul>
+</div>
+<hr />
+<h2 id="1-the-bantay-library">1. The <code>bantay</code> library</h2>
+<p><code>bantay/__init__.py</code> only holds the package docstring. Every module below is imported by
+<code>scripts/build.py</code>, and some by the dashboard, the benchmarks and the results scripts.</p>
+<h3 id="11-bantayconfigpy">1.1 <code>bantay/config.py</code></h3>
+<p>Shared paths, constants and the missing-input registry.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Paths <code>ROOT</code> ... <code>APP_DATA</code></td>
+<td>12-17</td>
+<td>Every folder the pipeline uses, built from the package location: raw inputs, cached intermediates (<code>interim</code>), outputs (<code>processed</code>), reviewed crosswalks, and the small files the dashboard reads (<code>processed/app</code>).</td>
+</tr>
+<tr>
+<td><code>BBOX</code>, <code>CRS_M</code></td>
+<td>19-20</td>
+<td>The Philippine bounding box (lon/lat) and the metric projection used for distances and buffers (UTM 51N).</td>
+</tr>
+<tr>
+<td><code>WEEK_FREQ</code>, <code>FIRST_WEEK</code>, <code>LAST_WEEK</code>, <code>MODEL_END</code></td>
+<td>23-25</td>
+<td>DOH weeks end on Sunday; the panel spans 2016-01-10 to 2021-01-10. <code>MODEL_END</code> (2019-12-29) is the last week any model trains on or is scored on, because 2020 reporting collapsed under COVID-19.</td>
+</tr>
+<tr>
+<td><code>STORMS</code></td>
+<td>28-33</td>
+<td>The four backtest typhoons: local name, international name, season, landfall date and the folder name used by the GEE downloads.</td>
+</tr>
+<tr>
+<td><code>S1_AFTER_DAYS</code></td>
+<td>37</td>
+<td>10: a Sentinel-1 flood map uses images up to 10 days after landfall, so it is known only from the DOH week containing landfall + 10 days. Features must not use it earlier. Must match <code>S1_AFTER</code> in <code>download_gee.py</code>.</td>
+</tr>
+<tr>
+<td><code>QUANTILES</code></td>
+<td>40</td>
+<td>The 23 quantile levels of the CDC FluSight forecasting hub (0.01, 0.025, 0.05, 0.10 ... 0.95, 0.975, 0.99).</td>
+</tr>
+<tr>
+<td><code>week_ending()</code></td>
+<td>43-49</td>
+<td>Maps any date (or column of dates) to the Sunday that ends its DOH week. Used whenever daily rain or storm times are joined to weekly cases.</td>
+</tr>
+<tr>
+<td><code>_STATUS_FILE</code>, <code>_load_status()</code></td>
+<td>54-60</td>
+<td><code>data/processed/status.json</code> holds one line per input: available or not, a detail, and when it was checked.</td>
+</tr>
+<tr>
+<td><code>record()</code></td>
+<td>63-68</td>
+<td>Writes or updates one input's status.</td>
+</tr>
+<tr>
+<td><code>status()</code></td>
+<td>71-72</td>
+<td>Returns the whole status dict (the build prints it at the end; the dashboard shows it on <em>Data &amp; caveats</em>).</td>
+</tr>
+<tr>
+<td><code>missing()</code></td>
+<td>75-78</td>
+<td>Prints a warning and records the input as missing; returns <code>None</code> so callers can write <code>return missing(...)</code>.</td>
+</tr>
+<tr>
+<td><code>have()</code></td>
+<td>81-90</td>
+<td>Checks that paths exist (and, for a folder, that it holds a matching file), records the result, returns True/False.</td>
+</tr>
+<tr>
+<td><code>_rel()</code></td>
+<td>93-95</td>
+<td>A path relative to the repo when it lies inside it, else as given, so <code>have()</code> can record inputs that live outside the repo (e.g. tests' temporary files) instead of failing.</td>
+</tr>
+<tr>
+<td><code>ensure_dirs()</code></td>
+<td>98-100</td>
+<td>Creates the output folders.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="12-bantayunitspy">1.2 <code>bantay/units.py</code></h3>
+<p>Builds the 85 <strong>harmonised 2016-2020 provinces</strong> and the crosswalks into them. Needed because the dengue file has 126
+reporting units (provinces mixed with cities) and today's boundary file (COD-AB) uses post-2020 boundaries.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Paths</td>
+<td>20-23</td>
+<td>The COD-AB geodatabase, the two crosswalk CSVs, and the unit polygons output.</td>
+</tr>
+<tr>
+<td><code>MERGE</code></td>
+<td>26-27</td>
+<td>Undoes post-2020 changes: Maguindanao del Norte/Sur back to Maguindanao (split 2022), the Special Geographic Area back to Cotabato (created 2024 from Cotabato barangays), City of Isabela into Basilan.</td>
+</tr>
+<tr>
+<td><code>SYNTHETIC_ID</code></td>
+<td>29</td>
+<td>Maguindanao has no single current code, so it gets a clearly synthetic id.</td>
+</tr>
+<tr>
+<td><code>DENGUE_FIX</code>, <code>DENGUE_CITY_PROVINCE</code></td>
+<td>32-34</td>
+<td>Spelling and old-unit fixes for the dengue file (NUEVA VISCAYA, SISQUIJOR, NORTH COTABATO, BASILIG = Bislig; MAGUINDANAO via Maguindanao del Norte; MANILA = NCR First District) and the one ambiguous city (NAGA CITY is in Camarines Sur, from its Region V label).</td>
+</tr>
+<tr>
+<td><code>norm()</code></td>
+<td>37-41</td>
+<td>Normalises a place name for matching: strips accents (Las Piñas -&gt; LASPINAS), parentheses, "City of"/"City" and anything not a letter.</td>
+</tr>
+<tr>
+<td><code>read_adm()</code></td>
+<td>44-48</td>
+<td>Reads one COD-AB level (1 = region, 2 = province, 3 = municipality) straight from the zip; records COD-AB as missing (and returns None) if the zip is absent.</td>
+</tr>
+<tr>
+<td><code>_unit_name()</code></td>
+<td>51-55</td>
+<td>Gives an ADM2 name its harmonised unit name and the rule used.</td>
+</tr>
+<tr>
+<td><code>build_adm2_crosswalk()</code></td>
+<td>58-65</td>
+<td>ADM2 -&gt; unit table. A unit's id is the official code of the member that shares its name, or the synthetic id.</td>
+</tr>
+<tr>
+<td><code>build_dengue_crosswalk()</code></td>
+<td>68-92</td>
+<td>Matches each dengue unit to COD-AB: city units are looked up as cities first (so QUEZON CITY is not Quezon province), then province names, then municipality names; each match is folded into its unit. Ambiguous matches get a note.</td>
+</tr>
+<tr>
+<td><code>write_csv_with_header()</code></td>
+<td>95-100</td>
+<td>Writes a CSV preceded by <code>#</code> comment lines that document its source and rules (the repo rule for hand-reviewed tables).</td>
+</tr>
+<tr>
+<td><code>read_crosswalk()</code></td>
+<td>103-104</td>
+<td>Reads a crosswalk, skipping the comment lines, as text (codes keep leading zeros).</td>
+</tr>
+<tr>
+<td><code>build_crosswalks()</code></td>
+<td>107-137</td>
+<td>Builds both crosswalks once and reuses them afterwards (unless <code>--force</code>), because they were reviewed by hand. Returns <code>None, None</code> when COD-AB or the dengue file is missing. Records how many dengue units matched.</td>
+</tr>
+<tr>
+<td><code>check_psgc()</code></td>
+<td>140-154</td>
+<td>If the PSA PSGC Excel is downloaded, checks every COD-AB province code against it. Optional; skipped when absent.</td>
+</tr>
+<tr>
+<td><code>build_units_geometry()</code></td>
+<td>157-172</td>
+<td>Dissolves ADM2 polygons into the 85 unit polygons, repairs invalid geometry, simplifies to ~50 m (small enough to process fast, finer than the 100 m rasters) and saves <code>units.gpkg</code>.</td>
+</tr>
+<tr>
+<td><code>load_units()</code></td>
+<td>175-178</td>
+<td>Loads the unit polygons, building them if needed.</td>
+</tr>
+<tr>
+<td><code>adm3_with_units()</code></td>
+<td>181-187</td>
+<td>Municipality polygons with their unit, for the municipal access results, the municipality raster and Sentinel-1 per municipality.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="13-bantaydenguepy">1.3 <code>bantay/dengue.py</code></h3>
+<p>The forecast target and the population used to turn cases into incidence.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DENGUE</code>, <code>CENSUS</code></td>
+<td>12-13</td>
+<td>The two input files.</td>
+</tr>
+<tr>
+<td><code>weeks()</code></td>
+<td>16-17</td>
+<td>The Sundays from 2016-01-10 to 2021-01-10 (262 weeks).</td>
+</tr>
+<tr>
+<td><code>load_dengue()</code></td>
+<td>20-28</td>
+<td>Reads the DOH file, skipping row 2 (HXL tags), stripping stray spaces from names, checking that every date is a Sunday, and dropping <code>deaths</code> (2016 deaths are implausible).</td>
+</tr>
+<tr>
+<td><code>unit_week_cases()</code></td>
+<td>31-45</td>
+<td>Builds the full unit x week grid: sums the member reporting units of each harmonised unit and keeps the total <strong>only if every member reported</strong> that week, so a missing city never looks like zero cases.</td>
+</tr>
+<tr>
+<td><code>unit_population()</code></td>
+<td>48-77</td>
+<td>2020 census population per unit. The census's municipal codes are the old 9-digit PSGC and don't join to COD-AB for cities or post-2022 Maguindanao, but its <em>Province</em> column already places cities in their province, so units are matched on that column by name, with fixes for the NCR districts, SGA and City of Isabela.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="14-bantaystormspy">1.4 <code>bantay/storms.py</code></h3>
+<p>Typhoon tracks from IBTrACS: wind radii, swaths, shifted tracks and weekly exposure.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NM_KM</code>, <code>IBTRACS</code>, <code>R34</code>, <code>COLS</code></td>
+<td>18-22</td>
+<td>Nautical miles to km, the file, the four 34-knot radius columns, and the columns read.</td>
+</tr>
+<tr>
+<td><code>load_ibtracs()</code></td>
+<td>25-34</td>
+<td>Reads Western Pacific tracks for 2016-2020 near the Philippines (main tracks only) and picks one wind speed per fix (US, else WMO, else Japan).</td>
+</tr>
+<tr>
+<td><code>gale_radius()</code></td>
+<td>37-48</td>
+<td>Radius of gale-force winds per fix: the largest US 34-kt quadrant, else Japan's 30-kt radius, else a fixed 150 km; fixes below gale strength get no radius. Keeps which source was used. <em>Why:</em> the US radius is missing on 15-58% of the fixes of the backtest storms.</td>
+</tr>
+<tr>
+<td><code>storm_track()</code></td>
+<td>51-61</td>
+<td>Returns the fixes of one backtest storm (by name and season) or any storm id, in time order.</td>
+</tr>
+<tr>
+<td><code>shift_track()</code></td>
+<td>64-70</td>
+<td>A "what if" track: the same storm moved by <code>dlat</code>/<code>dlon</code> degrees (and optionally in time). Used for the swath and the map.</td>
+</tr>
+<tr>
+<td><code>interpolate()</code></td>
+<td>73-78</td>
+<td>Fills in hourly positions between the 3-hourly fixes, so swaths have no gaps.</td>
+</tr>
+<tr>
+<td><code>swath()</code></td>
+<td>81-93</td>
+<td>The area that saw gale-force winds: the union of circles of the gale radius around every hourly position (in metres).</td>
+</tr>
+<tr>
+<td><code>track_line()</code></td>
+<td>96-97</td>
+<td>The track as a line (for maps).</td>
+</tr>
+<tr>
+<td><code>unit_week_exposure()</code></td>
+<td>100-134</td>
+<td>For every unit and week 2016-2020: the closest any storm came, whether the unit was inside a gale radius, the strongest wind within 300 km, and how many storms passed within 300 km. These become forecast features.</td>
+</tr>
+<tr>
+<td><code>origin_exposure()</code></td>
+<td>137-153</td>
+<td>The forecast's 4-week storm features at a forecast origin (<code>storm_gale_4w</code>, <code>storm_wind_4w</code>, <code>storm_dist_4w</code>), computed exactly as the panel and <code>forecast.base_features</code> compute them, from the fixes in the 4 DOH weeks ending at the origin. No fix after the origin week is used.</td>
+</tr>
+<tr>
+<td><code>shift_storm()</code></td>
+<td>156-163</td>
+<td>The whole IBTrACS table with one backtest storm's fixes moved; every other storm unchanged. Feeding it to <code>origin_exposure()</code> scores a shifted track with the same rules as training.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="15-bantayrainpy">1.5 <code>bantay/rain.py</code></h3>
+<p>Daily rainfall grids to weekly rainfall per province.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CHIRPS_DIR</code>, <code>IMERG_DIR</code></td>
+<td>18-19</td>
+<td>Input folders.</td>
+</tr>
+<tr>
+<td><code>zonal_weights()</code></td>
+<td>22-40</td>
+<td>A sparse matrix saying which grid cells belong to which province (cell centre inside the polygon, land cells only), each row summing to 1. Tiny islands with no cell centre get their nearest land cell. Built once, reused for every day.</td>
+</tr>
+<tr>
+<td><code>apply_weights()</code></td>
+<td>43-50</td>
+<td>Multiplies a stack of daily grids by the weights: province mean rainfall per day, ignoring missing cells.</td>
+</tr>
+<tr>
+<td><code>_grid_transform()</code></td>
+<td>53-58</td>
+<td>Builds the pixel-to-coordinate transform from the grid's centre coordinates, and notes whether latitude runs upwards (then the grid is flipped).</td>
+</tr>
+<tr>
+<td><code>nearest_cells()</code></td>
+<td>61-68</td>
+<td>For a list of points (river reaches), the nearest land cell, via a KD-tree.</td>
+</tr>
+<tr>
+<td><code>chirps_daily_units()</code></td>
+<td>71-100</td>
+<td>Reads each CHIRPS year file (with the pure-Python <code>scipy</code> NetCDF reader, because the netCDF4 library is blocked on some Windows machines), converts its julian-day time axis to dates, and returns daily province rainfall; optionally also the rainfall at each river reach.</td>
+</tr>
+<tr>
+<td><code>imerg_daily_units()</code></td>
+<td>103-122</td>
+<td>Same for the IMERG monthly GeoTIFF stacks from Earth Engine (one band per day).</td>
+</tr>
+<tr>
+<td><code>weekly()</code></td>
+<td>125-139</td>
+<td>Daily to DOH weeks: Monday-Sunday total (<code>_7d</code>), Friday-Sunday total (<code>_3d</code>) and wettest day (<code>_max1d</code>).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="16-bantayriverspy">1.6 <code>bantay/rivers.py</code></h3>
+<p>Rain routed downstream, so a province at a river mouth "feels" rain that fell upstream.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HR_ZIP</code>, <code>HR_LAYER</code></td>
+<td>15-16</td>
+<td>The HydroRIVERS Australasia shapefile.</td>
+</tr>
+<tr>
+<td><code>load_reaches()</code></td>
+<td>19-35</td>
+<td>Reads river reaches in the Philippine box and assigns each to the unit containing its midpoint (reaches just off the coastline go to the nearest unit within 2 km). Sorted by upstream area, which puts every reach before the reaches downstream of it.</td>
+</tr>
+<tr>
+<td><code>accumulate()</code></td>
+<td>38-47</td>
+<td>Walks reaches from upstream to downstream, adding each reach's rain volume (rain x local catchment area) to the next reach down. Dividing by upstream area gives the average rain over everything upstream of each reach.</td>
+</tr>
+<tr>
+<td><code>unit_week_river()</code></td>
+<td>50-69</td>
+<td>Weekly version per unit: discharge-weighted average of upstream rain over the unit's reaches (<code>river_up_7d</code>) and how much more that is than the unit's own rain (<code>river_excess_7d</code>).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="17-bantaygridspy">1.7 <code>bantay/grids.py</code></h3>
+<p>Population grids aligned with WorldPop (100 m), so population, flood and hazard line up cell for cell.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Constants</td>
+<td>17-20</td>
+<td>WorldPop file, the unit-id raster, the 1 km population cells, and the processing block size.</td>
+</tr>
+<tr>
+<td><code>fresh()</code></td>
+<td>23-27</td>
+<td>True if a cached file exists and is newer than every input it was built from (e.g. <code>units.gpkg</code>), so a changed input triggers a rebuild.</td>
+</tr>
+<tr>
+<td><code>unit_index()</code></td>
+<td>30-33</td>
+<td>Gives each unit a small integer code (1-85) for rasters; 0 means outside every unit.</td>
+</tr>
+<tr>
+<td><code>build_unit_raster()</code></td>
+<td>36-54</td>
+<td>Burns the unit polygons into a raster on the exact WorldPop grid, block by block (the full grid is 230 M cells). Reused while it is <code>fresh()</code>.</td>
+</tr>
+<tr>
+<td><code>iter_blocks()</code></td>
+<td>57-68</td>
+<td>Walks several aligned rasters together, one block at a time, to keep memory low.</td>
+</tr>
+<tr>
+<td><code>worldpop_clean()</code></td>
+<td>71-74</td>
+<td>Turns nodata and negative values into 0 people.</td>
+</tr>
+<tr>
+<td><code>unit_population_worldpop()</code></td>
+<td>77-87</td>
+<td>Population per unit from WorldPop; the fallback when the census table is missing.</td>
+</tr>
+<tr>
+<td><code>build_pop_cells()</code></td>
+<td>90-136</td>
+<td>Sums WorldPop into ~1 km cells (369,121 cells, 109 M people), gives each its unit (centre cell, or any unit in the block for coastal cells) and its municipality (containing polygon, else nearest). These are the "people" the access model routes to hospitals. Cached in <code>pop_cells_1km.parquet</code>.</td>
+</tr>
+<tr>
+<td><code>HRSL</code>, <code>HRSL_CELLS</code>, <code>HRSL_ROWS</code></td>
+<td>141-144</td>
+<td>The two Meta HRSL 2020 layers (children under 5, people aged 60+), their cache, and how many rows of the ~30 m rasters are read at once.</td>
+</tr>
+<tr>
+<td><code>_hrsl_block_sums()</code></td>
+<td>147-177</td>
+<td>Sums one HRSL raster (read inside its zip, top to bottom) onto the same 1 km blocks <code>build_pop_cells()</code> uses: each 30 m pixel goes to the block holding its centre. Also returns the total and the people outside the WorldPop grid.</td>
+</tr>
+<tr>
+<td><code>build_vulnerable_cells()</code></td>
+<td>180-212</td>
+<td>Under-5 and 60+ people per population cell (same rows as the cells), both layers read in parallel, cached in <code>pop_cells_hrsl.parquet</code>. People in blocks without a WorldPop cell are dropped and the kept share is recorded; a layer whose zip is missing stays NaN.</td>
+</tr>
+<tr>
+<td><code>ADM3_RASTER</code>, <code>adm3_index()</code></td>
+<td>217-222</td>
+<td>The municipality raster's path and its stable code per municipality (1..n; 0 = outside).</td>
+</tr>
+<tr>
+<td><code>build_adm3_raster()</code></td>
+<td>225-250</td>
+<td>Burns the COD-AB municipality polygons onto the WorldPop grid (uint16 codes), block by block, only rasterising the polygons that touch each block; written to <code>.part.tif</code> and renamed. Used for Sentinel-1 per municipality.</td>
+</tr>
+<tr>
+<td><code>_box()</code></td>
+<td>253-256</td>
+<td>A shapely box from raster-window bounds (for the spatial-index query above).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="18-bantayfloodpy">1.8 <code>bantay/flood.py</code></h3>
+<p>Flood exposure: UP NOAH hazard maps (static), Copernicus EMS and Sentinel-1 (observed, per typhoon).</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NOAH</code>, <code>EMS</code>, <code>S1</code>, <code>RPS</code></td>
+<td>28-31</td>
+<td>Input folders and return periods (5-yr, 25-yr).</td>
+</tr>
+<tr>
+<td><code>hazard_raster_path()</code></td>
+<td>34-35</td>
+<td>Where the national hazard raster for a return period is cached.</td>
+</tr>
+<tr>
+<td><code>_nk()</code></td>
+<td>40-41</td>
+<td>Name normaliser for NOAH file names.</td>
+</tr>
+<tr>
+<td><code>noah_file_units()</code></td>
+<td>44-68</td>
+<td>Works out which units each NOAH zip covers, from its shapefile names (CamelCase province names or old 9-digit codes) including multi-province files (Mindoro, Metro Manila, pre-split Maguindanao).</td>
+</tr>
+<tr>
+<td><code>_hazard_col()</code></td>
+<td>71-72</td>
+<td>Finds the hazard-class column (usually <code>Var</code>).</td>
+</tr>
+<tr>
+<td><code>build_hazard_raster()</code></td>
+<td>75-123</td>
+<td>One national raster per return period on the WorldPop grid: <strong>255 = no map, 0 = mapped and safe, 1-3 = low/medium/high hazard</strong>. Starts all-255, then for each province file marks its units as mapped and burns in the hazard polygons (highest class wins). Rebuilt only when a NOAH file or the unit polygons are newer. <em>Why 255:</em> "no map" must stay missing, never become "no hazard".</td>
+</tr>
+<tr>
+<td><code>unit_hazard_shares()</code></td>
+<td>126-156</td>
+<td>Share of each unit's people in any hazard class and in the high class; NaN when less than half the unit's people are on a mapped area (11 units have no 25-yr map).</td>
+</tr>
+<tr>
+<td><code>ems_observed_flood()</code></td>
+<td>161-179</td>
+<td>Reads the observed-flood polygons from the Copernicus EMSR312 packages (Ompong; first map and later monitoring map).</td>
+</tr>
+<tr>
+<td><code>s1_tiles()</code></td>
+<td>184-186</td>
+<td>Lists a storm's Sentinel-1 flood tiles.</td>
+</tr>
+<tr>
+<td><code>_tile_cell()</code></td>
+<td>189-192</td>
+<td>The nominal 1-degree cell of a tile, read from its name (<code>s1flood_121E_17N.tif</code>).</td>
+</tr>
+<tr>
+<td><code>_s1_zone_sums()</code></td>
+<td>195-220</td>
+<td>The shared counter: resamples each tile of a storm onto the WorldPop grid and adds up, per zone code (unit or municipality), the pixels the radar saw, the flooded pixels and the people in them. With <code>crop</code>, each tile is read only over its 1-degree cell, so the ~2-pixel overlap between neighbouring tiles is counted once.</td>
+</tr>
+<tr>
+<td><code>s1_unit_flood()</code></td>
+<td>223-237</td>
+<td>Per unit: share of the land Sentinel-1 saw that newly flooded, and people in that flood (WorldPop). Uncropped, as the panel was built.</td>
+</tr>
+<tr>
+<td><code>s1_adm3_flood()</code></td>
+<td>240-278</td>
+<td>The same per municipality for every storm with tiles (flood share, people in flood, and <code>seen_frac</code>, the share of the municipality the radar saw), on the municipality raster with cropped tiles. Written to <code>s1_adm3.parquet</code> by the scenarios stage.</td>
+</tr>
+<tr>
+<td><code>s1_flood_lookup()</code></td>
+<td>281-303</td>
+<td>Loads a storm's tiles into memory once and returns a function that answers "flooded or not" for millions of points at once with array indexing (road midpoints, friction cells).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="19-bantaypanelpy">1.9 <code>bantay/panel.py</code></h3>
+<p>Step 0: the one table every model reads (85 units x 262 weeks).</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PANEL</code>, <code>S1_BY_STORM</code>, <code>CARD</code></td>
+<td>15-17</td>
+<td>Output files: the panel, the per-storm Sentinel-1 table, and the panel's data card.</td>
+</tr>
+<tr>
+<td><code>COLUMNS</code></td>
+<td>19-44</td>
+<td>Every panel column with its source and meaning; it drives the data card and guarantees every documented column exists (NaN when its input is missing).</td>
+</tr>
+<tr>
+<td><code>_newest()</code>, <code>cached()</code></td>
+<td>47-61</td>
+<td>A small cache: reuse an intermediate in <code>data/interim/</code> if it is newer than all its inputs, else rebuild it. Missing inputs (<code>None</code>) are never cached, so they are retried next time.</td>
+</tr>
+<tr>
+<td><code>rain_layers()</code></td>
+<td>64-89</td>
+<td>CHIRPS weekly rain plus river routing in a single pass over CHIRPS (the slow part), and IMERG weekly rain; both cached.</td>
+</tr>
+<tr>
+<td><code>static_layers()</code></td>
+<td>92-98</td>
+<td>Builds the unit raster and NOAH hazard rasters (first run only) and returns hazard shares per unit.</td>
+</tr>
+<tr>
+<td><code>s1_layers()</code></td>
+<td>101-117</td>
+<td>Sentinel-1 flood per unit, placed on 4 weeks starting with the DOH week that contains landfall + <code>S1_AFTER_DAYS</code> (the week the map is complete), not the landfall week, so no feature at a forecast origin uses radar taken after it. Writes the per-storm values to <code>s1_unit_storm.parquet</code>. Rolly and Ulysses landed 10 days apart, so their windows overlap; the larger flood per unit-week is kept.</td>
+</tr>
+<tr>
+<td><code>build_panel()</code></td>
+<td>120-171</td>
+<td>Assembles the panel: the full unit x week grid, cases, population (census, else WorldPop), incidence per 100,000, storm exposure (weeks with no storm nearby get "far": 2000 km, no hit), rain, rivers, hazard, the storm-x-hazard interaction and Sentinel-1. Writes the parquet and the data card.</td>
+</tr>
+<tr>
+<td><code>write_card()</code></td>
+<td>174-187</td>
+<td>Writes <code>panel_card.md</code>: coverage of every column and the status of every input.</td>
+</tr>
+<tr>
+<td><code>load_panel()</code></td>
+<td>190-191</td>
+<td>Reads the panel.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="110-bantayleadlagpy">1.10 <code>bantay/leadlag.py</code></h3>
+<p>Layer 2: which provinces' dengue rises first, and which follow.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TAU_MAX</code>, <code>MIN_T</code>, <code>EDGE_COLS</code></td>
+<td>16-19</td>
+<td>Longest lead considered (3 weeks); the fewest differenced weeks a graph is learned from (52; shorter windows, such as the catalogue's 2017 storms, get an empty graph); the columns of an edge table.</td>
+</tr>
+<tr>
+<td><code>prepare()</code></td>
+<td>22-31</td>
+<td>For a training window: log incidence, minus the same week a year earlier (removes the shared rainy-season peak, which would otherwise link every pair), drops units with over 10% missing weeks, fills short gaps, standardises each series.</td>
+</tr>
+<tr>
+<td><code>_bh()</code></td>
+<td>34-41</td>
+<td>Benjamini-Hochberg false-discovery correction of p-values.</td>
+</tr>
+<tr>
+<td><code>xcorr_graph()</code></td>
+<td>44-63</td>
+<td>The simple baseline: correlation between province i lagged 1-3 weeks and province j now; keeps positive links that survive false-discovery control. Gives 4,265 links on 2016-2019, mostly the shared 2019 epidemic.</td>
+</tr>
+<tr>
+<td><code>pcmci_graph()</code></td>
+<td>66-91</td>
+<td>PCMCI+ (Tigramite, partial correlations): a link i -&gt; j is kept only if it holds after conditioning on j's own past and other provinces. Keeps lagged links between different provinces with q &lt; 0.05 (on pure noise, PCMCI+ alone returned 60-90 false links). Optional bootstrap gives each link a confidence.</td>
+</tr>
+<tr>
+<td><code>node_metrics()</code></td>
+<td>94-110</td>
+<td>PageRank on the reversed graph (high score = many provinces follow you: a sentinel), number of leaders and followers, and Louvain communities (provinces that move together). A sentinel is a top-ranked unit (top 10%, at least 5) with at least one follower.</td>
+</tr>
+<tr>
+<td><code>learn()</code></td>
+<td>113-123</td>
+<td>Runs the above for a window ending at a given date and returns links, per-province metrics and a summary (series, weeks, link count).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="111-bantayforecastpy">1.11 <code>bantay/forecast.py</code></h3>
+<p>The forecaster, its baselines, the scores, the rolling-origin test, the calibration of R and the benchmark scoring.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Q</code>, <code>IQ50</code>, <code>HORIZONS</code>, <code>SURGE_PCTL</code></td>
+<td>30-33</td>
+<td>The 23 quantiles, the index of the median, horizons 1-4 weeks, and the surge definition (above the unit's 90th percentile).</td>
+</tr>
+<tr>
+<td><code>GROUPS</code>, <code>GRAPH_FEATURES</code>, <code>ENV_FEATURES</code>, <code>MODELS</code></td>
+<td>35-48</td>
+<td>Every feature, grouped into drivers shown on the dashboard (recent cases, season, rain, river, storm/flood, outbreak graph, unit). The built-in models: <code>xgb</code> (all features), the ablations <code>xgb_nograph</code> (no graph features) and <code>xgb_noenv</code> (no rain, river, storm or flood features), and <code>naive</code>.</td>
+</tr>
+<tr>
+<td><code>CAL_MIN_ROWS</code>, <code>R_CLIP</code>, <code>CUM4_FILE</code></td>
+<td>52-54</td>
+<td>R is recalibrated only once 850 past surge outcomes exist (10 weeks x 85 units); the clip of calibrated R; the file the forecast stage saves the rolling-origin surge forecasts to.</td>
+</tr>
+<tr>
+<td><code>ENSEMBLE</code>, <code>BENCH_GLOB</code>, <code>BENCH_MODELS</code>, <code>BAND</code></td>
+<td>55-60</td>
+<td>The median ensemble's name, the benchmark file pattern, <strong>the benchmarks allowed into the ensemble</strong> (<code>chronos2</code>, <code>tabpfn_ts</code>, <code>mpnn_lstm</code>; any other <code>bench_*</code> file is a variant and is ignored here), and the fan-chart quantile levels.</td>
+</tr>
+<tr>
+<td><code>base_features()</code></td>
+<td>65-102</td>
+<td>Features known at the forecast week t (never later): log incidence now and 1-3 weeks ago, 4- and 8-week averages, 4-week change, rain lags and 4/8-week totals, river rain, storm exposure over the last 4 weeks, hazard shares, Sentinel-1 flood, population, and the province as a category. Features whose source is missing are left out.</td>
+</tr>
+<tr>
+<td><code>target_frame()</code></td>
+<td>105-116</td>
+<td>Adds the target for horizon h (log incidence at t+h), the same week last year (the seasonal-naive value) and its 5-week centred average, and the week-of-year of the target.</td>
+</tr>
+<tr>
+<td><code>cum4_frame()</code></td>
+<td>119-127</td>
+<td>Target = total incidence over the next 4 weeks (used for the surge probability R).</td>
+</tr>
+<tr>
+<td><code>graph_features()</code></td>
+<td>130-150</td>
+<td>For each follower province, its leaders' recent rise and year-on-year anomaly (weighted by link strength), and the number of leaders. Uses only leader values up to week t.</td>
+</tr>
+<tr>
+<td><code>feature_columns()</code></td>
+<td>153-159</td>
+<td>The feature list, with or without the graph features or the environmental features (the ablations).</td>
+</tr>
+<tr>
+<td><code>fit_quantile_model()</code></td>
+<td>164-169</td>
+<td>One XGBoost model that outputs all 23 quantiles at once (quantile loss), 150 trees, depth 4.</td>
+</tr>
+<tr>
+<td><code>predict_quantiles()</code></td>
+<td>172-173</td>
+<td>Predicts and sorts each row's quantiles (so they never cross).</td>
+</tr>
+<tr>
+<td><code>usable()</code></td>
+<td>176-178</td>
+<td>Drops features that are empty in the training rows.</td>
+</tr>
+<tr>
+<td><code>seasonal_naive()</code></td>
+<td>181-185</td>
+<td>The bar to beat: "same week last year", with a range taken from its past errors.</td>
+</tr>
+<tr>
+<td><code>prob_exceed()</code></td>
+<td>188-200</td>
+<td>Turns 23 quantiles into the probability of exceeding a threshold, by interpolating the quantile curve.</td>
+</tr>
+<tr>
+<td><code>surge_thresholds()</code></td>
+<td>203-208</td>
+<td>Each unit's 90th percentile of 4-week incidence, computed from training weeks only.</td>
+</tr>
+<tr>
+<td><code>to_cases()</code></td>
+<td>213-214</td>
+<td>Back from log incidence per 100,000 to case counts.</td>
+</tr>
+<tr>
+<td><code>wis()</code></td>
+<td>217-227</td>
+<td>The weighted interval score (Bracher et al., 2021): rewards narrow ranges that contain the truth and penalises misses in proportion to how far out they are.</td>
+</tr>
+<tr>
+<td><code>coverage()</code></td>
+<td>230-233</td>
+<td>Whether the outcome fell inside the 50% or 90% range.</td>
+</tr>
+<tr>
+<td><code>refit_dates()</code></td>
+<td>238-239</td>
+<td>Refit every 13 weeks from January 2018 to December 2019 (8 refits).</td>
+</tr>
+<tr>
+<td><code>rolling_origin()</code></td>
+<td>242-282</td>
+<td><strong>The honest test.</strong> At each refit date: re-learn the graph and thresholds on past data, train on rows whose target is before the refit date, forecast every week until the next refit. Per horizon it fits <code>xgb</code>, <code>xgb_nograph</code> and <code>xgb_noenv</code> (the surge model only the first two) and adds the seasonal naive; when a window's graph has no links, <code>xgb</code> equals <code>xgb_nograph</code>, so that fit is skipped. The 4-week model gives the raw surge probabilities <code>R_xgb</code>, <code>R_xgb_nograph</code>.</td>
+</tr>
+<tr>
+<td><code>score_rows()</code></td>
+<td>285-297</td>
+<td>WIS, absolute error and 50%/90% coverage on case counts for any set of models' quantiles; a row with a missing quantile scores NaN, so models can be compared on the same rows.</td>
+</tr>
+<tr>
+<td><code>score()</code></td>
+<td>300-321</td>
+<td>Scores every forecast of the built-in models, plus an online conformal 90% band (built only from errors of forecasts already past) as a check.</td>
+</tr>
+<tr>
+<td><code>summarise()</code></td>
+<td>324-345</td>
+<td>Averages by horizon and overall, every model on the same rows: WIS, relative WIS vs seasonal naive, graph vs no-graph, with vs without environment, coverage.</td>
+</tr>
+<tr>
+<td><code>SurgeCalibrator</code></td>
+<td>348-362</td>
+<td>An isotonic map from raw R to the observed surge frequency, fitted on past forecasts only; keeps how many outcomes it used and the last target week it saw.</td>
+</tr>
+<tr>
+<td><code>SurgeCalibrator.__init__()</code></td>
+<td>352-354</td>
+<td>Fits the isotonic regression (increasing, clipped to 0-1).</td>
+</tr>
+<tr>
+<td><code>SurgeCalibrator.__call__()</code></td>
+<td>356-362</td>
+<td>Maps raw R to calibrated R (NaN stays NaN, result clipped to <code>R_CLIP</code>).</td>
+</tr>
+<tr>
+<td><code>fit_calibrator()</code></td>
+<td>365-373</td>
+<td>Builds a calibrator from rows whose outcome is known at a given date (target week on or before it, the same rule as model training); None with fewer than <code>CAL_MIN_ROWS</code> outcomes or only one class.</td>
+</tr>
+<tr>
+<td><code>cum4_eval()</code></td>
+<td>376-401</td>
+<td>The evaluation version: for every forecast origin t, calibrates that origin's R with a calibrator fitted on forecasts whose 4-week window ended by t (expanding window), so calibrated R never uses a later outcome; rows before 850 past outcomes keep the raw R. Asserts there is no leakage.</td>
+</tr>
+<tr>
+<td><code>RELIABILITY_BINS</code>, <code>_reliability()</code></td>
+<td>404-409</td>
+<td>Reliability table: in bins of R, the mean R and how often a surge happened.</td>
+</tr>
+<tr>
+<td><code>_brier()</code></td>
+<td>412-413</td>
+<td>Brier score of a probability column.</td>
+</tr>
+<tr>
+<td><code>surge_calibration()</code></td>
+<td>416-444</td>
+<td>Brier score of raw and calibrated R, the base rate, the climatology Brier, which origins stayed uncalibrated, and the reliability table before and after calibration.</td>
+</tr>
+<tr>
+<td><code>surge_calibrator()</code></td>
+<td>447-462</td>
+<td>The production version for the scenarios: a calibrator fitted on every saved rolling-origin surge forecast (<code>eval_cum4.parquet</code>) whose outcome is known by the model's training end. None (R stays raw, recorded) if the file is missing or there are too few outcomes.</td>
+</tr>
+<tr>
+<td><code>calibrate_R()</code></td>
+<td>465-473</td>
+<td>Scenario hook: keeps the model probability as <code>R_raw</code>, sets <code>R</code> to the calibrated value (raw if there is no calibrator) and flags <code>R_calibrated</code>.</td>
+</tr>
+<tr>
+<td><code>eval_quantiles()</code></td>
+<td>478-485</td>
+<td>The rolling-origin horizon 1-4 rows with every built-in model's 23 quantiles, saved so benchmarks can be scored and ensembled later without refitting XGBoost.</td>
+</tr>
+<tr>
+<td><code>_key()</code></td>
+<td>488-491</td>
+<td>The join key (unit, origin week, horizon) in one fixed set of types.</td>
+</tr>
+<tr>
+<td><code>load_bench()</code></td>
+<td>494-540</td>
+<td>Reads each <code>bench_&lt;model&gt;.parquet</code> in <code>BENCH_MODELS</code> (and its <code>.json</code> metadata), checks the schema, drops invalid or duplicate rows and aligns it to the evaluation rows. Other names are recorded as ignored variants; a bad file is skipped with a warning, never fatal.</td>
+</tr>
+<tr>
+<td><code>evaluate_models()</code></td>
+<td>543-584</td>
+<td>Scores xgb, its ablations, the naive baseline, every benchmark and the <strong>median ensemble</strong> (element-wise median of the 23 quantiles over xgb and the benchmarks, only where all exist) on the same rows. Returns the model x horizon table, fan-chart bands for the benchmarks and the ensemble, and metadata.</td>
+</tr>
+<tr>
+<td><code>fit_at()</code></td>
+<td>589-604</td>
+<td>For the scenarios: learns the graph and the surge thresholds and trains the graph model for every horizon and the 4-week model on data up to a storm's forecast origin (never past 2019).</td>
+</tr>
+<tr>
+<td><code>predict_at()</code></td>
+<td>607-632</td>
+<td>Forecasts every province from that week; optional overrides replace the storm features (one row per unit); computes raw R and the per-driver SHAP contributions shown on the dashboard.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="112-bantayaccesspy">1.12 <code>bantay/access.py</code></h3>
+<p>Layer 3: travel time to the nearest hospital over roads and ferries, before and during a storm, by two methods: a road
+and ferry <strong>network</strong> (the primary method) and a <strong>raster</strong> over the MAP friction surface (the check). The gap between
+them is reported as uncertainty.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PBF</code>, <code>ROADS</code>, <code>SPEED</code></td>
+<td>35-40</td>
+<td>The OpenStreetMap file, the cached road graph, and assumed travel speeds per road class (links at 80% of their road). Speeds are a tunable assumption, tested in the sensitivity analysis.</td>
+</tr>
+<tr>
+<td><code>WALK_KMH</code>, <code>MAX_SNAP_KM</code>, <code>LAT0</code></td>
+<td>42-43</td>
+<td>Walking 5 km/h from a home to the road, at most 5 km; a reference latitude for fast km conversions.</td>
+</tr>
+<tr>
+<td><code>_xy()</code>, <code>_hav_km()</code></td>
+<td>46-54</td>
+<td>Coordinates to km (for nearest-node search) and great-circle distance.</td>
+</tr>
+<tr>
+<td><code>build_road_graph()</code></td>
+<td>59-96</td>
+<td>Reads OSM roads through GDAL, finds junctions as coordinates shared by two or more roads (OSM roads share nodes there), cuts roads into segments between junctions, and stores each segment's length, speed and midpoint. 1.72 M junctions, 2.13 M segments, cached.</td>
+</tr>
+<tr>
+<td><code>_nhfr()</code></td>
+<td>101-122</td>
+<td>Reads the DOH facility registry if downloaded by hand: finds latitude/longitude and type columns and keeps hospitals.</td>
+</tr>
+<tr>
+<td><code>load_hospitals()</code></td>
+<td>125-155</td>
+<td>NHFR if available, else the fallback: OSM hospitals plus NOAH facilities whose names say hospital or medical center, with duplicates within 300 m removed (2,199). Labelled as a fallback everywhere.</td>
+</tr>
+<tr>
+<td><code>load_ferries()</code></td>
+<td>160-169</td>
+<td>The 108 RoRo routes; crossing time plus half the time between departures (capped at 12 h), and a straight line between ports for storm checks.</td>
+</tr>
+<tr>
+<td><code>Network</code></td>
+<td>174-225</td>
+<td>The routable road and ferry network.</td>
+</tr>
+<tr>
+<td><code>Network.__init__()</code></td>
+<td>177-200</td>
+<td>Snaps hospitals and population cells to the nearest road junction (within 5 km; a cell further from a road has no route) and ferry ports to junctions within 25 km (their coordinates are coarse), adding the port access at 30 km/h to the crossing time.</td>
+</tr>
+<tr>
+<td><code>Network.road_hours()</code></td>
+<td>202-207</td>
+<td>Travel hours per segment, with optional speed multipliers (0 = road closed).</td>
+</tr>
+<tr>
+<td><code>Network.solve()</code></td>
+<td>209-225</td>
+<td>Builds a sparse graph of roads and ferries (keeping the fastest of parallel edges) and runs one multi-source Dijkstra from all hospitals at once: hours from every junction to its nearest hospital. Adds the walk from each population cell.</td>
+</tr>
+<tr>
+<td><code>cut_off()</code></td>
+<td>228-230</td>
+<td>A cell is cut off if it had a route before the storm and now has none, or its trip at least doubled and grew by more than an hour.</td>
+</tr>
+<tr>
+<td><code>ferry_keep_mask()</code></td>
+<td>235-244</td>
+<td>Which ferry routes still sail: cancelled if the route crosses the gale swath (or, in the sensitivity variant, if a port is inside it).</td>
+</tr>
+<tr>
+<td><code>edges_in()</code></td>
+<td>247-254</td>
+<td>Which road segments lie inside the swath (vectorised point-in-polygon on their midpoints; the raster method reuses it for cell centres).</td>
+</tr>
+<tr>
+<td><code>hazard_at()</code></td>
+<td>257-276</td>
+<td>NOAH hazard class at each segment midpoint, read in bands to save memory.</td>
+</tr>
+<tr>
+<td><code>road_multiplier()</code></td>
+<td>279-289</td>
+<td>Speed multiplier per segment: observed flood closes roads; otherwise (shifted tracks, catalogue storms) high hazard inside the swath closes and medium hazard slows. Returns which rule was used.</td>
+</tr>
+<tr>
+<td><code>FRICTION</code>, <code>SEA_MIN_PER_M</code>, <code>RASTER_SNAP_KM</code></td>
+<td>294-299</td>
+<td>The MAP motorised friction GeoTIFF; the constant MAP uses for open sea (3.16 min/km, not nodata), which is treated as impassable outside the unit polygons; how far a population cell on a sea cell may snap to land (3 km).</td>
+</tr>
+<tr>
+<td><code>FrictionGrid</code></td>
+<td>302-401</td>
+<td><strong>The raster access method</strong>: cost-distance from the same hospitals over the ~1 km friction grid, with the same ferries, storm rules and cut-off rule as the network, evaluated at cell centres. There is no walking leg.</td>
+</tr>
+<tr>
+<td><code>FrictionGrid.__init__()</code></td>
+<td>316-371</td>
+<td>Turns friction (minutes per metre) into hours per cell, marks sea impassable, draws each RoRo route as a line of sea cells whose cost adds up to the network's crossing time, and places hospitals and population cells on the grid (a cell on sea snaps to the nearest land cell within 3 km, else it has no route).</td>
+</tr>
+<tr>
+<td><code>FrictionGrid.hazard()</code></td>
+<td>373-377</td>
+<td>NOAH hazard class at the centre of every passable land cell (computed once).</td>
+</tr>
+<tr>
+<td><code>FrictionGrid.in_swath()</code></td>
+<td>379-380</td>
+<td>Which land cells lie inside the swath (reuses <code>edges_in()</code>).</td>
+</tr>
+<tr>
+<td><code>FrictionGrid.solve()</code></td>
+<td>382-401</td>
+<td>Applies the storm multipliers (flooded cells impassable, slowed cells costlier) and the ferries that still sail, then runs scikit-image's <code>MCP_Geometric</code> from all hospital cells: hours to the nearest hospital per population cell. A hospital in a flooded cell is not a start.</td>
+</tr>
+<tr>
+<td><code>friction_grid()</code></td>
+<td>404-408</td>
+<td>Builds the <code>FrictionGrid</code>, or records the friction raster as missing and returns None.</td>
+</tr>
+<tr>
+<td><code>summarise()</code></td>
+<td>413-425</td>
+<td>Per unit (or municipality): population, people cut off, people with no route even normally, average normal trip time, and A = share cut off.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="113-bantayscenariospy">1.13 <code>bantay/scenarios.py</code></h3>
+<p>Puts it together: for each typhoon and track, R x A = P, action tiers, then the checks; and the same for the storm
+catalogue.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SHIFTS</code></td>
+<td>30</td>
+<td>The 15 tracks per storm: north/south 0, ±0.5, ±1 degree x east/west 0, ±1.</td>
+</tr>
+<tr>
+<td><code>TIERS</code>, <code>TIER_LABELS</code></td>
+<td>31-34</td>
+<td>Provisional action rules: deploy if R &gt;= 0.5 and A &gt;= 10%; pre-position if R &gt;= 0.3, or A &gt;= 10% and R &gt;= 0.15; else monitor.</td>
+</tr>
+<tr>
+<td><code>tier()</code></td>
+<td>37-42</td>
+<td>Applies the rules to every province.</td>
+</tr>
+<tr>
+<td><code>overrides_for()</code></td>
+<td>45-52</td>
+<td>The origin-week storm features (gale hit, wind, distance over 4 weeks, storm x hazard) for this storm moved by (dlat, dlon), built like the training features (<code>storms.origin_exposure()</code>). Used for every track, the unshifted one too, so tracks differ only by the shift. Observed rain is kept.</td>
+</tr>
+<tr>
+<td><code>AccessModel</code></td>
+<td>55-142</td>
+<td>Builds the network (and the raster method, when the friction GeoTIFF is on disk) once and reuses it for every scenario.</td>
+</tr>
+<tr>
+<td><code>AccessModel.__init__()</code></td>
+<td>59-78</td>
+<td>Road graph, hospitals, ferries, the normal-day travel times of both methods, hazard per segment and EMS polygons. If an input is missing, A stays NaN.</td>
+</tr>
+<tr>
+<td><code>AccessModel.observed_flood()</code></td>
+<td>80-91</td>
+<td>Observed flood for a historical storm at road midpoints or at friction-cell centres, cached per storm (sensitivity asks many times).</td>
+</tr>
+<tr>
+<td><code>AccessModel._observed_flood()</code></td>
+<td>93-103</td>
+<td>Sentinel-1 if its tiles are on disk, else the EMS areas for Ompong, else nothing.</td>
+</tr>
+<tr>
+<td><code>AccessModel._multiplier()</code></td>
+<td>105-116</td>
+<td>The flood rule, the same for both methods: shifted tracks and storms without observed flood use the NOAH proxy; an unshifted storm with Sentinel-1 uses only the observed flood; EMS (a few areas only) is added on top of the proxy. Returns the flood source label.</td>
+</tr>
+<tr>
+<td><code>AccessModel.run()</code></td>
+<td>118-129</td>
+<td>One storm scenario on the network: cancel ferries in the swath, cut or slow roads by the flood rule, re-solve, mark who is cut off. Options are the sensitivity knobs.</td>
+</tr>
+<tr>
+<td><code>AccessModel.run_raster()</code></td>
+<td>131-142</td>
+<td>The same scenario on the raster (same swath, same cancelled ferries, same flood rule); None without the raster.</td>
+</tr>
+<tr>
+<td><code>VULNERABLE</code></td>
+<td>145</td>
+<td>The Meta HRSL columns (under 5, 60+) carried through when they are on the population cells.</td>
+</tr>
+<tr>
+<td><code>access_tables()</code></td>
+<td>148-170</td>
+<td>Access summary per unit or municipality: the network numbers (A, people cut off, trip time), the raster ones (<code>*_raster</code>), <code>A_lo</code> / <code>A_hi</code> = the lower and higher of the two (NaN without both), and under-5 / 60+ people and those cut off.</td>
+</tr>
+<tr>
+<td><code>track_access()</code></td>
+<td>173-187</td>
+<td>Both methods for one track: unit and municipality tables, flood source, ferries cancelled, and a row comparing the methods (mean A, people cut off, rank agreement) for <code>access_methods.csv</code>.</td>
+</tr>
+<tr>
+<td><code>baseline_agreement()</code></td>
+<td>190-212</td>
+<td>Normal-day comparison of the two methods: share of people who can reach a hospital, mean trip time, correlations across cells and provinces, typical raster-to-network ratio.</td>
+</tr>
+<tr>
+<td><code>_wmedian()</code></td>
+<td>215-218</td>
+<td>Weighted median (for the population-weighted ratio).</td>
+</tr>
+<tr>
+<td><code>case_columns()</code></td>
+<td>221-226</td>
+<td>Expected cases over the next 4 weeks (median and 90% range) from the 4-week quantiles.</td>
+</tr>
+<tr>
+<td><code>scenario_rows()</code></td>
+<td>229-238</td>
+<td>One track's province rows: forecast + access + P = R x A, <code>P_lo</code> / <code>P_hi</code> (the method range), tier and sentinel status.</td>
+</tr>
+<tr>
+<td><code>adm3_priority()</code></td>
+<td>241-244</td>
+<td>Municipal rows get their province's R; P = R x municipal A (and its range).</td>
+</tr>
+<tr>
+<td><code>write_scenario_outputs()</code></td>
+<td>247-260</td>
+<td>Writes <code>scenarios{suffix}.parquet</code> and its companions (municipalities, tracks, swaths, ferry status, access methods); the suffix is empty for the backtests and <code>_catalog</code> for the catalogue.</td>
+</tr>
+<tr>
+<td><code>run_all()</code></td>
+<td>263-309</td>
+<td>For each backtest storm: forecast origin = the DOH week containing landfall, models trained to that week (2020 storms share the 2019 fit), R calibrated on past forecasts (<code>R_raw</code> kept); for each of 15 tracks: R and expected cases, A per province and municipality by both methods, P, tier, sentinel status; saves everything the dashboard needs, plus the ferry routes and hospitals.</td>
+</tr>
+<tr>
+<td><code>CATALOG_MIN_WIND_KT</code>, <code>CATALOG_MIN_HISTORY_WEEKS</code>, <code>CATALOG_REFIT_WEEKS</code></td>
+<td>314-316</td>
+<td>A catalogue storm needs a gale-strength fix (34 kt) and a model with at least 52 weeks of history; fits are cached on a 13-week grid.</td>
+</tr>
+<tr>
+<td><code>catalog_train_ends()</code></td>
+<td>319-325</td>
+<td>The training ends the catalogue may use: the forecast's refit dates, extended back in 13-week steps to the panel start, plus <code>MODEL_END</code>.</td>
+</tr>
+<tr>
+<td><code>catalog_storms()</code></td>
+<td>328-351</td>
+<td>Every Western Pacific storm 2016-2020 that came within 1,500 km: name, season, max wind, closest approach and its DOH week (the forecast origin), and whether its whole-track gale swath meets land.</td>
+</tr>
+<tr>
+<td><code>run_catalog()</code></td>
+<td>354-426</td>
+<td>The unshifted scenario for every catalogue storm except the 4 backtests. The model is the latest catalogue fit on or before the origin (never past 2019), so no training target is after the origin; storms with under 52 weeks of history are skipped and listed in <code>catalog_storms.csv</code>. Flood on roads and cells is the NOAH proxy (no Sentinel-1 map for these storms).</td>
+</tr>
+<tr>
+<td><code>validate()</code></td>
+<td>429-450</td>
+<td>Backtest: did provinces with high R / P see more cases in the next 4 weeks? Spearman correlations, surge rate of the top 10, Brier score. 2020 storms are flagged.</td>
+</tr>
+<tr>
+<td><code>_rank_change()</code></td>
+<td>453-458</td>
+<td>Kendall's tau and top-10 overlap of a changed ranking against the base one.</td>
+</tr>
+<tr>
+<td><code>sensitivity()</code></td>
+<td>461-491</td>
+<td>Re-runs access under 9 changed assumptions (speeds, ferry rule, slow-down, cut-off rule, storm radius) on both methods and measures how much the ranking moves.</td>
+</tr>
+<tr>
+<td><code>metro_manila_benchmark()</code></td>
+<td>494-508</td>
+<td>Closes every road in NOAH medium/high flood hazard and compares the share of Metro Manila cut off (about 30% in this build) with the published ~22% (Tariverdi et al., 2023): an order-of-magnitude check.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="114-bantayleptopy">1.14 <code>bantay/lepto.py</code></h3>
+<p>The leptospirosis stretch goal: does leptospirosis follow rain and typhoons, and after how many weeks? A retrospective
+association analysis, not a forecast: every model is fit on the whole overlap with the rain data. Two series: national
+weekly counts (Mendeley, 2019-2020 overlap with CHIRPS) and city-week counts for the 12 CCHAIN cities (2016-2020), which
+are never read as provincial or national numbers.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Paths</td>
+<td>43-47</td>
+<td>The Mendeley workbook, the CCHAIN folder, the DOH dengue file (for date checks), the summary output and the city-rain cache.</td>
+</tr>
+<tr>
+<td>Analysis constants</td>
+<td>49-59</td>
+<td>Lags 0-6 weeks; one IRR unit = +50 mm/week of rain; heavy-rain week = at or above the 90th percentile; 2 seasonal harmonics; 4-lag robust errors; COVID term from 2020-03-15; CCHAIN week label = date + 13 days; event window -4..+8 weeks and its four periods; 2014-2019 as the seasonal baseline years; 0.1 cases/week floor for a zero expectation.</td>
+</tr>
+<tr>
+<td><code>HDX_CITY</code></td>
+<td>61-64</td>
+<td>The DOH dengue name of 10 of the 12 CCHAIN cities (for the date check).</td>
+</tr>
+<tr>
+<td><code>first_sunday()</code></td>
+<td>69-71</td>
+<td>First Sunday of a year.</td>
+</tr>
+<tr>
+<td><code>mendeley_weekly()</code></td>
+<td>74-85</td>
+<td>National weekly counts of one disease from the Mendeley workbook; morbidity week w of year Y is the DOH week ending first Sunday + 7(w-1) days.</td>
+</tr>
+<tr>
+<td><code>cchain_weekly()</code></td>
+<td>88-104</td>
+<td>CCHAIN city-week counts of one disease, with the old 9-digit code turned into the COD-AB code and the week labelled as the CCHAIN date + <code>label_days</code>.</td>
+</tr>
+<tr>
+<td><code>_new_pcode()</code></td>
+<td>107-109</td>
+<td>Old 9-digit PSGC to COD-AB municipality code.</td>
+</tr>
+<tr>
+<td><code>hdx_dengue()</code></td>
+<td>112-118</td>
+<td>The DOH dengue file, read with the usual rules, for the date checks.</td>
+</tr>
+<tr>
+<td><code>alignment()</code></td>
+<td>121-143</td>
+<td>Which week labels are right? Correlates the same files' dengue counts with the DOH file under several shifts: Mendeley vs the DOH national total, CCHAIN vs the DOH city rows. This is where <code>CCHAIN_LABEL_DAYS</code> = 13 comes from.</td>
+</tr>
+<tr>
+<td><code>_r()</code></td>
+<td>146-151</td>
+<td>Correlation of two weekly series, on levels and on week-to-week differences (the sharper timing test).</td>
+</tr>
+<tr>
+<td><code>city_polygons()</code></td>
+<td>154-168</td>
+<td>COD-AB polygons of the 12 CCHAIN cities.</td>
+</tr>
+<tr>
+<td><code>city_rain()</code></td>
+<td>171-184</td>
+<td>CHIRPS weekly rain per city (the <code>rain.py</code> functions on the city polygons), cached in <code>data/interim/</code>.</td>
+</tr>
+<tr>
+<td><code>city_storms()</code></td>
+<td>187-194</td>
+<td>Weekly gale exposure of each city from every storm (<code>storms.unit_week_exposure()</code> on the city polygons).</td>
+</tr>
+<tr>
+<td><code>national_exposure()</code></td>
+<td>197-215</td>
+<td>National weekly rain (area-weighted CHIRPS and IMERG over the 85 units, plus population-weighted rain) and the population share inside a gale swath.</td>
+</tr>
+<tr>
+<td><code>harmonics()</code></td>
+<td>220-222</td>
+<td>Sine and cosine terms of the day of year (the seasonal adjustment).</td>
+</tr>
+<tr>
+<td><code>add_lags()</code></td>
+<td>225-233</td>
+<td>Lagged copies of a column, checking that the shifted row is exactly k weeks earlier.</td>
+</tr>
+<tr>
+<td><code>fit_nb()</code></td>
+<td>236-250</td>
+<td>Negative binomial (NB2) fit with Poisson start values, with Newey-West (national) or Driscoll-Kraay (cities) standard errors.</td>
+</tr>
+<tr>
+<td><code>_irr_rows()</code>, <code>_cum_row()</code></td>
+<td>253-274</td>
+<td>Incidence rate ratios with 95% CI per term, and the cumulative effect of lags 0-6 (sum of the joint coefficients, with its own CI).</td>
+</tr>
+<tr>
+<td><code>lag_profile()</code></td>
+<td>277-295</td>
+<td>For one exposure: lags 0-6 fitted one at a time ("single") and together ("joint", a distributed-lag model) plus their sum, all on the same weeks.</td>
+</tr>
+<tr>
+<td><code>national()</code></td>
+<td>300-349</td>
+<td>The national analysis for 2019-2020: rain, population-weighted rain, heavy-rain weeks and gale share, with sensitivity fits (2019 only, weeks that look completely reported, no seasonality).</td>
+</tr>
+<tr>
+<td><code>city_panel()</code></td>
+<td>354-375</td>
+<td>The complete city x week table: cases, rain, heavy-rain flag (each city's own 90th percentile), gale hit and their lags.</td>
+</tr>
+<tr>
+<td><code>city_lags()</code></td>
+<td>378-392</td>
+<td>The city design: city and year fixed effects, COVID term, common (or per-city) seasonal harmonics.</td>
+</tr>
+<tr>
+<td><code>cities_analysis()</code></td>
+<td>395-423</td>
+<td>Lag profiles for rain, heavy-rain weeks and gale hits in the 12 cities, plus sensitivity fits: without Iloilo City (about half of all cases), city-specific seasons, and the literal CCHAIN week label (date + 6).</td>
+</tr>
+<tr>
+<td><code>s1_city()</code></td>
+<td>428-455</td>
+<td>Sentinel-1 flooded share of each city for one storm (descriptive only).</td>
+</tr>
+<tr>
+<td><code>_expected()</code></td>
+<td>458-471</td>
+<td>Expected cases for a city-week: the city's mean in the same 3 calendar weeks of the other 2014-2019 years.</td>
+</tr>
+<tr>
+<td><code>events()</code></td>
+<td>474-506</td>
+<td>The event-study table: for each backtest storm, each city and weeks -4..+8 around landfall, whether the city was inside the storm's gale swath, observed and expected cases, rain and Sentinel-1 flood.</td>
+</tr>
+<tr>
+<td><code>event_did()</code></td>
+<td>509-542</td>
+<td>Quasi-Poisson model with offset log(expected) and storm x week effects: the IRR of inside vs outside cities per period. The before-landfall period is a placebo and should be about 1.</td>
+</tr>
+<tr>
+<td><code>event_summary()</code></td>
+<td>545-564</td>
+<td>Per storm and period: observed and expected cases inside and outside, and their ratio with a simple Poisson CI.</td>
+</tr>
+<tr>
+<td><code>_fmt()</code></td>
+<td>569-570</td>
+<td>"IRR (lo-hi)" text.</td>
+</tr>
+<tr>
+<td><code>run()</code></td>
+<td>573-615</td>
+<td>The whole stage: writes the <code>lepto_*</code> tables and series to <code>data/processed/app/</code> and the summary.</td>
+</tr>
+<tr>
+<td><code>_lag_md()</code>, <code>_peak()</code>, <code>_sig_lags()</code>, <code>_span()</code>, <code>_findings()</code></td>
+<td>618-707</td>
+<td>Markdown lag tables, the peak lag of a joint profile, the lags whose 95% CI lies above 1, and the key-findings bullets for the summary. Every qualitative word in the findings (the lag window, "same direction", a placebo that "passes" or "fails", "no general storm effect") is decided from the numbers, so the summary stays right if the data change.</td>
+</tr>
+<tr>
+<td><code>write_summary()</code></td>
+<td>710-828</td>
+<td>Writes <code>data/processed/lepto_summary.md</code>: key findings, data and week labels, the national and city tables, the event study and the caveats; every number from the output tables.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2-the-dashboard-appstreamlit_apppy">2. The dashboard: <code>app/streamlit_app.py</code></h2>
+<p>Streamlit re-runs the whole script top to bottom every time the user changes a control; <code>@st.cache_data</code> keeps the loaded
+files in memory, so each re-run is fast. The cache is keyed on the files' modification times, so a rebuild shows up on
+the next page refresh without a restart. The main controls (storm, track, map colour, open tab) are bound to the URL, so a
+view can be shared as a link. Tabs are a registry at the bottom of the file: each is a function, and optional ones appear
+only when their files exist.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Docstring</td>
+<td>1-12</td>
+<td>Layout, the optional outputs the app looks for, and the two environment overrides the tests use (<code>BANTAY_APP_DATA</code>, <code>BANTAY_SUS_PATH</code>).</td>
+</tr>
+<tr>
+<td>Imports, page setup</td>
+<td>14-41</td>
+<td>Adds the repo root and <code>app/</code> to the path, imports the tier rules from <code>bantay.scenarios</code> and the helper modules, sets a wide page and the CSS.</td>
+</tr>
+<tr>
+<td><code>APP</code>, <code>STATUS_FILE</code>, <code>DRIVERS</code>, <code>BASE</code></td>
+<td>43-48</td>
+<td>Where the build outputs are (overridable for tests), the status file, the driver groups whose SHAP values explain each risk, and the columns every scenario row is given (NaN if an older build lacks them).</td>
+</tr>
+<tr>
+<td><code>stamp()</code></td>
+<td>52-54</td>
+<td>Names and modification times of every output: passed to <code>load()</code> so its cache refreshes when any file changes.</td>
+</tr>
+<tr>
+<td><code>_read()</code></td>
+<td>57-64</td>
+<td>Reads a pre-computed file if it exists (parquet, CSV or JSON), else returns None, so a missing output hides its panel instead of crashing.</td>
+</tr>
+<tr>
+<td><code>load()</code></td>
+<td>67-90</td>
+<td>Loads every output once (cached): the core files, then the optional ones (access methods, model comparison, Sentinel-1 per municipality, the catalogue, leptospirosis, benchmark summary). Catalogue tracks, swaths, ferries and municipalities are appended to the backtest ones.</td>
+</tr>
+<tr>
+<td><code>swath_xy()</code></td>
+<td>93-104</td>
+<td>Turns a stored swath polygon into map coordinates.</td>
+</tr>
+<tr>
+<td>Load and guard</td>
+<td>107-112</td>
+<td>If no scenarios exist yet, tells the user to run the build and stops.</td>
+</tr>
+<tr>
+<td>Catalogue merge</td>
+<td>114-128</td>
+<td>Adds the catalogue storms to the scenario table (a wrong file becomes a note on <em>Data &amp; caveats</em>, not an error) and keeps each one's name, season and closest approach.</td>
+</tr>
+<tr>
+<td><code>names</code>, <code>PAL</code></td>
+<td>130-131</td>
+<td>Unit id to province name, from the map file; the light or dark palette.</td>
+</tr>
+<tr>
+<td><code>storm_label()</code></td>
+<td>134-143</td>
+<td>"Ompong (Mangkhut, 2018)" for a backtest storm, "Name Year" (or "Unnamed") for a catalogue storm.</td>
+</tr>
+<tr>
+<td>Sidebar</td>
+<td>147-190</td>
+<td>Typhoon picker (the four backtests first, then the catalogue by date; type to search), track shift sliders (only for storms with shifted tracks) with a reset button, and a "How to read this" box.</td>
+</tr>
+<tr>
+<td>Scenario selection</td>
+<td>192-208</td>
+<td>Picks the 85 rows of the chosen storm and shift, fills missing columns, sorts by P (else R), and works out the flood source (radar = lower bound, hazard proxy = upper bound).</td>
+</tr>
+<tr>
+<td><code>flag()</code></td>
+<td>211-212</td>
+<td>A missing flag counts as false.</td>
+</tr>
+<tr>
+<td><code>headline()</code></td>
+<td>216-247</td>
+<td>Title, forecast week, and badges: flood source with its bound, hospital source, training end, 2020 warning, catalogue storm, calibration status.</td>
+</tr>
+<tr>
+<td><code>caveats()</code></td>
+<td>250-295</td>
+<td>Every caveat that applies to this scenario, most decision-relevant first: 2020 reporting, missing access, radar lower bound or hazard upper bound, shifted track, ferry proxy, hospital fallback, calibration of R, the two access methods, provisional tiers.</td>
+</tr>
+<tr>
+<td>Caveat display</td>
+<td>298-308</td>
+<td>Warnings (or the first note) shown on top; the rest in an expander.</td>
+</tr>
+<tr>
+<td>KPIs</td>
+<td>311-334</td>
+<td>Provinces to deploy to and to pre-position for, people cut off (with its bound), ferries cancelled, top priority; a caption with the raster method's count and the under-5 / 60+ people cut off.</td>
+</tr>
+<tr>
+<td><code>act_table()</code>, <code>ACT_COLS</code></td>
+<td>338-349</td>
+<td>The top-10 "act first" table and the column formats and help texts shared by the tables.</td>
+</tr>
+<tr>
+<td><code>tab_map()</code></td>
+<td>352-376</td>
+<td><em>Action map</em>: the map (coloured by P, R or A) next to the top-10 table and the tier counts.</td>
+</tr>
+<tr>
+<td><code>map_figure()</code></td>
+<td>379-436</td>
+<td>The province map in plotly (no map tiles, works offline): grey base layer, the chosen layer, the gale swath, cancelled ferry routes and the track (hover: time and wind); hover on a province shows R, A (with the method range), P and people cut off.</td>
+</tr>
+<tr>
+<td><code>tab_quadrant()</code></td>
+<td>439-496</td>
+<td><em>Risk vs access</em>: R against A, bubble size = population, colour + legend = tier, whiskers = the two access methods, the threshold lines and the deploy zone, top six named. Zooms in when A is small.</td>
+</tr>
+<tr>
+<td><code>drivers()</code></td>
+<td>499-503</td>
+<td>The two driver groups that pushed a province's R up most (SHAP above 0.02).</td>
+</tr>
+<tr>
+<td><code>ranked()</code></td>
+<td>506-531</td>
+<td>The province table: action, P, R (and raw R), A with the method range and raster value, cases next 4 weeks with 90% range, people cut off (both methods, under 5, 60+), sentinel rank, community, main drivers.</td>
+</tr>
+<tr>
+<td><code>tab_table()</code></td>
+<td>534-556</td>
+<td><em>Provinces</em>: that table with column help, and a CSV download.</td>
+</tr>
+<tr>
+<td><code>tab_muni()</code></td>
+<td>559-629</td>
+<td><em>Municipalities</em>: for a chosen province (starting with the top one), where to send a clinic first, a bar chart of people cut off and a table per municipality; for the observed track it adds the radar flood share, people in radar flood and radar coverage.</td>
+</tr>
+<tr>
+<td><code>tab_graph()</code></td>
+<td>632-671</td>
+<td><em>Outbreak graph</em>: the PCMCI+ links with confidence, sentinel ranking, communities, the fit details and the correlation-baseline count for contrast.</td>
+</tr>
+<tr>
+<td><code>MODEL_NAMES</code>, <code>MODEL_ORDER</code>, <code>KIND_NAMES</code></td>
+<td>674-680</td>
+<td>Readable model names and their order in the model picker.</td>
+</tr>
+<tr>
+<td><code>median_wis()</code></td>
+<td>683-694</td>
+<td>Median WIS per model from <code>bench_summary.csv</code> (NaN where the build has none).</td>
+</tr>
+<tr>
+<td><code>tab_skill()</code></td>
+<td>697-880</td>
+<td><em>Forecast skill</em>: the evaluation table (and all scores with the ablations), the model comparison on the same rows (mean and median WIS, benchmark variants in an expander), the Brier score and reliability chart of R before and after calibration, and a fan chart for any province, model and horizon.</td>
+</tr>
+<tr>
+<td><code>tab_lepto()</code></td>
+<td>883-884</td>
+<td><em>Leptospirosis</em>: hands over to <code>lepto_tab.render()</code>.</td>
+</tr>
+<tr>
+<td><code>access_methods()</code></td>
+<td>887-958</td>
+<td>The two access methods compared: normal-day reach and trip time, their agreement, and people cut off by each for every track (backtests and catalogue), with the current scenario circled.</td>
+</tr>
+<tr>
+<td><code>tab_validation()</code></td>
+<td>961-1011</td>
+<td><em>Validation</em>: backtest table, sensitivity (Kendall's tau per variant, storm and method), the method comparison, the Metro Manila benchmark.</td>
+</tr>
+<tr>
+<td><code>tab_data()</code></td>
+<td>1014-1045</td>
+<td><em>Data &amp; caveats</em>: every caveat, problems with optional files, every input with available / missing from <code>status.json</code>, and the storm catalogue with the skipped storms and why.</td>
+</tr>
+<tr>
+<td><code>answer_key()</code></td>
+<td>1048-1071</td>
+<td>The facilitator's answers to the usability task, computed from this build.</td>
+</tr>
+<tr>
+<td><code>sus_form()</code></td>
+<td>1074-1093</td>
+<td>The System Usability Scale form (office, task outcome, minutes, ten statements); refuses incomplete answers and saves through <code>sus.save()</code>.</td>
+</tr>
+<tr>
+<td><code>tab_sus()</code></td>
+<td>1096-1130</td>
+<td><em>Usability test</em>: the 15-minute scenario task, the answer key, the form and the responses so far (count, mean score, task completion, by office). No names are collected.</td>
+</tr>
+<tr>
+<td><code>TABS</code> and the tab loop</td>
+<td>1133-1148</td>
+<td>The tab registry <code>(label, function, show?)</code>; adding a section = adding a line. The Leptospirosis tab shows only when its files exist.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="21-appuipy">2.1 <code>app/ui.py</code></h3>
+<p>Look and formatting for the dashboard, kept apart from the logic.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LIGHT</code>, <code>DARK</code></td>
+<td>13-26</td>
+<td>The data colours for each theme: a single-hue blue scale for magnitudes, blue steps for the three tiers (always shown with a text label), orange for the track and swath, aqua for cancelled ferries. Checked for colour-blind separation.</td>
+</tr>
+<tr>
+<td><code>TIER_SHORT</code>, <code>TIER_TINY</code></td>
+<td>28-29</td>
+<td>Tier names for the KPIs and the tables.</td>
+</tr>
+<tr>
+<td><code>FLOOD_LABEL</code>, <code>HOSPITAL_LABEL</code></td>
+<td>31-35</td>
+<td>Readable names for the flood source used on roads and the hospital source.</td>
+</tr>
+<tr>
+<td><code>HELP</code></td>
+<td>38-62</td>
+<td>Plain-language help for every term an officer meets on screen (R, A, P, tiers, ranges, sentinels, WIS, coverage, the method range).</td>
+</tr>
+<tr>
+<td><code>_THEME_JS</code>, <code>_watcher</code></td>
+<td>66-92</td>
+<td>A tiny browser component that notices when the viewer switches light/dark and re-runs the script, because Streamlit restyles the page but not the chart colours.</td>
+</tr>
+<tr>
+<td><code>palette()</code></td>
+<td>95-102</td>
+<td>The light or dark colours, following the viewer's theme (light when unknown, e.g. in tests).</td>
+</tr>
+<tr>
+<td><code>watch_theme()</code></td>
+<td>105-117</td>
+<td>Mounts the theme watcher once per run and remembers the theme it reports.</td>
+</tr>
+<tr>
+<td><code>css()</code></td>
+<td>120-135</td>
+<td>A few CSS rules on stable selectors only, so a Streamlit update can't break the layout.</td>
+</tr>
+<tr>
+<td><code>nan()</code></td>
+<td>138-139</td>
+<td>True for None or NaN.</td>
+</tr>
+<tr>
+<td><code>people()</code></td>
+<td>142-151</td>
+<td>Rounded people counts for headline numbers (342,801 -&gt; 343K; 7,473,210 -&gt; 7.47M).</td>
+</tr>
+<tr>
+<td><code>rng()</code></td>
+<td>154-155</td>
+<td>A "lo-hi" range, or n/a.</td>
+</tr>
+<tr>
+<td><code>date()</code></td>
+<td>158-162</td>
+<td>Dates written day-month-year (16 Sep 2018), as in Philippine health bulletins.</td>
+</tr>
+<tr>
+<td><code>shift_label()</code></td>
+<td>165-169</td>
+<td>"1° south", "no shift".</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22-appsuspy">2.2 <code>app/sus.py</code></h3>
+<p>The System Usability Scale (Brooke, 1996) for the dashboard's user test: items, scoring and anonymous storage.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ROOT</code>, <code>DEFAULT_PATH</code></td>
+<td>12-13</td>
+<td>Responses go to <code>data/processed/sus/sus_responses.csv</code> (git-ignored).</td>
+</tr>
+<tr>
+<td><code>ITEMS</code> ... <code>FIELDS</code></td>
+<td>16-31</td>
+<td>The ten standard statements (odd ones positive, even ones negative), the 1-5 scale, the offices a tester can pick, the task outcomes and the CSV columns. No name or contact field exists.</td>
+</tr>
+<tr>
+<td><code>path()</code></td>
+<td>34-36</td>
+<td>The responses file, or <code>BANTAY_SUS_PATH</code> if set (the tests write to a temporary file).</td>
+</tr>
+<tr>
+<td><code>score()</code></td>
+<td>39-44</td>
+<td>The SUS score 0-100: odd items count x - 1, even items 5 - x, the sum times 2.5; rejects anything but ten answers of 1-5.</td>
+</tr>
+<tr>
+<td><code>save()</code></td>
+<td>47-65</td>
+<td>Appends one response (office, answers, score, task outcome, minutes, UTC time) and returns its score.</td>
+</tr>
+<tr>
+<td><code>load()</code></td>
+<td>68-74</td>
+<td>All responses so far (an empty table if none).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="23-applepto_tabpy">2.3 <code>app/lepto_tab.py</code></h3>
+<p>The <em>Leptospirosis</em> tab. It reads only the build's <code>lepto_*</code> files; every number on screen comes from them.</p>
+<table class='blocks'>
+<thead>
+<tr>
+<th>Block</th>
+<th>Lines</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Constants</td>
+<td>13-20</td>
+<td>The caveat shown on top (12 cities, not provincial; association, not forecast), the exposure toggle, the main variant of each analysis, the event periods and the storm pools.</td>
+</tr>
+<tr>
+<td><code>_profile()</code></td>
+<td>23-25</td>
+<td>The joint lag profile and the cumulative row of one variant and exposure.</td>
+</tr>
+<tr>
+<td><code>_ci()</code></td>
+<td>28-29</td>
+<td>"IRR (lo-hi)" text.</td>
+</tr>
+<tr>
+<td><code>findings()</code></td>
+<td>32-56</td>
+<td>One plain sentence per analysis (peak lag in the cities and nationally, the event study), read from the files.</td>
+</tr>
+<tr>
+<td><code>render()</code></td>
+<td>59-65</td>
+<td>The tab: caveat, findings, then the three charts.</td>
+</tr>
+<tr>
+<td><code>lag_profile()</code></td>
+<td>68-103</td>
+<td>IRR by lag for cities and national, for rain, heavy-rain weeks or gale exposure, on a log scale with 95% CIs.</td>
+</tr>
+<tr>
+<td><code>weekly_chart()</code></td>
+<td>106-141</td>
+<td>Weekly cases and rain for the nation or any city, with the four landfalls marked and weeks that look incompletely reported shown lighter.</td>
+</tr>
+<tr>
+<td><code>event_study()</code></td>
+<td>144-193</td>
+<td>The inside/outside ratio of observed to expected cases by period for each storm pool (the placebo period hollow), and the per-storm ratios in an expander.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="24-streamlitconfigtoml">2.4 <code>.streamlit/config.toml</code></h3>
+<p>The dashboard's settings and theme, read by Streamlit when it starts from the repo folder (<code>run_app.bat</code> does that):
+viewer-only toolbar (no developer or deploy menu for health officers), short error messages without tracebacks, no usage
+statistics, and the light and dark themes (Public Sans, one flood-blue accent). The data colours live in <code>app/ui.py</code>.</p>
+<h2 id="3-glossary">3. Glossary</h2>
+<table class='files'>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>R</strong></td>
+<td>Surge probability: chance the next 4 weeks' incidence exceeds the province's 90th percentile.</td>
+</tr>
+<tr>
+<td><strong>Calibrated R / R raw</strong></td>
+<td>The model's raw probability (<code>R_raw</code>) mapped by an isotonic fit to how often surges really happened, using past forecasts only. The calibrated value is <code>R</code>, used for P and the tiers.</td>
+</tr>
+<tr>
+<td><strong>A</strong></td>
+<td>Access loss: share of a province's people who lose their route to a hospital in the storm.</td>
+</tr>
+<tr>
+<td><strong>Network / raster method</strong></td>
+<td>Two ways to compute travel time: the road and ferry graph (main) and the MAP friction surface (check). <code>A_lo</code> / <code>A_hi</code> (and <code>P_lo</code> / <code>P_hi</code>) span the two.</td>
+</tr>
+<tr>
+<td><strong>P</strong></td>
+<td>Priority = R x A.</td>
+</tr>
+<tr>
+<td><strong>Tier</strong></td>
+<td>The provisional action rule: deploy mobile clinics, pre-position supplies, or monitor.</td>
+</tr>
+<tr>
+<td><strong>Unit</strong></td>
+<td>One of the 85 harmonised 2016-2020 provinces (NCR is split into its 4 districts).</td>
+</tr>
+<tr>
+<td><strong>Incidence</strong></td>
+<td>Cases per 100,000 people.</td>
+</tr>
+<tr>
+<td><strong>Rolling origin</strong></td>
+<td>Testing a forecaster as if in real time: train on the past, forecast forward, move the cut-off forward.</td>
+</tr>
+<tr>
+<td><strong>WIS / relative WIS</strong></td>
+<td>Weighted interval score of a forecast range (lower is better); relative WIS &lt; 1 means better than the seasonal-naive baseline.</td>
+</tr>
+<tr>
+<td><strong>Seasonal naive</strong></td>
+<td>"Same week last year", the baseline forecast.</td>
+</tr>
+<tr>
+<td><strong>Ablation</strong></td>
+<td>The same model with a group of features removed (no graph, no rain/river/storm/flood), to see what that group adds.</td>
+</tr>
+<tr>
+<td><strong>Benchmark / median ensemble</strong></td>
+<td>Outside models scored on the same rows (Chronos-2, TabPFN-TS, MPNN-LSTM); the ensemble is the median of their and XGBoost's quantiles.</td>
+</tr>
+<tr>
+<td><strong>Quantile</strong></td>
+<td>A forecast at a probability level; 23 of them describe the full range.</td>
+</tr>
+<tr>
+<td><strong>Coverage</strong></td>
+<td>How often the truth falls inside a stated range (90% range should catch ~90%).</td>
+</tr>
+<tr>
+<td><strong>Brier score</strong></td>
+<td>Error of a probability forecast (lower is better).</td>
+</tr>
+<tr>
+<td><strong>PCMCI+</strong></td>
+<td>A causal-discovery algorithm for time series that keeps a link only if it survives conditioning on other series and their pasts.</td>
+</tr>
+<tr>
+<td><strong>FDR / Benjamini-Hochberg</strong></td>
+<td>A correction that controls the share of false links when testing thousands of pairs.</td>
+</tr>
+<tr>
+<td><strong>Sentinel / PageRank / Louvain</strong></td>
+<td>A province others follow (scored with PageRank); groups of provinces that move together (Louvain).</td>
+</tr>
+<tr>
+<td><strong>Gale swath</strong></td>
+<td>Area that saw gale-force (34-knot) winds along the track.</td>
+</tr>
+<tr>
+<td><strong>Shifted track</strong></td>
+<td>The same storm moved north/south/east/west, for "what if" scenarios.</td>
+</tr>
+<tr>
+<td><strong>Storm catalogue</strong></td>
+<td>Every other 2016-2020 storm whose gale swath reached land, scored on its observed track with the NOAH proxy.</td>
+</tr>
+<tr>
+<td><strong>NOAH hazard proxy</strong></td>
+<td>Using flood-hazard maps instead of observed flood to decide which roads close; an upper bound.</td>
+</tr>
+<tr>
+<td><strong>Sentinel-1</strong></td>
+<td>Radar satellite that sees flood through clouds; our observed-flood source (a lower bound).</td>
+</tr>
+<tr>
+<td><strong>EMS</strong></td>
+<td>Copernicus Emergency Management Service flood maps; used to check Sentinel-1.</td>
+</tr>
+<tr>
+<td><strong>HRSL</strong></td>
+<td>Meta's High Resolution Settlement Layer: counts of children under 5 and people aged 60+, used for the vulnerable people cut off.</td>
+</tr>
+<tr>
+<td><strong>Dijkstra</strong></td>
+<td>Shortest-path algorithm; run from all hospitals at once to get each place's nearest-hospital time.</td>
+</tr>
+<tr>
+<td><strong>IRR / distributed lag</strong></td>
+<td>Incidence rate ratio (1 = no change); a distributed-lag model fits several weeks of lagged rain together.</td>
+</tr>
+<tr>
+<td><strong>Event study / placebo</strong></td>
+<td>Comparing cities inside and outside a storm's swath around landfall; the weeks before landfall should show no difference.</td>
+</tr>
+<tr>
+<td><strong>SUS</strong></td>
+<td>System Usability Scale: ten statements scored 0-100; about 68 is average.</td>
+</tr>
+<tr>
+<td><strong>Crosswalk</strong></td>
+<td>A table mapping one set of place codes or names onto another.</td>
+</tr>
+<tr>
+<td><strong>Manifest</strong></td>
+<td><code>data/raw/MANIFEST.csv</code>: every raw file with size and checksum.</td>
+</tr>
+</tbody>
+</table></body></html>
