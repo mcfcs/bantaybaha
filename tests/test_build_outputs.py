@@ -198,3 +198,34 @@ def test_status_json_well_formed():
         datetime.fromisoformat(v["checked"])
     for k in ("dengue_hdx", "panel", "scenarios"):
         assert st[k]["available"], k
+
+
+def test_eval_models_built_in_rows_match_eval_summary():
+    """With every model on the base rows (no benchmark row missing), eval_models' built-in models equal eval_summary."""
+    m = csv("eval_models.csv", dtype={"horizon": str})
+    e = csv("eval_summary.csv", index_col=0)
+    e.index = e.index.astype(str)
+    meta = json.loads((APP_DATA / "eval_models.json").read_text(encoding="utf-8"))
+    assert meta["n_common_rows"] <= meta["n_base_rows"] == int(e.loc["all", "n"])
+    if meta["n_common_rows"] != meta["n_base_rows"]:
+        pytest.skip("benchmarks cover fewer rows than the base models: the two tables score different rows")
+    for r in m[m.model.isin(F.MODELS)].itertuples():
+        row = e.loc[r.horizon]
+        assert r.n == row["n"] and r.WIS == pytest.approx(row[f"WIS {r.model}"]), (r.model, r.horizon)
+        assert r.cov90 == pytest.approx(row[f"cov90 {r.model}"]), (r.model, r.horizon)
+
+
+def test_scenario_intervals_and_municipal_sums(scen):
+    assert ((scen.cases4_lo90 <= scen.cases4_med + 1e-9) & (scen.cases4_med <= scen.cases4_hi90 + 1e-9)).all()
+    assert (scen.pop_cut.dropna() <= scen.pop_cells.dropna() + 1e-6).all()
+    a3 = pq("scenarios_adm3.parquet")
+    assert a3.A.dropna().between(0, 1).all()
+    # the same population cells summarised two ways: totals agree per track (a municipality whose cells straddle a unit
+    # boundary is listed under one unit, so per-unit sums can differ), and municipalities carry their unit's R
+    tot = scen.groupby(["storm", "dlat", "dlon"])[["pop_cut", "pop_cells"]].sum()
+    tot3 = a3.groupby(["storm", "dlat", "dlon"])[["pop_cut", "pop"]].sum().reindex(tot.index)
+    assert np.allclose(tot.pop_cut, tot3.pop_cut, rtol=1e-6) and np.allclose(tot.pop_cells, tot3["pop"], rtol=1e-6)
+    for k in STORMS:
+        s0 = scen[(scen.storm == k) & (scen.dlat == 0) & (scen.dlon == 0)].set_index("unit_id")
+        m0 = a3[(a3.storm == k) & (a3.dlat == 0) & (a3.dlon == 0)]
+        assert np.allclose(m0.R, m0.unit_id.map(s0.R)), k

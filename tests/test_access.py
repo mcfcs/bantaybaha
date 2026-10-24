@@ -10,7 +10,9 @@ from shapely.geometry import LineString, Point, box
 from bantay import access as AC
 from bantay.config import CRS_M
 
-pytestmark = pytest.mark.usefixtures("isolated_status")
+pytestmark = [pytest.mark.usefixtures("isolated_status"),
+              # cut_off computes inf - inf for cells with no route in both runs; the result is still correct
+              pytest.mark.filterwarnings("ignore:invalid value encountered in subtract:RuntimeWarning")]
 INF = np.inf
 
 
