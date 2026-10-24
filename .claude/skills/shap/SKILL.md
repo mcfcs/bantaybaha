@@ -3,7 +3,6 @@ name: shap
 description: Explain and audit machine-learning predictions with SHAP. Use for selecting SHAP explainers and maskers, computing and validating feature attributions, handling multi-output explanations, and producing local or global SHAP visualizations.
 license: MIT
 compatibility: Requires Python 3.12+ and uv for SHAP 0.52.0; model-specific libraries are optional.
-allowed-tools: "Read Bash"
 metadata:
   version: "2.3"
   last-reviewed: "2026-10-01"

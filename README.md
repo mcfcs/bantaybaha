@@ -126,14 +126,15 @@ scripts/make_proposal.py    revised anonymous proposal v3 (docs/proposal/, PDF v
 bantay/                     library: units, dengue, storms, rain, rivers, flood, grids, panel, leadlag, forecast, access,
                             scenarios, lepto
 app/                        the dashboard (streamlit_app.py + ui, sus, lepto_tab; run_app.bat)
-tests/                      AppTest + Playwright end-to-end tests (requirements-dev.txt); test_skills.py guards .claude/skills
-.claude/skills/             agent skills for Claude Code: playwright-cli, web-design-guidelines, and six data-science skills
-                            (scikit-learn, statsmodels, shap, statistical-analysis, scientific-critical-thinking,
-                            timesfm-forecasting) pinned in VENDORED.json; usage rules in AGENTS.md "Agent skills"
+tests/                      AppTest + Playwright end-to-end tests (requirements-dev.txt)
 notebooks/00_data_eda.ipynb one notebook: a short EDA of every dataset + proposal checks
 data/raw/                   downloaded data (git-ignored, read-only; only MANIFEST.csv is tracked)
 data/crosswalks/            reviewed crosswalks into the harmonised 2016-2020 province units (tracked)
 data/interim/, processed/   derived data (git-ignored, rebuilt by scripts/build.py)
+.claude/skills/             agent skills for Claude Code: playwright-cli, web-design-guidelines, and six data-science skills
+                            (scikit-learn, statsmodels, shap, statistical-analysis, scientific-critical-thinking,
+                            timesfm-forecasting) pinned and hash-checked in VENDORED.json (tests/test_skills.py);
+                            usage rules in AGENTS.md "Agent skills"
 ```
 
 ## Data sources

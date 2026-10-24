@@ -84,6 +84,9 @@ steps and the data findings. [README.md](README.md) has setup and the source lis
   `statistical-analysis`, `scientific-critical-thinking`, `timesfm-forecasting`) are vendored verbatim from
   K-Dense-AI/scientific-agent-skills at the commit in `.claude/skills/VENDORED.json`, after a safety review. Don't edit them
   (`tests/test_skills.py` checks every hash). To update, re-download at a new commit, re-review, regenerate the JSON.
+- **No skill may pre-approve broad tools.** A skill's `allowed-tools` runs those tools without a permission prompt, even in
+  an untrusted folder, so the vendored copies have that line removed (recorded under `patches` in `VENDORED.json`). Any
+  project skill may list only read-only tools or Bash scoped to one command (`Bash(playwright-cli:*)`); the test enforces it.
 - These rules override the skills: **ignore their install sections** (`uv venv .venv-*`, `uv pip install`). Packages go into
   the repo venvs and `requirements.txt` / `requirements-bench.txt` (TimesFM belongs in `bantay-bench`), never a venv in the repo.
 - **Don't add the K-Dense citation** from the skills' closing section to reports, the deck or code on your own; ask the lead.

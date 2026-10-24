@@ -1,7 +1,6 @@
 ---
 name: scientific-critical-thinking
 description: Evaluates scientific claims and evidence quality. Applies to experimental design validity, biases and confounders, statistical interpretation, evidence grading frameworks (GRADE, Cochrane Risk of Bias), and teaching critical analysis. Supports evidence appraisal and identifying flaws; formal peer review writing belongs to peer-review.
-allowed-tools: Read Write Edit
 license: MIT license
 compatibility: Analytical guidance needs no network. Optional figures via the scientific-schematics skill require OPENROUTER_API_KEY and outbound API access to OpenRouter.
 metadata:
