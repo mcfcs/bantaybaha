@@ -1,0 +1,28 @@
+% !TEX root = ../main.tex
+\section{Limitations and next steps}
+\label{sec:limits}
+
+\subsection{Threats to validity}
+
+\begin{itemize}
+\item \textbf{Two evaluation years.} 2018--2019 contains one epidemic; the model ranking changes between mean and median WIS because of it.
+\item \textbf{Surveillance artefacts.} Reporting delays and under-reporting are in the target; the forecasts predict reported, not true, cases.
+\item \textbf{Observed flood.} Sentinel-1 sees each place every 6 to 12 days and misses flooding under dense vegetation and in built-up areas; the shifted tracks and the catalogue fall back to static hazard maps.
+\item \textbf{Network gaps.} OSM completeness is uneven outside Luzon (the raster method bounds this); the ferries are 2024--2026 routes; the hospitals are an OSM and NOAH fallback without facility level or capacity. HRSL under-counts older people.
+\item \textbf{Provisional rules.} The tier thresholds, road speeds and the cut-off rule are assumptions, partly addressed by the sensitivity analysis.
+\item \textbf{Causality.} The PCMCI+ links and the leptospirosis lags are associations, not transmission routes or causal effects.
+\end{itemize}
+
+\subsection{Next steps}
+
+\begin{enumerate}
+\item Run the System Usability Scale test with three users from regional health offices, local government health units and disaster risk reduction offices \parencite{brooke1996}, and review the tiers with them.
+\item Feed a forecast track from the national weather service and its cone of uncertainty in place of the historical shifts.
+\item Add a second radar or optical source between Sentinel-1 passes.
+\item Replace the hospital fallback with the official facility registry (facility level, so that access can mean a higher-level hospital).
+\item Give the benchmarks storm inputs, or blend the ensemble with the storm signal of XGBoost, so that the scenarios can use the ensemble.
+\end{enumerate}
+
+\subsection{Reproducibility}
+
+\code{setup.bat} (or \code{download\_data.bat}) $\rightarrow$ \code{build.bat} $\rightarrow$ \code{run\_app.bat}. The evaluation report and the slides are regenerated with \code{python scripts/make\_results.py}, and this specification with \code{python scripts/make\_spec.py}. Missing inputs are skipped, listed in \code{data/processed/status.json} and on the dashboard; re-running after they arrive needs no code change.

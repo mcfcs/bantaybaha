@@ -17,3 +17,19 @@ __pycache__/
 .env
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+
+# LaTeX build artifacts (docs/spec/build/ holds the aux files and the PDF; the PDF is copied to docs/results/)
+docs/spec/build/
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.synctex.gz
+*.synctex(busy)
+*.toc
+*.xdv

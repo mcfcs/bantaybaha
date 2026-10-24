@@ -1,0 +1,9 @@
+# latexmk settings for the technical specification (read when latexmk runs in docs/spec/).
+#   latexmk            -> build/main.pdf (pdflatex + biber, as many passes as needed)
+#   latexmk -c         -> remove the auxiliary files in build/ (keeps the PDF)
+@default_files = ('main.tex');
+$pdf_mode = 1;                 # pdflatex
+$out_dir = 'build';            # aux files and the PDF; git-ignored
+$bibtex_use = 2;               # run biber (biblatex) when the .bcf asks for it
+$pdflatex = 'pdflatex -synctex=1 -interaction=nonstopmode -file-line-error -halt-on-error %O %S';
+$max_repeat = 6;
