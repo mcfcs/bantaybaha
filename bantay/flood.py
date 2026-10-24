@@ -4,7 +4,8 @@ NOAH (finding 6): per-province shapefiles, 5/25-year, hazard classes Var 1-3 (lo
 the WorldPop 100 m grid as one national raster per return period: 255 = no map for this area, 0 = mapped, no hazard,
 1-3 = hazard class. Units without a map get NaN hazard shares (never 0).
 
-Sentinel-1 (UN-SPIDER change detection, scripts/download_gee.py `s1_flood`): uint8 tiles per typhoon, 1 = new flood,
+Sentinel-1 (before/after change detection in the UN-SPIDER workflow, with a dB-difference rule instead of its ratio;
+scripts/download_gee.py `s1_flood`): uint8 tiles per typhoon, 1 = new flood,
 0 = not flooded, 255 = no data. EMS EMSR312 gives observed flood polygons for 6 Northern Luzon AOIs (Ompong only).
 """
 

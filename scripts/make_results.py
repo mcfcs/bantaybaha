@@ -131,6 +131,12 @@ def stats(d):
     k["n_adm3"] = a0.adm3_pcode.nunique()
     k["n_scen"] = len(d["scen"][["storm", "dlat", "dlon"]].drop_duplicates())
     s = d["scen"]
+    # columns from optional build parts (raster method, HRSL, calibration): NaN when that part did not run, so the
+    # guarded sections below say "not available" instead of failing
+    for c in ("A_lo", "A_hi", "A_raster", "R_raw", "pop_cut_raster", "pop_cut_u5", "pop_cut_60", "pop_cells"):
+        if c not in s:
+            s = s.assign(**{c: np.nan})
+    d["scen"] = s
     b = s[(s.dlat == 0) & (s.dlon == 0)]
     b = b.assign(cut_lo=b.pop_cells * b.A_lo, cut_hi=b.pop_cells * b.A_hi)
     k["storm_tab"] = b.groupby("storm").agg(cut=("pop_cut", "sum"), A=("A", "mean"), ferries=("ferries_cancelled", "first"),

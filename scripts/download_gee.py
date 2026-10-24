@@ -9,7 +9,7 @@ Pulls:
   map_friction    Malaria Atlas Project friction surface 2019 (motorised + walking), PHL bbox
   gfd             Global Flood Database event table for events intersecting the Philippines
   sentinel1       Sentinel-1 GRD scene inventory around the four backtest typhoons (no imagery)
-  s1_flood        Sentinel-1 flood masks per typhoon (UN-SPIDER change detection), 1-degree uint8 tiles near each track:
+  s1_flood        Sentinel-1 flood masks per typhoon (UN-SPIDER-style change detection, dB-difference rule), 1-degree uint8 tiles near each track:
                   1 = new flood, 0 = not flooded, 255 = no data / sea. Tiles are skipped if already on disk.
                   `--storms Ompong` limits it to one typhoon (useful for a first check).
 

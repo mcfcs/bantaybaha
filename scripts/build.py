@@ -120,7 +120,7 @@ def stage_ensemble(a):
         out.unlink()  # no benchmark files any more: drop stale bands
     print(tab[tab.horizon == "all"].round(3).to_string(index=False))
     nb = len(meta["benchmarks"])
-    ok = [m for m, v in meta["benchmarks"].items() if "error" not in v]
+    ok = [m for m, v in meta["benchmarks"].items() if "error" not in v and "ignored" not in v]  # variants are not benchmarks
     if ok:
         C.record("bench_models", True, f"{', '.join(ok)}; ensemble {F.ENSEMBLE} = median of {meta['ensemble']['members']}")
     else:
