@@ -45,6 +45,11 @@ Then open `notebooks/00_data_eda.ipynb` with the **Python (bantay-baha)** kernel
 
 ### Build and run the dashboard
 
+**The build outputs are committed** (`data/processed/`, ~94 MB), so after cloning you can run `run_app.bat`,
+`python scripts\make_results.py` or `python scripts\make_spec.py` straight away, without the raw data or the ~1.5 h build.
+They are the results of the code at the commit they were added in. After changing code that affects results, rebuild
+(`build.bat`), run `python -m pytest tests`, and commit the refreshed `data/processed/` in the same change as the code.
+
 ```bat
 build.bat                 :: everything: crosswalk panel leadlag forecast ensemble scenarios catalog app lepto (~1.5 h first time)
 build.bat panel forecast  :: selected stages
@@ -128,6 +133,7 @@ python tests\capture.py                           :: refresh docs\results\figure
 | `test_scripts.py` | downloads skip existing files and write through `.part` (no network), manifest merge and sha256, the bucket manifest, `check_code_guide.py` (and that the real guide is current) |
 | `test_build_outputs.py`, `test_make_results.py` (`data`) | 85 units x 262 weeks, S1 timing, scenario ranges, catalogue `train_end` <= origin, every model on the same rows, `status.json`; the report and 20 slides on the full build and with each optional part removed |
 | `test_flood.py`, `test_spec_flags.py` | the EMS reader leaves `status.json` alone for the documents; the spec's wording flags: registry, recomputed from the outputs (`data`), and a compile with every flag inverted (`slow`) |
+| `test_snapshot.py` (`data`) | the committed `data/processed/` snapshot: what git tracks and ignores (outputs yes; raw data, caches, logs and usability-test answers no), every file the dashboard reads is present, no file near GitHub's 50 MB warning, no local paths in text outputs |
 | `test_skills.py` | the vendored agent skills in `.claude/skills/` match their reviewed sha256 in `VENDORED.json`, bundle no network or process code, and no project skill pre-approves broad tools (`allowed-tools`) |
 | `test_sus.py`, `test_app.py`, `test_e2e.py` (`e2e`) | SUS scoring and storage; every dashboard tab, control and optional output; the browser walk-through (every tab, storm and shift, dark mode, SUS submission; fails on any app exception or browser console error) |
 
@@ -188,7 +194,8 @@ tests/                      pytest: pipeline unit tests, build-output checks, Ap
 notebooks/00_data_eda.ipynb one notebook: a short EDA of every dataset + proposal checks
 data/raw/                   downloaded data (git-ignored, read-only; only MANIFEST.csv is tracked)
 data/crosswalks/            reviewed crosswalks into the harmonised 2016-2020 province units (tracked)
-data/interim/, processed/   derived data (git-ignored, rebuilt by scripts/build.py)
+data/processed/             build outputs (committed snapshot: dashboard, report and spec run without rebuilding)
+data/interim/               build caches (git-ignored, rebuilt by scripts/build.py)
 .claude/skills/             agent skills for Claude Code: playwright-cli, web-design-guidelines, and six data-science skills
                             (scikit-learn, statsmodels, shap, statistical-analysis, scientific-critical-thinking,
                             timesfm-forecasting) pinned and hash-checked in VENDORED.json (tests/test_skills.py);

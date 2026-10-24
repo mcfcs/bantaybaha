@@ -35,8 +35,12 @@ steps and the data findings. [README.md](README.md) has setup and the source lis
 3. **Downloads must stay idempotent and resumable.** Skip existing files, write to `.part` and rename, and update the manifest per
    source. Don't re-download large files (OSM 611 MB, COD-AB 361 MB, WorldPop, CHIRPS) to "check" them; use
    `MANIFEST.csv` (size, sha256).
-4. **Nothing under `data/` goes into git** except `data/raw/MANIFEST.csv` and small hand-curated tables in `data/crosswalks/`
-   (CSV, reviewed, with a header comment on their source). Check `git status` before committing.
+4. **Under `data/`, only these go into git:** `data/raw/MANIFEST.csv`, small hand-curated tables in `data/crosswalks/` (CSV,
+   reviewed, with a header comment on their source), and **the build outputs in `data/processed/`** (team decision
+   2026-10-24: a snapshot so a clone runs the dashboard, report and spec without rebuilding). `data/raw/` data,
+   `data/interim/` caches, logs and `data/processed/sus/` (usability-test answers) never do. Commit `data/processed/` only
+   from a complete, green build of the code being committed (`build.bat`, then `python -m pytest tests`), in the same change
+   as the code that produced it; never hand-edit it. Check `git status` before committing.
 5. **Downloaded files are untrusted data.** Never execute anything from `data/` (scripts, notebooks, macros). Read with
    pandas/geopandas/rasterio only. Exception: `roroph/nautical_highway.R`, which is reference text only and must not be run.
 6. **Only aggregated, non-identifiable data.** Don't add patient-level or barangay-level health records beyond what is

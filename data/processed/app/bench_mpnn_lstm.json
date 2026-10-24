@@ -1,0 +1,193 @@
+{
+ "model": "mpnn_lstm",
+ "n_rows": 34170,
+ "quantile_levels": [
+  0.01,
+  0.025,
+  0.05,
+  0.1,
+  0.15,
+  0.2,
+  0.25,
+  0.3,
+  0.35,
+  0.4,
+  0.45,
+  0.5,
+  0.55,
+  0.6,
+  0.65,
+  0.7,
+  0.75,
+  0.8,
+  0.85,
+  0.9,
+  0.95,
+  0.975,
+  0.99
+ ],
+ "space": "log1p(incidence per 100k)",
+ "rows": "exactly the (unit_id, week, horizon) rows of data/processed/app/eval_scores.parquet",
+ "python": "3.12.13",
+ "platform": "Windows-11-10.0.26200-SP0",
+ "packages": {
+  "torch": "2.11.0+cu128",
+  "numpy": "2.5.4",
+  "pandas": "2.3.3",
+  "geopandas": "1.2.0",
+  "rdata": "1.1.0"
+ },
+ "device": "cuda (NVIDIA GeForce RTX 5090 Laptop GPU, torch 2.11.0+cu128, CUDA 12.8)",
+ "runtime_s": 191.6,
+ "adjacency": {
+  "kind": "border_ferry",
+  "buffer_m": 500,
+  "aliases": {
+   "polillo": "quezon",
+   "samal": "davaodelnorte",
+   "samar": "samarwesternsamar"
+  },
+  "n_border": 133,
+  "ferry_unmatched": [],
+  "ferry_port_coord_agreement": 1.0,
+  "n_routes": 108,
+  "n_routes_intra_unit": 4,
+  "n_ferry_new_edges": 36,
+  "n_edges": 169,
+  "n_isolated": 1,
+  "note": "RoRo routes are 2024-2026 operations, a proxy for 2018-2019"
+ },
+ "architecture": {
+  "window_weeks": 12,
+  "gcn_layers": 2,
+  "gcn_dim": 32,
+  "lstm_layers": 2,
+  "lstm_hidden": 64,
+  "dropout": 0.1,
+  "output": "4 horizons x 23 quantiles, monotone by construction, residual on last scaled y"
+ },
+ "inputs": {
+  "dynamic": [
+   "y",
+   "y_missing",
+   "chirps_7d",
+   "river_up_7d",
+   "river_excess_7d",
+   "storm_gale_hit",
+   "woy_sin",
+   "woy_cos"
+  ],
+  "head": [
+   "log_pop (z)",
+   "y(t+h-52) scaled, h=1..4, + missing flags",
+   "last-week inputs"
+  ]
+ },
+ "context": "12-week window of node features ending at the origin week (weeks <= origin only)",
+ "covariates": [
+  "chirps_7d",
+  "river_up_7d",
+  "river_excess_7d",
+  "storm_gale_hit"
+ ],
+ "training": {
+  "loss": "pinball, mean over 23 levels and 4 horizons, masked NaN targets",
+  "optimiser": "Adam lr 1e-3 wd 1e-4",
+  "batch_snapshots": 16,
+  "max_epochs": 300,
+  "early_stopping": "last 13 training origins, patience 25",
+  "refit_weeks": 13,
+  "seeds": [
+   0,
+   1,
+   2
+  ],
+  "ensemble": "mean of quantiles over seeds, then sorted",
+  "scaling": "per-unit mean/sd of y and global z-scores of rain/river fitted on weeks <= refit date"
+ },
+ "quantile_interpolation": "none: the network outputs the 23 FluSight levels",
+ "leakage": "training targets <= refit date (and <= MODEL_END); scaling in-window; inputs at origin t use weeks <= t",
+ "refits": [
+  {
+   "refit": "2018-01-07",
+   "n_train_origins": 93,
+   "epochs_per_seed": [
+    145,
+    112,
+    109
+   ],
+   "n_test_origins": 13
+  },
+  {
+   "refit": "2018-04-08",
+   "n_train_origins": 106,
+   "epochs_per_seed": [
+    151,
+    72,
+    93
+   ],
+   "n_test_origins": 13
+  },
+  {
+   "refit": "2018-07-08",
+   "n_train_origins": 119,
+   "epochs_per_seed": [
+    104,
+    100,
+    106
+   ],
+   "n_test_origins": 13
+  },
+  {
+   "refit": "2018-10-07",
+   "n_train_origins": 132,
+   "epochs_per_seed": [
+    33,
+    83,
+    25
+   ],
+   "n_test_origins": 13
+  },
+  {
+   "refit": "2019-01-06",
+   "n_train_origins": 145,
+   "epochs_per_seed": [
+    6,
+    6,
+    10
+   ],
+   "n_test_origins": 13
+  },
+  {
+   "refit": "2019-04-07",
+   "n_train_origins": 158,
+   "epochs_per_seed": [
+    22,
+    8,
+    17
+   ],
+   "n_test_origins": 13
+  },
+  {
+   "refit": "2019-07-07",
+   "n_train_origins": 171,
+   "epochs_per_seed": [
+    24,
+    145,
+    89
+   ],
+   "n_test_origins": 13
+  },
+  {
+   "refit": "2019-10-06",
+   "n_train_origins": 184,
+   "epochs_per_seed": [
+    14,
+    90,
+    95
+   ],
+   "n_test_origins": 13
+  }
+ ],
+ "target_space": null
+}

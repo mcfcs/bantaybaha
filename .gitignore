@@ -1,9 +1,11 @@
-# Raw and derived data are rebuilt by scripts/download_data.py
+# Raw data come from the download scripts / team bucket; caches are rebuilt by scripts/build.py.
+# data/processed/ (the build outputs) IS committed (team decision 2026-10-24): a snapshot so a clone can run the dashboard,
+# report and spec without the ~1.5 h build. Usability-test answers never go into git.
 data/raw/*
 data/interim/
-data/processed/
 !data/raw/MANIFEST.csv
 data/*.log
+data/processed/sus/
 
 # Python / Jupyter
 __pycache__/

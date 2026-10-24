@@ -1,0 +1,207 @@
+{
+ "access": {
+  "available": true,
+  "checked": "2026-10-24T06:45:20",
+  "detail": "road graph + 2199 hospitals (osm+noah_fallback) + population cells"
+ },
+ "access_network": {
+  "available": true,
+  "checked": "2026-10-24T06:45:20",
+  "detail": "2198 hospital nodes, 340,114/369,121 cells within 5 km of a road, 108 ferry routes snapped"
+ },
+ "bench_models": {
+  "available": true,
+  "checked": "2026-10-24T19:27:12",
+  "detail": "chronos2, mpnn_lstm, tabpfn_ts; ensemble ens_median = median of ['xgb', 'chronos2', 'mpnn_lstm', 'tabpfn_ts']"
+ },
+ "benchmark": {
+  "available": true,
+  "checked": "2026-10-24T06:45:08",
+  "detail": "NCR share cut off 29.7%"
+ },
+ "catalog": {
+  "available": true,
+  "checked": "2026-10-24T06:52:44",
+  "detail": "38 storms (9 fits), 9 skipped; 455s"
+ },
+ "census2020": {
+  "available": true,
+  "checked": "2026-10-24T04:34:24",
+  "detail": "data\\raw\\census2020\\2020_CPH_SexAge_Popn_Mun_Admin3.xlsx"
+ },
+ "census_population": {
+  "available": true,
+  "checked": "2026-10-24T04:34:24",
+  "detail": "108.67 M people in 85 units"
+ },
+ "chirps": {
+  "available": true,
+  "checked": "2026-10-24T06:06:19",
+  "detail": "data\\raw\\chirps"
+ },
+ "cod_ab": {
+  "available": true,
+  "checked": "2026-10-24T19:27:17",
+  "detail": "phl_admin_boundaries.gdb.zip"
+ },
+ "dengue_hdx": {
+  "available": true,
+  "checked": "2026-10-24T04:34:23",
+  "detail": "126 reporting units, 261 weeks"
+ },
+ "dengue_unit_week": {
+  "available": true,
+  "checked": "2026-10-24T04:34:24",
+  "detail": "215 NaN unit-weeks of 22270"
+ },
+ "ems_EMSR312": {
+  "available": true,
+  "checked": "2026-10-24T15:29:26",
+  "detail": "12 packages"
+ },
+ "forecast_eval": {
+  "available": true,
+  "checked": "2026-10-24T06:34:29",
+  "detail": "relWIS xgb/naive = 0.544, cov90 = 0.852"
+ },
+ "hospitals": {
+  "available": true,
+  "checked": "2026-10-24T06:45:20",
+  "detail": "fallback: 2199 hospitals ({'osm': 1679, 'noah': 520}), duplicates < 300 m dropped"
+ },
+ "hydrorivers": {
+  "available": true,
+  "checked": "2026-10-24T04:34:24",
+  "detail": "data\\raw\\hydrorivers\\HydroRIVERS_v10_au_shp.zip"
+ },
+ "ibtracs": {
+  "available": true,
+  "checked": "2026-10-24T19:27:15",
+  "detail": "137 storms 2016-2020"
+ },
+ "imerg": {
+  "available": true,
+  "checked": "2026-10-24T03:41:39",
+  "detail": "data\\raw\\imerg"
+ },
+ "lepto_city": {
+  "available": true,
+  "checked": "2026-10-24T19:27:29",
+  "detail": "12 CCHAIN cities, 3132 city-weeks"
+ },
+ "lepto_events": {
+  "available": true,
+  "checked": "2026-10-24T19:27:32",
+  "detail": "4 storms x 12 cities"
+ },
+ "lepto_national": {
+  "available": true,
+  "checked": "2026-10-24T19:27:17",
+  "detail": "80 national weeks with cases and rain"
+ },
+ "map_friction": {
+  "available": true,
+  "checked": "2026-10-24T06:45:23",
+  "detail": "friction_surface_2019_motorized_phl.tif: 465,831 passable land cells, 2002 hospital cells, 2741 population cells snapped off sea, 96 ferry lines"
+ },
+ "meta_hrsl_pop_60": {
+  "available": true,
+  "checked": "2026-10-24T06:35:42",
+  "detail": "7,499,635 people in the raster, 7,337,430 on population cells (97.8%); 117,458 outside the WorldPop grid"
+ },
+ "meta_hrsl_pop_u5": {
+  "available": true,
+  "checked": "2026-10-24T06:35:42",
+  "detail": "12,517,391 people in the raster, 12,117,580 on population cells (96.8%); 267,134 outside the WorldPop grid"
+ },
+ "nhfr": {
+  "available": false,
+  "checked": "2026-10-24T06:45:19",
+  "detail": "NHFR manual download not in data/raw/nhfr/; using HOT OSM + NOAH facilities (fallback)"
+ },
+ "noah_25yr": {
+  "available": true,
+  "checked": "2026-10-24T04:34:25",
+  "detail": "72 zips"
+ },
+ "noah_5yr": {
+  "available": true,
+  "checked": "2026-10-24T04:34:25",
+  "detail": "67 zips"
+ },
+ "noah_hazard_shares": {
+  "available": true,
+  "checked": "2026-10-24T06:36:03",
+  "detail": "74/85 units have a 25-yr hazard share (others NaN = no map)"
+ },
+ "osm": {
+  "available": true,
+  "checked": "2026-10-24T04:19:12",
+  "detail": "data\\raw\\osm\\philippines-latest.osm.pbf"
+ },
+ "panel": {
+  "available": true,
+  "checked": "2026-10-24T04:35:00",
+  "detail": "85 units x 262 weeks"
+ },
+ "psgc": {
+  "available": false,
+  "checked": "2026-10-24T03:40:28",
+  "detail": "data\\raw\\psgc not found"
+ },
+ "road_graph": {
+  "available": true,
+  "checked": "2026-10-24T04:19:46",
+  "detail": "1,717,666 nodes, 2,132,776 edges from 1,084,312 OSM ways"
+ },
+ "roroph": {
+  "available": true,
+  "checked": "2026-10-24T06:45:20",
+  "detail": "data\\raw\\roroph\\roro_routes.rda"
+ },
+ "s1_adm3": {
+  "available": true,
+  "checked": "2026-10-24T06:43:38",
+  "detail": "4 storms x 1642 municipalities"
+ },
+ "s1_flood_ompong": {
+  "available": true,
+  "checked": "2026-10-24T04:34:47",
+  "detail": "48 tiles"
+ },
+ "s1_flood_rolly": {
+  "available": true,
+  "checked": "2026-10-24T04:34:57",
+  "detail": "68 tiles"
+ },
+ "s1_flood_tisoy": {
+  "available": true,
+  "checked": "2026-10-24T04:34:52",
+  "detail": "80 tiles"
+ },
+ "s1_flood_ulysses": {
+  "available": true,
+  "checked": "2026-10-24T04:35:00",
+  "detail": "55 tiles"
+ },
+ "scenarios": {
+  "available": true,
+  "checked": "2026-10-24T06:43:11",
+  "detail": "4 storms x 15 tracks; access on; raster method on"
+ },
+ "sensitivity": {
+  "available": true,
+  "checked": "2026-10-24T06:45:07",
+  "detail": "9 variants x 4 storms"
+ },
+ "surge_calibration": {
+  "available": true,
+  "checked": "2026-10-24T06:52:21",
+  "detail": "isotonic on 8160 past rolling-origin forecasts (target week <= 2019-12-29)"
+ },
+ "worldpop": {
+  "available": true,
+  "checked": "2026-10-24T06:43:11",
+  "detail": "data\\raw\\worldpop\\phl_ppp_2020_UNadj.tif"
+ }
+}

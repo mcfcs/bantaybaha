@@ -676,6 +676,7 @@ One file per module; each test name states the rule it checks. Counts are collec
 | `tests/test_make_results.py` (16) | [1-109](../tests/test_make_results.py#L1-L109) | Marker `data`. `stats()` and the report / 20-slide builders on the full build, on a minimal build and without each optional output in turn (in memory; nothing is written). |
 | `tests/test_flood.py` (2) | [1-20](../tests/test_flood.py#L1-L20) | Reading the Copernicus EMS layer records status by default, and leaves `status.json` alone with `record_status=False` (how the documents read it). |
 | `tests/test_spec_flags.py` (3) | [1-118](../tests/test_spec_flags.py#L1-L118) | The spec's `\if<Name>` wording flags: every flag the prose uses is generated and every generated flag is used; marker `data`: 21 flags recomputed straight from the CSV / JSON outputs; marker `slow`: the spec compiles with every flag inverted, so both wordings of every claim build. |
+| `tests/test_snapshot.py` (49) | [1-75](../tests/test_snapshot.py#L1-L75) | The committed build-output snapshot (`data/processed/`, AGENTS.md data rule 4): git tracks the outputs but ignores raw data, `data/interim/` caches, logs and `data/processed/sus/` answers; every output file named in `app/*.py` is present; no file is near GitHub's 50 MB warning; text outputs hold no local paths (user folder, OneDrive). Build-output checks carry the `data` marker. |
 | `tests/test_skills.py` (36) | [1-102](../tests/test_skills.py#L1-L102) | The vendored agent skills in `.claude/skills/` stay as reviewed: every file matches its sha256 in `VENDORED.json` (line endings normalised), no file added or removed, the pinned commit and recorded patches, each skill's name matches its folder, bundled code imports no network module and spawns no process (one reviewed macOS RAM probe excepted), no vendored skill grants `allowed-tools`, and no project skill pre-approves anything beyond read-only tools or Bash scoped to one command. No build needed. |
 
 #### `tests/test_sus.py`
@@ -1034,7 +1035,7 @@ and shown in one table at the end.
 
 ## 10. Every file the pipeline writes
 
-All build outputs under `data/` stay out of git (only `data/raw/MANIFEST.csv` and `data/crosswalks/` are committed).
+Committed: `data/raw/MANIFEST.csv`, `data/crosswalks/`, and the build outputs in `data/processed/` (a snapshot, so a clone runs the dashboard, report and spec without rebuilding). Not committed: raw data, the `data/interim/` caches, logs and `data/processed/sus/` (usability-test answers).
 
 | File | Written by | Read by |
 |---|---|---|

@@ -1,0 +1,412 @@
+{
+ "models": [
+  "xgb",
+  "xgb_nograph",
+  "xgb_noenv",
+  "naive",
+  "chronos2",
+  "mpnn_lstm",
+  "tabpfn_ts",
+  "ens_median"
+ ],
+ "benchmarks": {
+  "chronos2": {
+   "file": "bench_chronos2.parquet",
+   "meta": {
+    "model": "chronos2",
+    "n_rows": 34170,
+    "quantile_levels": [
+     0.01,
+     0.025,
+     0.05,
+     0.1,
+     0.15,
+     0.2,
+     0.25,
+     0.3,
+     0.35,
+     0.4,
+     0.45,
+     0.5,
+     0.55,
+     0.6,
+     0.65,
+     0.7,
+     0.75,
+     0.8,
+     0.85,
+     0.9,
+     0.95,
+     0.975,
+     0.99
+    ],
+    "space": "log1p(incidence per 100k)",
+    "rows": "exactly the (unit_id, week, horizon) rows of data/processed/app/eval_scores.parquet",
+    "python": "3.12.13",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "packages": {
+     "chronos-forecasting": "2.3.2",
+     "torch": "2.11.0+cu128",
+     "transformers": "5.20.2",
+     "numpy": "2.5.4",
+     "pandas": "2.3.3"
+    },
+    "weights": "amazon/chronos-2 (Hugging Face, Apache-2.0, not gated), 119.5 M parameters",
+    "device": "cuda (NVIDIA GeForce RTX 5090 Laptop GPU, torch 2.11.0+cu128, CUDA 12.8)",
+    "runtime_s": 20.0,
+    "context": "each unit's weekly incidence per 100k from 2016-01-10 to the origin week inclusive (105-207 weeks; model max 8192); missing weeks passed as NaN; output quantiles mapped to log1p after clipping at 0",
+    "target_space": "incidence",
+    "covariates": {
+     "type": "past-only (Chronos-2 past_covariates, no future values)",
+     "columns": [
+      "chirps_7d",
+      "river_up_7d",
+      "river_excess_7d",
+      "storm_gale_hit",
+      "storm_max_wind_near_kt",
+      "storm_hazard_exposure",
+      "s1_flood_frac"
+     ],
+     "missing": "NaN passed as missing (storm_hazard_exposure has no NOAH map for 11 units; s1_flood_frac exists only in the Sentinel-1 storm windows)"
+    },
+    "cross_learning": false,
+    "batch_size": 256,
+    "prediction_length": 4,
+    "model_quantile_levels": [
+     0.01,
+     0.05,
+     0.1,
+     0.15,
+     0.2,
+     0.25,
+     0.3,
+     0.35,
+     0.4,
+     0.45,
+     0.5,
+     0.55,
+     0.6,
+     0.65,
+     0.7,
+     0.75,
+     0.8,
+     0.85,
+     0.9,
+     0.95,
+     0.99
+    ],
+    "quantile_interpolation": "levels 0.025 and 0.975 linearly interpolated in level space between Chronos-2's 0.01/0.05 and 0.95/0.99 quantiles; the other 21 FluSight levels are Chronos-2 outputs",
+    "leakage": "zero-shot, no training or fitted normalisation; the forecast at origin t uses weeks <= t only",
+    "n_origins": 103,
+    "renamed_from": "bench_chronos2_inc",
+    "headline_note": "Headline Chronos-2 = incidence context with past covariates; chosen after the log1p context (as first specified, now chronos2_log1p) collapsed on reporting spikes (relWIS vs naive ~112)."
+   },
+   "rows_in_file": 34170,
+   "rows_invalid": 0,
+   "rows_duplicate": 0,
+   "rows_matched": 34170,
+   "rows_eval": 34510
+  },
+  "chronos2_log1p": {
+   "file": "bench_chronos2_log1p.parquet",
+   "ignored": "variant: not in forecast.BENCH_MODELS"
+  },
+  "chronos2_nocov": {
+   "file": "bench_chronos2_nocov.parquet",
+   "ignored": "variant: not in forecast.BENCH_MODELS"
+  },
+  "chronos2_nocov_log1p": {
+   "file": "bench_chronos2_nocov_log1p.parquet",
+   "ignored": "variant: not in forecast.BENCH_MODELS"
+  },
+  "chronos2_xl_log1p": {
+   "file": "bench_chronos2_xl_log1p.parquet",
+   "ignored": "variant: not in forecast.BENCH_MODELS"
+  },
+  "mpnn_lstm": {
+   "file": "bench_mpnn_lstm.parquet",
+   "meta": {
+    "model": "mpnn_lstm",
+    "n_rows": 34170,
+    "quantile_levels": [
+     0.01,
+     0.025,
+     0.05,
+     0.1,
+     0.15,
+     0.2,
+     0.25,
+     0.3,
+     0.35,
+     0.4,
+     0.45,
+     0.5,
+     0.55,
+     0.6,
+     0.65,
+     0.7,
+     0.75,
+     0.8,
+     0.85,
+     0.9,
+     0.95,
+     0.975,
+     0.99
+    ],
+    "space": "log1p(incidence per 100k)",
+    "rows": "exactly the (unit_id, week, horizon) rows of data/processed/app/eval_scores.parquet",
+    "python": "3.12.13",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "packages": {
+     "torch": "2.11.0+cu128",
+     "numpy": "2.5.4",
+     "pandas": "2.3.3",
+     "geopandas": "1.2.0",
+     "rdata": "1.1.0"
+    },
+    "device": "cuda (NVIDIA GeForce RTX 5090 Laptop GPU, torch 2.11.0+cu128, CUDA 12.8)",
+    "runtime_s": 191.6,
+    "adjacency": {
+     "kind": "border_ferry",
+     "buffer_m": 500,
+     "aliases": {
+      "polillo": "quezon",
+      "samal": "davaodelnorte",
+      "samar": "samarwesternsamar"
+     },
+     "n_border": 133,
+     "ferry_unmatched": [],
+     "ferry_port_coord_agreement": 1.0,
+     "n_routes": 108,
+     "n_routes_intra_unit": 4,
+     "n_ferry_new_edges": 36,
+     "n_edges": 169,
+     "n_isolated": 1,
+     "note": "RoRo routes are 2024-2026 operations, a proxy for 2018-2019"
+    },
+    "architecture": {
+     "window_weeks": 12,
+     "gcn_layers": 2,
+     "gcn_dim": 32,
+     "lstm_layers": 2,
+     "lstm_hidden": 64,
+     "dropout": 0.1,
+     "output": "4 horizons x 23 quantiles, monotone by construction, residual on last scaled y"
+    },
+    "inputs": {
+     "dynamic": [
+      "y",
+      "y_missing",
+      "chirps_7d",
+      "river_up_7d",
+      "river_excess_7d",
+      "storm_gale_hit",
+      "woy_sin",
+      "woy_cos"
+     ],
+     "head": [
+      "log_pop (z)",
+      "y(t+h-52) scaled, h=1..4, + missing flags",
+      "last-week inputs"
+     ]
+    },
+    "context": "12-week window of node features ending at the origin week (weeks <= origin only)",
+    "covariates": [
+     "chirps_7d",
+     "river_up_7d",
+     "river_excess_7d",
+     "storm_gale_hit"
+    ],
+    "training": {
+     "loss": "pinball, mean over 23 levels and 4 horizons, masked NaN targets",
+     "optimiser": "Adam lr 1e-3 wd 1e-4",
+     "batch_snapshots": 16,
+     "max_epochs": 300,
+     "early_stopping": "last 13 training origins, patience 25",
+     "refit_weeks": 13,
+     "seeds": [
+      0,
+      1,
+      2
+     ],
+     "ensemble": "mean of quantiles over seeds, then sorted",
+     "scaling": "per-unit mean/sd of y and global z-scores of rain/river fitted on weeks <= refit date"
+    },
+    "quantile_interpolation": "none: the network outputs the 23 FluSight levels",
+    "leakage": "training targets <= refit date (and <= MODEL_END); scaling in-window; inputs at origin t use weeks <= t",
+    "refits": [
+     {
+      "refit": "2018-01-07",
+      "n_train_origins": 93,
+      "epochs_per_seed": [
+       145,
+       112,
+       109
+      ],
+      "n_test_origins": 13
+     },
+     {
+      "refit": "2018-04-08",
+      "n_train_origins": 106,
+      "epochs_per_seed": [
+       151,
+       72,
+       93
+      ],
+      "n_test_origins": 13
+     },
+     {
+      "refit": "2018-07-08",
+      "n_train_origins": 119,
+      "epochs_per_seed": [
+       104,
+       100,
+       106
+      ],
+      "n_test_origins": 13
+     },
+     {
+      "refit": "2018-10-07",
+      "n_train_origins": 132,
+      "epochs_per_seed": [
+       33,
+       83,
+       25
+      ],
+      "n_test_origins": 13
+     },
+     {
+      "refit": "2019-01-06",
+      "n_train_origins": 145,
+      "epochs_per_seed": [
+       6,
+       6,
+       10
+      ],
+      "n_test_origins": 13
+     },
+     {
+      "refit": "2019-04-07",
+      "n_train_origins": 158,
+      "epochs_per_seed": [
+       22,
+       8,
+       17
+      ],
+      "n_test_origins": 13
+     },
+     {
+      "refit": "2019-07-07",
+      "n_train_origins": 171,
+      "epochs_per_seed": [
+       24,
+       145,
+       89
+      ],
+      "n_test_origins": 13
+     },
+     {
+      "refit": "2019-10-06",
+      "n_train_origins": 184,
+      "epochs_per_seed": [
+       14,
+       90,
+       95
+      ],
+      "n_test_origins": 13
+     }
+    ],
+    "target_space": null
+   },
+   "rows_in_file": 34170,
+   "rows_invalid": 0,
+   "rows_duplicate": 0,
+   "rows_matched": 34170,
+   "rows_eval": 34510
+  },
+  "mpnn_lstm_border": {
+   "file": "bench_mpnn_lstm_border.parquet",
+   "ignored": "variant: not in forecast.BENCH_MODELS"
+  },
+  "mpnn_lstm_none": {
+   "file": "bench_mpnn_lstm_none.parquet",
+   "ignored": "variant: not in forecast.BENCH_MODELS"
+  },
+  "tabpfn_ts": {
+   "file": "bench_tabpfn_ts.parquet",
+   "meta": {
+    "model": "tabpfn_ts",
+    "n_rows": 34170,
+    "quantile_levels": [
+     0.01,
+     0.025,
+     0.05,
+     0.1,
+     0.15,
+     0.2,
+     0.25,
+     0.3,
+     0.35,
+     0.4,
+     0.45,
+     0.5,
+     0.55,
+     0.6,
+     0.65,
+     0.7,
+     0.75,
+     0.8,
+     0.85,
+     0.9,
+     0.95,
+     0.975,
+     0.99
+    ],
+    "space": "log1p(incidence per 100k)",
+    "rows": "exactly the (unit_id, week, horizon) rows of data/processed/app/eval_scores.parquet",
+    "python": "3.12.13",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "packages": {
+     "tabpfn-time-series": "1.3.0",
+     "tabpfn": "9.2.0",
+     "torch": "2.11.0+cu128",
+     "numpy": "2.5.4",
+     "pandas": "2.3.3"
+    },
+    "weights": "TabPFN v2 regressor (tabpfn-v2-regressor.ckpt, Prior-Labs/TabPFN-v2-reg, no licence gate); the tabpfn-time-series default v3.5 is gated (Prior Labs login / licence acceptance) and was not used",
+    "mode": "TabPFNMode.LOCAL (no client API, no token)",
+    "device": "cuda (NVIDIA GeForce RTX 5090 Laptop GPU, torch 2.11.0+cu128, CUDA 12.8)",
+    "runtime_s": 3209.2,
+    "runtime_note": "sum over origins of this run; origins read from the cache are not re-timed",
+    "context": "each unit's weekly log1p(incidence per 100k) for weeks <= origin, NaN weeks dropped (TabPFN-TS default)",
+    "temporal_features": "TabPFN-TS defaults: RunningIndexFeature, CalendarFeature, AutoSeasonalFeature",
+    "covariates": "none (TabPFN-TS ignores past-only covariates)",
+    "quantile_interpolation": "none: the 23 FluSight levels are requested from TabPFN directly",
+    "leakage": "zero-shot, no training; per-series in-context regression on weeks <= origin only",
+    "n_origins": 103,
+    "target_space": null
+   },
+   "rows_in_file": 34170,
+   "rows_invalid": 0,
+   "rows_duplicate": 0,
+   "rows_matched": 34170,
+   "rows_eval": 34510
+  },
+  "tabpfn_ts_lagcov": {
+   "file": "bench_tabpfn_ts_lagcov.parquet",
+   "ignored": "variant: not in forecast.BENCH_MODELS"
+  }
+ },
+ "ensemble": {
+  "name": "ens_median",
+  "members": [
+   "xgb",
+   "chronos2",
+   "mpnn_lstm",
+   "tabpfn_ts"
+  ]
+ },
+ "n_base_rows": 34050,
+ "n_common_rows": 34050,
+ "note": "every model scored on the same rows (all models have a score); WIS on case counts"
+}
